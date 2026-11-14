@@ -7,7 +7,11 @@ function crop(n = 32, seed = 5) {
   const cost = combineCost(L, n, { ws: 4, wr: 0, maxSlope: 24 }, new Float32Array(n * n))
   let start = -1
   let goal = -1
-  for (let i = 0; i < n * n; i++) if (Number.isFinite(cost[i]!)) (start < 0 ? (start = i) : (goal = i))
+  for (let i = 0; i < n * n; i++) {
+    if (!Number.isFinite(cost[i]!)) continue
+    if (start < 0) start = i
+    else goal = i
+  }
   return { n, cost, start, goal }
 }
 
