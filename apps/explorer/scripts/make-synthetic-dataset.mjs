@@ -81,7 +81,8 @@ function terrainAt(u, v) {
     const dd = Math.hypot(u - cx, v - cy)
     craters -= 14 * cr * 30 * Math.exp(-Math.pow(dd / cr, 2)) - 5 * cr * 30 * Math.exp(-Math.pow((dd - cr * 1.1) / (cr * 0.3), 2))
   }
-  return -2600 + bowl + rim + fan + mesa + ridge + relief + craters
+  // gentle, delta-like relief: real Jezero slopes are mostly below 15 degrees
+  return -2600 + 0.45 * (bowl + rim + fan + mesa + ridge + relief + craters)
 }
 function smoothstep(a, b, t) {
   const x = Math.min(1, Math.max(0, (t - a) / (b - a)))

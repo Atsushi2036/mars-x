@@ -96,7 +96,10 @@ export async function loadDataset(
   const manifest = parseManifest(await fetchJson(`${base}/manifest.json`, signal))
   onProgress({ stage: 'manifest', fraction: 1 })
 
-  const elevationLayer = manifest.layers.find((l) => l.kind === 'elevation')
+  // the render grid is `manifest.grid`; other elevation layers (e.g. the 2 m planning grid) are for planners
+  const elevationLayer =
+    manifest.layers.find((l) => l.kind === 'elevation' && l.gridId === manifest.grid.id) ??
+    manifest.layers.find((l) => l.kind === 'elevation')
   if (!elevationLayer) throw new Error('Manifest has no elevation layer')
   const enc = elevationLayer.encoding
   if (enc.dtype !== 'uint16' || enc.scale == null || enc.offset == null || enc.nodata == null) {

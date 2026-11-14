@@ -23,7 +23,7 @@ export const gridSchema = z
 
 export const encodingSchema = z
   .object({
-    dtype: z.enum(['uint8', 'uint16', 'float32', 'image/webp', 'image/png']),
+    dtype: z.enum(['uint8', 'uint16', 'float32', 'image/webp', 'image/png', 'application/geo+json']),
     endian: z.enum(['little', 'n/a']).default('little'),
     scale: num.nullish(),
     offset: num.nullish(),
