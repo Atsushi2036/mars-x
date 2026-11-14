@@ -10,7 +10,7 @@ from .core import (
     path_cost,
     smooth_path,
 )
-from .costmap import cost_from_slope
+from .costmap import cost_from_slope, path_to_actions
 
 __all__ = [
     "NEIGHBORS",
@@ -24,6 +24,7 @@ __all__ = [
     "line_of_sight",
     "oracle_path",
     "path_cost",
+    "path_to_actions",
     "random_walk_path",
     "smooth_path",
 ]

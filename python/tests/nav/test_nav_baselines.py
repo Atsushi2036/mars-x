@@ -53,3 +53,10 @@ def test_replan_unreachable_reports_no_path():
     true[:, 4] = INF
     r = astar_replan(true, known, (4, 0), (4, 8), sensor_radius=2)
     assert r.status == NavStatus.NO_PATH
+
+
+def test_path_to_actions_uses_act1_encoding():
+    from marsx.nav import path_to_actions
+    p = np.array([[2, 2], [1, 2], [1, 3], [2, 4], [2, 3], [3, 2], [2, 1], [3, 1], [3, 1]])
+    # N, E, SE, W, SW, NW... derived from act/1: N=0 S=1 E=2 W=3 NE=4 NW=5 SE=6 SW=7 WAIT=8
+    assert path_to_actions(p).tolist() == [0, 2, 6, 3, 7, 5, 1, 8]

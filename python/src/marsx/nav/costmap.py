@@ -20,3 +20,23 @@ def cost_from_slope(
     if blocked_mask is not None:
         cost[np.asarray(blocked_mask, dtype=bool)] = np.inf
     return cost.astype(np.float32)
+
+
+def path_to_actions(path) -> np.ndarray:
+    """Convert a polyline of adjacent cells (row, col) to act/1 indices
+    (N=0 S=1 E=2 W=3 NE=4 NW=5 SE=6 SW=7 WAIT=8; rows grow south).
+
+    Raises ValueError if two consecutive points are not adjacent (smoothed
+    paths must be re-densified before conversion).
+    """
+    from marsx.contracts.obs import ACTIONS
+
+    lut = {(a.drow, a.dcol): a.index for a in ACTIONS}
+    p = np.asarray(path, dtype=np.int64)
+    out = []
+    for a, b in zip(p[:-1], p[1:]):
+        key = (int(b[0] - a[0]), int(b[1] - a[1]))
+        if key not in lut:
+            raise ValueError(f"non-adjacent step {key}")
+        out.append(lut[key])
+    return np.array(out, dtype=np.uint8)
