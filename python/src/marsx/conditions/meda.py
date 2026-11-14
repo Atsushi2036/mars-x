@@ -315,14 +315,49 @@ def load_sol(sol: int, root: Path) -> dict:
     return summarize_sol(sol, d / "ats.csv", d / "ps.csv", d / "ws.csv")
 
 
+_PUBLISH_DAILY = ("temperatureMinK", "temperatureMaxK", "pressureMinPa", "pressureMaxPa", "windMeanMs", "windMaxMs")
+
+
+def publish_summaries(root: Path, out_dir: Path, sols=None) -> list[Path]:
+    """Write ``sol-XXXX.json`` daily summaries (no hourly table) for the web.
+
+    Missing values stay ``null``; sols whose CSVs are not in ``root`` are skipped.
+    """
+    root, out_dir = Path(root), Path(out_dir)
+    written: list[Path] = []
+    for sol in sorted(sols if sols is not None else SOLS):
+        d = root / f"sol_{sol:04d}"
+        if not all((d / n).exists() for n in ("ats.csv", "ps.csv", "ws.csv")):
+            continue
+        s = load_sol(sol, root)
+        doc = {
+            "sol": s["sol"],
+            "season": s["season"],
+            "daily": {k: s["daily"][k] for k in _PUBLISH_DAILY},
+            "tau": s["tau"],
+            "tauSource": s["tauSource"],
+            "tauProvenance": s["tauProvenance"],
+            "source": s["source"],
+        }
+        out_dir.mkdir(parents=True, exist_ok=True)
+        path = out_dir / f"sol-{sol:04d}.json"
+        path.write_text(json.dumps(doc, indent=1, allow_nan=False) + "\n", encoding="utf-8")
+        written.append(path)
+    return written
+
+
 if __name__ == "__main__":  # python -m marsx.conditions.meda fetch 313 ...
     cmd, *args = sys.argv[1:] or ["help"]
     root = Path(__file__).resolve().parents[4] / "data" / "raw" / "meda"
     if cmd == "fetch":
         for s in args:
             print(fetch_sol(int(s), root))
+    elif cmd == "publish":
+        out = Path(args[args.index("--out") + 1]) if "--out" in args else root.parents[1] / "processed" / "jezero-v1" / "meda"
+        for p in publish_summaries(root, out):
+            print(p)
     elif cmd == "summary":
         for s in args:
             print(json.dumps(load_sol(int(s), root)["daily"]))
     else:
-        print("usage: python -m marsx.conditions.meda fetch|summary SOL [SOL...]")
+        print("usage: python -m marsx.conditions.meda fetch|summary SOL [SOL...] | publish [--out DIR]")

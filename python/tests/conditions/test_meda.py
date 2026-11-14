@@ -202,3 +202,27 @@ def test_http_get_retries_on_mid_stream_reset(monkeypatch):
     monkeypatch.setattr(requests, "get", fake_get)
     monkeypatch.setattr(meda.time, "sleep", lambda s: None)
     assert meda._http_get("https://example.org/x") == b"abc" and attempts["n"] == 3
+
+
+def test_publish_format_has_exact_keys_and_strict_json(tmp_path):
+    ats, ps, ws = make_sol(tmp_path / "src_unused" if False else tmp_path, sol=5)
+    root = tmp_path / "raw"
+    (root / "sol_0005").mkdir(parents=True)
+    for name, src in (("ats.csv", ats), ("ps.csv", ps), ("ws.csv", ws)):
+        (root / "sol_0005" / name).write_bytes(src.read_bytes())
+    out = tmp_path / "out"
+    written = meda.publish_summaries(root, out, sols=[5])
+    assert [p.name for p in written] == ["sol-0005.json"]
+    text = (out / "sol-0005.json").read_text()
+    doc = json.loads(text)  # strict: allow_nan below must not be needed
+    assert set(doc) == {"sol", "season", "daily", "tau", "tauSource", "tauProvenance", "source"}
+    assert set(doc["daily"]) == {"temperatureMinK", "temperatureMaxK", "pressureMinPa", "pressureMaxPa",
+                                 "windMeanMs", "windMaxMs"}
+    assert doc["sol"] == 5 and doc["season"] is None and doc["tau"] is None
+    assert doc["daily"]["temperatureMinK"] == pytest.approx(204.0)
+    assert "NaN" not in text and "Infinity" not in text
+
+
+def test_publish_skips_sols_without_data_and_keeps_nulls(tmp_path):
+    written = meda.publish_summaries(tmp_path / "empty", tmp_path / "out", sols=[148])
+    assert written == []
