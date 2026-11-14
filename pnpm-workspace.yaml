@@ -1,0 +1,13 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Supply-chain hardening (security review): refuse packages published < 7 days ago.
+# Value is in minutes (10080 = 7 days). Requires pnpm >= 10.16.
+minimumReleaseAge: 10080
+
+# Only these dependencies may run install scripts (wrangler's workerd/esbuild/sharp binaries).
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+  - sharp

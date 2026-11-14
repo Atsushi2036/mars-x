@@ -147,3 +147,17 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# MARS-X data (regenerable; see python/src/marsx/pipeline)
+data/raw/
+data/processed/
+.venv/
+__pycache__/
+.pytest_cache/
+
+# MARS-X tooling
+.wrangler/
+.dev.vars
+dist/
+*.tar.gz
+.dataset-cache/

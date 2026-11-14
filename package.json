@@ -1,0 +1,31 @@
+{
+  "name": "mars-x",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MARS-X: browser-based autonomy test bench on real HiRISE terrain of Jezero crater, Mars.",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "setup": "pnpm install --frozen-lockfile && uv sync --project python --locked",
+    "data": "uv run --project python python -m marsx.pipeline build --region jezero-v1",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test:web": "pnpm -r --if-present test",
+    "test:py": "uv run --project python pytest",
+    "test": "pnpm run test:py && pnpm run test:web",
+    "build:web": "pnpm --filter \"./apps/*\" --if-present build",
+    "build:data": "node scripts/copy-data.mjs",
+    "build": "pnpm run build:web && pnpm run build:data",
+    "e2e": "pnpm --filter \"./apps/*\" --if-present e2e",
+    "dataset": "node scripts/dataset.mjs",
+    "deploy:preview": "node scripts/deploy.mjs preview",
+    "deploy:prod": "node scripts/deploy.mjs prod",
+    "all": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build"
+  },
+  "devDependencies": {
+    "wrangler": "4.158.0"
+  }
+}
