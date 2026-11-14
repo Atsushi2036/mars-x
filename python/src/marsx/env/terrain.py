@@ -20,6 +20,9 @@ class Terrain:
     res_m: float = 2.0
     source: str = "synthetic"
     dataset_sha256: str | None = None
+    horizon_deg: np.ndarray | None = None  # float16 (16, H, W): horizon elevation per azimuth k*22.5 deg from north
+    center_lat_deg: float = 18.49
+    center_lon_east_deg: float = 77.40
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -45,9 +48,15 @@ def load_terrain(data_dir: str | Path, grid_id: str = "plan") -> Terrain:
     manifest = json.loads((data_dir / "manifest.json").read_text(encoding="utf-8"))
     layers = {(l["kind"], l["gridId"]): l for l in manifest["layers"]}
     get = lambda kind: _decode(data_dir, layers[(kind, grid_id)])  # noqa: E731
+    horizon = None
+    if ("horizon", grid_id) in layers:
+        hz = get("horizon")
+        horizon = np.nan_to_num(hz, nan=0.0).astype(np.float16)  # nodata -> open sky
+    center = manifest.get("crs", {}).get("center") or {}
     return Terrain(slope_deg=get("slope"), step_m=get("step"), height_m=get("elevation"),
                    res_m=float(manifest["grids"][grid_id]["resM"]), source=f"{manifest['datasetId']}:{grid_id}",
-                   dataset_sha256=manifest.get("contentHash"))
+                   dataset_sha256=manifest.get("contentHash"), horizon_deg=horizon,
+                   center_lat_deg=float(center.get("lat", 18.49)), center_lon_east_deg=float(center.get("lon", 77.40)))
 
 
 def synthetic_terrain(n: int = 128, seed: int = 0, res_m: float = 2.0, relief_m: float = 4.0) -> Terrain:

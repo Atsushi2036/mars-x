@@ -9,12 +9,17 @@ from marsx.contracts.scenario import (
     NASA_BLOG_2026,
     NASA_ROVER,
     Agent,
+    CommSpec,
     Conditions,
     Param,
     RockSpec,
     Scenario,
+    SpeSpec,
+    TimeSpec,
     Window,
 )
+
+LEMMON_2022 = "Lemmon et al. 2022, GRL 49(17) e2022GL100126, doi:10.1029/2022GL100126 (peak visible tau ~2, 5-11 Jan 2022)"
 
 _ROVER = Agent(
     kind="rtg_rover",
@@ -30,6 +35,19 @@ _ASTRONAUT = Agent(
     speed_m_s=Param(value=1.0, unit="m/s", provenance="assumption"),
     params={"evaDuration": Param(value=4, unit="h", provenance="assumption", note="PO decision v0.1")},
 )
+_SOLAR = Agent(
+    kind="solar_rover",
+    max_slope_deg=Param(value=24, unit="deg", provenance="assumption", note="generic solar rover; Perseverance limit reused"),
+    max_step_m=Param(value=0.525, unit="m", provenance="assumption", note="Perseverance wheel diameter reused"),
+    speed_m_s=Param(value=0.042, unit="m/s", provenance="assumption", note="Perseverance top speed reused"),
+)
+# 09:00 LTST at Jezero (Mars24): aphelion clear season (Ls 74.5) and inside the Jan-2022 regional storm (Ls 154.4).
+_CLEAR = TimeSpec(start_utc="2021-07-20T15:09:00Z", sols=1)
+_STORM = TimeSpec(start_utc="2022-01-08T04:54:00Z", sols=1)
+_TAU_CLEAR = Param(value=0.5, unit="-", provenance="assumption", note="typical aphelion-season dust opacity; replace with MEDA/SkyCam")
+_TAU_STORM = Param(value=2.0, unit="-", provenance="source", ref=LEMMON_2022)
+_ROCKS = RockSpec(enabled=True, abundance_k=Param(value=0.05, unit="fraction", provenance="assumption"),
+                  sensor_radius_m=Param(value=8, unit="m", provenance="assumption"))
 _WINDOW = Window(dataset_id="jezero-v1", grid_id="plan", row0=0, col0=0, rows=1024, cols=1024)
 
 _BUILTIN = {
@@ -41,10 +59,23 @@ _BUILTIN = {
                  agent=_ASTRONAUT, max_steps=600),
         Scenario(id="jezero-v1/l3/rtg-hidden-rocks", title="L3 autonomy - RTG rover with hidden rocks", level="L3",
                  window=_WINDOW, agent=_ROVER, max_steps=800,
-                 conditions=Conditions(hidden_rocks=RockSpec(
-                     enabled=True,
-                     abundance_k=Param(value=0.05, unit="fraction", provenance="assumption"),
-                     sensor_radius_m=Param(value=8, unit="m", provenance="assumption")))),
+                 conditions=Conditions(hidden_rocks=_ROCKS)),
+        Scenario(id="jezero-v1/l2/solar-clear", title="L2 conditions - solar rover, clear aphelion sol", level="L2",
+                 window=_WINDOW, agent=_SOLAR, time=_CLEAR, max_steps=800,
+                 conditions=Conditions(tau=_TAU_CLEAR, lighting=True, energy=True)),
+        Scenario(id="jezero-v1/l2/solar-storm", title="L2 conditions - solar rover, Jan-2022 dust storm", level="L2",
+                 window=_WINDOW, agent=_SOLAR, time=_STORM, max_steps=800,
+                 conditions=Conditions(tau=_TAU_STORM, meda_sols=[313], lighting=True, energy=True)),
+        Scenario(id="jezero-v1/l2/rtg-storm", title="L2 conditions - RTG rover, Jan-2022 dust storm", level="L2",
+                 window=_WINDOW, agent=_ROVER, time=_STORM, max_steps=800,
+                 conditions=Conditions(tau=_TAU_STORM, meda_sols=[313], lighting=True, energy=True)),
+        Scenario(id="jezero-v1/l2/astronaut-clear", title="L2 conditions - astronaut EVA with space-weather alert",
+                 level="L2", window=_WINDOW, agent=_ASTRONAUT, time=_CLEAR, max_steps=800,
+                 conditions=Conditions(tau=_TAU_CLEAR, lighting=True, energy=True, spe=SpeSpec(enabled=True))),
+        Scenario(id="jezero-v1/l3/rtg-onesol", title="L3 autonomy - hidden rocks, one plan per sol", level="L3",
+                 window=_WINDOW, agent=_ROVER, time=_CLEAR, max_steps=800,
+                 conditions=Conditions(tau=_TAU_CLEAR, lighting=True, energy=True, hidden_rocks=_ROCKS,
+                                       comm=CommSpec(mode="one_plan_per_sol", uplink_lmst_h=9.0))),
     )
 }
 
