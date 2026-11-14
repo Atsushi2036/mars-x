@@ -109,3 +109,13 @@ def test_oracle_may_leave_the_test_region_when_cheaper():
     for e in eps:
         full = astar(cost, tuple(e.start), tuple(e.goal))
         assert e.oracle_cost == pytest.approx(round(full.cost, 6))
+
+
+def test_suite_hash_ignores_line_endings(tmp_path):
+    suite = S.build_suite(lambda sid: flat_cost(), dataset_sha256=None, plan={"L1": [("jezero-v1/l1/rtg-geometry", 2)]},
+                          bands_m=((10, 30),), max_oracle_steps=80)
+    p = tmp_path / "suite.json"
+    S.save_suite(suite, p)
+    crlf = tmp_path / "crlf.json"
+    crlf.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
+    assert S.suite_sha256(p) == S.suite_sha256(crlf)

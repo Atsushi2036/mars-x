@@ -21,7 +21,7 @@ from pathlib import Path
 
 import numpy as np
 
-from marsx.contracts.canonical import sha256_bytes, sha256_json
+from marsx.contracts.canonical import sha256_json
 from marsx.contracts.scenario import (
     NASA_BLOG_2026,
     NASA_ROVER,
@@ -235,4 +235,5 @@ def load_suite(path: str | Path) -> Suite:
 
 
 def suite_sha256(path: str | Path) -> str:
-    return sha256_bytes(Path(path).read_bytes())
+    """Canonical-JSON hash of the suite content (stable across CRLF/LF checkouts and formatting)."""
+    return sha256_json(load_suite(path).model_dump(by_alias=True, mode="json", exclude_none=True))
