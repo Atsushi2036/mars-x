@@ -57,9 +57,9 @@ def test_generated_episodes_are_deterministic_feasible_and_in_region():
         lo, hi = kw["bands_m"][i % 2]
         assert lo <= d_m <= hi
         assert mask[tuple(e.start)] and mask[tuple(e.goal)]
-        res = astar(np.where(mask, cost, np.inf), tuple(e.start), tuple(e.goal))
+        # The oracle is optimal on the full map the agent can drive (only start/goal are region-bound).
+        res = astar(cost, tuple(e.start), tuple(e.goal))
         assert e.oracle_cost == pytest.approx(round(res.cost, 6))
-        assert all(mask[tuple(p)] for p in res.path)
         assert len(res.path) - 1 <= 80
         assert e.oracle_path_m > 0
 
@@ -98,3 +98,14 @@ def test_level_episodes_selects_by_level():
                           bands_m=((10, 30),), max_oracle_steps=80)
     assert len(S.level_episodes(suite, "L2")) == 3
     assert all(e.scenario_id == "jezero-v1/l2/rtg-clear" for e in S.level_episodes(suite, "L2"))
+
+
+def test_oracle_may_leave_the_test_region_when_cheaper():
+    cost = np.full((96, 96), 5.0, np.float32)
+    cost[:, 40:50] = 1.0  # cheap corridor in the train region, west of the test quadrant
+    cost[50:56, :] = 1.0
+    eps = S.generate_episodes(cost, "jezero-v1/l1/rtg-geometry", n=6, seed=5, bands_m=((20, 60),),
+                              max_oracle_steps=200)
+    for e in eps:
+        full = astar(cost, tuple(e.start), tuple(e.goal))
+        assert e.oracle_cost == pytest.approx(round(full.cost, 6))

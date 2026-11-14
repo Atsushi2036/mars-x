@@ -7,8 +7,9 @@ Composition (T5, PO v0.1):
   per sol; the pass rule is evaluated per family (Wilson 95 % lower bound, n >= 20).
 
 Train/test split by region: the test region is the north-east quadrant of the planning window,
-the train region the rest, separated by a guard band. Official (test) episodes have start, goal and
-the oracle path inside the test region; the reference policies are trained only on the train region.
+the train region the rest, separated by a guard band. Official (test) episodes have start and goal in
+the test region (the oracle is optimal on the full map the agent can drive); the reference policies are
+trained only on episodes of the train region.
 Episodes are generated with an oracle (A*) that guarantees feasibility within the step budget.
 """
 
@@ -165,8 +166,8 @@ def generate_episodes(
 ) -> list[EpisodeSpec]:
     """Episodes cycle through the distance bands; each one is feasible for the oracle inside the region."""
     mask = region_mask(cost.shape, split)
-    c = np.where(mask, cost, np.inf).astype(np.float32)
-    free = np.argwhere(np.isfinite(c) & (c > 0))
+    c = np.asarray(cost, dtype=np.float32)
+    free = np.argwhere(mask & np.isfinite(c) & (c > 0))
     if free.size == 0:
         raise ValueError("no passable cell in region")
     limit = max_oracle_steps or int(ORACLE_STEP_FRACTION * scenario(scenario_id).max_steps)
@@ -179,7 +180,7 @@ def generate_episodes(
             d = rng.uniform(lo, hi) / res_m
             ang = rng.uniform(0.0, 2.0 * np.pi)
             g = np.rint(s + d * np.array([np.sin(ang), np.cos(ang)])).astype(np.int64)
-            if not (0 <= g[0] < c.shape[0] and 0 <= g[1] < c.shape[1]) or not np.isfinite(c[g[0], g[1]]):
+            if not (0 <= g[0] < c.shape[0] and 0 <= g[1] < c.shape[1]) or not mask[g[0], g[1]]                     or not np.isfinite(c[g[0], g[1]]):
                 continue
             dist_m = res_m * float(np.hypot(*(s - g)))
             if not lo <= dist_m <= hi:
