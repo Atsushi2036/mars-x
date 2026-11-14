@@ -35,7 +35,7 @@ export async function loadPlanLayers(ds: Dataset, signal?: AbortSignal): Promise
   const slopeL = m.layers.find((l) => l.id === 'plan_slope')
   const roughL = m.layers.find((l) => l.id === 'plan_roughness')
   if (slopeL && roughL) {
-    const g = m.grids[slopeL.gridId]
+    const g = slopeL.gridId ? m.grids[slopeL.gridId] : undefined
     if (!g || g.width !== g.height) throw new Error('Planning grid must be square')
     const n = g.width
     const [s, r] = await Promise.all([

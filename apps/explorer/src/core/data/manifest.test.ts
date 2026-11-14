@@ -22,12 +22,24 @@ describe('manifest contract', () => {
     })
   }
 
-  it('rejects unknown keys (schema drift must fail loudly)', () => {
+  it('rejects a missing required key and a wrong type (drift that would break terrain must fail loudly)', () => {
+    const f = candidates.find((c) => fs.existsSync(c))
+    if (!f) return
+    const m = JSON.parse(fs.readFileSync(f, 'utf8'))
+    const bad = structuredClone(m)
+    delete bad.crs.center
+    expect(() => parseManifest(bad)).toThrow(/Invalid manifest/)
+    const bad2 = structuredClone(m)
+    bad2.grid.width = 'wide'
+    expect(() => parseManifest(bad2)).toThrow(/Invalid manifest/)
+  })
+
+  it('ignores unknown additional keys (forward compatible)', () => {
     const f = candidates.find((c) => fs.existsSync(c))
     if (!f) return
     const m = JSON.parse(fs.readFileSync(f, 'utf8'))
     m.surprise = 1
-    expect(() => parseManifest(m)).toThrow(/Invalid manifest/)
+    expect(() => parseManifest(m)).not.toThrow()
   })
 
   it('rejects a layer pointing at an undeclared grid', () => {

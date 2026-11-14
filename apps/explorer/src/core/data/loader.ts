@@ -105,7 +105,7 @@ export async function loadDataset(
   if (enc.dtype !== 'uint16' || enc.scale == null || enc.offset == null || enc.nodata == null) {
     throw new Error('Elevation layer must be uint16 with scale, offset and nodata')
   }
-  const grid = manifest.grids[elevationLayer.gridId]
+  const grid = elevationLayer.gridId ? manifest.grids[elevationLayer.gridId] : undefined
   if (!grid) throw new Error('Elevation grid missing')
   if (elevationLayer.bytes !== grid.width * grid.height * 2) throw new Error('Elevation byte size does not match its grid')
 

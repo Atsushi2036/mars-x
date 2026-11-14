@@ -1,7 +1,8 @@
 /**
  * Runtime validator for `manifest.json`. Mirrors packages/schemas/manifest.schema.json (generated
- * from the pydantic models). Keys are camelCase. Unknown keys are rejected on purpose: a schema
- * drift must fail loudly here, not silently produce wrong terrain.
+ * from the pydantic models). Keys are camelCase. Required fields and types are enforced (a drift that
+ * would produce wrong terrain fails loudly); unknown ADDITIONAL keys are ignored so that the backend can
+ * add optional fields without breaking an already deployed viewer.
  */
 import { z } from 'zod'
 
@@ -19,7 +20,6 @@ export const gridSchema = z
     pixelIs: z.literal('area').default('area'),
     northUp: z.boolean().default(true),
   })
-  .strict()
 
 export const encodingSchema = z
   .object({
@@ -30,7 +30,6 @@ export const encodingSchema = z
     nodata: num.nullish(),
     description: z.string().nullish(),
   })
-  .strict()
 
 const sourceSchema = z
   .object({
@@ -42,7 +41,15 @@ const sourceSchema = z
     retrievedAt: z.string(),
     rawSha256: sha256.nullish(),
   })
-  .strict()
+
+const tableSchema = z.object({
+  columns: z.array(z.string()),
+  lat: num.nullish(),
+  lonEast: num.nullish(),
+  rows: z.number().int(),
+  startUtc: z.string(),
+  stepS: num,
+})
 
 const tilingSchema = z
   .object({
@@ -51,7 +58,6 @@ const tilingSchema = z
     levels: z.array(z.record(z.string(), z.number().int())),
     pathTemplate: z.string(),
   })
-  .strict()
 
 export const layerSchema = z
   .object({
@@ -68,8 +74,14 @@ export const layerSchema = z
       'orthoimage',
       'mineral',
       'vector',
+      'sky_view',
+      'thermal_inertia',
+      'slip_class',
+      'sun_table',
+      'owlt_table',
     ]),
-    gridId: z.string(),
+    /** null for non-gridded tables (sun/OWLT tables) */
+    gridId: z.string().nullish(),
     path: z.string(),
     sha256,
     bytes: z.number().int().min(0),
@@ -78,21 +90,19 @@ export const layerSchema = z
     encoding: encodingSchema,
     stats: z
       .object({ min: num.nullish(), max: num.nullish(), mean: num.nullish(), validFraction: num.nullish() })
-      .strict()
       .nullish(),
     legend: z
       .array(z.object({ color: z.string(), label: z.string(), pixels: z.number().int().nullish() }).strict())
       .nullish(),
     tiling: tilingSchema.nullish(),
+    table: tableSchema.nullish(),
     notes: z.string().nullish(),
     origin: z.enum(['observed', 'derived', 'simulated']),
     source: sourceSchema,
     validation: z
       .object({ coverage: z.number().min(0).max(1), alignRmseM: num.nullish(), method: z.string() })
-      .strict()
       .nullish(),
   })
-  .strict()
 
 export const manifestSchema = z
   .object({
@@ -102,8 +112,7 @@ export const manifestSchema = z
     contentHash: sha256,
     generatedAt: z.string(),
     pipeline: z
-      .object({ gitCommit: z.string().nullable(), paramsHash: sha256, tools: z.record(z.string(), z.string()) })
-      .strict(),
+      .object({ gitCommit: z.string().nullable(), paramsHash: sha256, tools: z.record(z.string(), z.string()) }),
     crs: z
       .object({
         geographic: z.string(),
@@ -113,18 +122,16 @@ export const manifestSchema = z
         verticalDatum: z.string(),
         center: z.object({ lon: num, lat: num }).strict(),
         localOrigin: z.string(),
-      })
-      .strict(),
+      }),
     grid: gridSchema,
     grids: z.record(z.string(), gridSchema),
     bboxLonLat: z.tuple([num, num, num, num]),
     layers: z.array(layerSchema),
     extras: z.record(z.string(), z.string()).nullish(),
   })
-  .strict()
   .superRefine((m, ctx) => {
     for (const l of m.layers) {
-      if (!(l.gridId in m.grids)) {
+      if (l.gridId != null && !(l.gridId in m.grids)) {
         ctx.addIssue({ code: 'custom', message: `layer ${l.id}: gridId ${l.gridId} not in grids` })
       }
     }
