@@ -51,7 +51,7 @@ PARAMS: dict[str, Param] = {
     "met_rate_high_w": Param(round(1200 * BTU_PER_H_TO_W, 1), "W", "measured", _APOLLO, note="1200 BTU/h ~ 302 kcal/h"),
     "met_slope_full_deg": assumption(20.0, "deg", "slope at which the upper Apollo rate is reached (linear)"),
     "astronaut_speed": assumption(1.0, "m/s", "walking speed in a pressurised suit"),
-    "eva_duration_h": assumption(8.0, "h", "EVA consumables duration"),
+    "eva_duration_h": assumption(4.0, "h", "EVA consumables duration", note="PO decision v0.1"),
 }
 
 

@@ -53,3 +53,14 @@ def test_param_serialises_to_camel_friendly_dict():
         "value": 3.0, "unit": "m", "provenance": "assumption",
         "source": "team assumption: sensor range", "note": "calibrable",
     }
+
+
+def test_param_maps_to_scenario_contract_provenance():
+    from marsx.conditions.gravity import JEZERO_GRAVITY, G_EQUATORIAL
+    from marsx.conditions.params import assumption
+
+    c = JEZERO_GRAVITY.to_contract()
+    assert c.provenance == "computed" and c.value == 3.694 and c.ref
+    assert G_EQUATORIAL.to_contract().provenance == "source"
+    a = assumption(8.0, "m", "sensor range").to_contract()
+    assert a.provenance == "assumption" and a.note

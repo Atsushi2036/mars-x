@@ -101,7 +101,7 @@ def test_astronaut_metabolic_rate_spans_apollo_range():
 def test_eva_consumables_budget_and_margin():
     # Suit consumables sized for the full EVA at the highest Apollo rate (worst case).
     budget = energy.eva_consumables_wh()
-    assert budget == pytest.approx(8.0 * energy.astronaut_metabolic_w(90.0))
+    assert budget == pytest.approx(4.0 * energy.astronaut_metabolic_w(90.0))  # 4 h EVA (PO v0.1)
     # 1 m at the assumed 1.0 m/s walking speed = 1 s of metabolic load.
     used = energy.astronaut_step_energy_wh(1.0, 0.0)
     assert used == pytest.approx(energy.astronaut_metabolic_w(0.0) / 3600.0)
