@@ -57,3 +57,17 @@ def test_unknown_policy_spec_is_an_error(suite_file, make_env):
     with pytest.raises(SystemExit):
         cli.main(["evaluate", "--policy", "baseline:nope", "--suite", str(suite_file), "--level", "L1"],
                  make_env=make_env)
+
+
+def test_scorecard_prints_on_a_legacy_windows_console(tmp_path, suite_file, make_env, monkeypatch):
+    import io
+    import sys
+
+    out = tmp_path / "run.json"
+    cli.main(["evaluate", "--policy", "baseline:astar", "--suite", str(suite_file), "--level", "L1",
+              "--out", str(out)], make_env=make_env)
+    buf = io.BytesIO()
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(buf, encoding="cp1252"))
+    assert cli.main(["scorecard", str(out), "--suite", str(suite_file)], make_env=make_env) == 0
+    sys.stdout.flush()
+    assert b"Verified by re-simulation" in buf.getvalue()

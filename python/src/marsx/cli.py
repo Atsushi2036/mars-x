@@ -143,6 +143,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None, make_env: R.EnvFactory | None = None) -> int:
+    for stream in (sys.stdout, sys.stderr):  # legacy Windows consoles (cp1252) cannot print ✓ or ·
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     args = build_parser().parse_args(argv)
     if args.cmd == "evaluate":
         return cmd_evaluate(args, make_env)
