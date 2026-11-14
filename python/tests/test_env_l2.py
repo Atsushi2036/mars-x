@@ -36,7 +36,7 @@ def env_block(eng) -> np.ndarray:
 def test_sun_elevation_and_tau_in_observation():
     clear, storm = engine("jezero-v1/l2/solar-clear"), engine("jezero-v1/l2/solar-storm")
     assert env_block(clear)[0] == pytest.approx(math.sin(math.radians(47.9)), abs=0.02)  # Mars24 at 09:00 LTST
-    assert env_block(clear)[6] == pytest.approx(0.5 / 3) and env_block(storm)[6] == pytest.approx(2.0 / 3)
+    assert env_block(clear)[6] == pytest.approx(0.3 / 3) and env_block(storm)[6] == pytest.approx(2.0 / 3)
     ltst_angle = math.atan2(env_block(clear)[3], env_block(clear)[4]) % (2 * math.pi)
     assert ltst_angle * 24 / (2 * math.pi) == pytest.approx(9.0, abs=0.05)
 
@@ -117,10 +117,59 @@ def test_l2_reads_pipeline_tables_as_single_source():
 
     t = load_terrain(DATA)
     storm = MarsConditions(scenarios.get("jezero-v1/l2/solar-storm"), t)
-    assert storm.sources == {"sun": "table:sun_sol_314+sun_sol_315", "owlt": "table:owlt", "skyView": "layer:sky_view"}
+    assert {k: storm.sources[k] for k in ("sun", "owlt", "skyView")} == {
+        "sun": "table:sun_sol_314+sun_sol_315", "owlt": "table:owlt", "skyView": "layer:sky_view"}
     ms = storm.t0_ms + np.arange(0, 600) * 60_000
     ref = mars24.mars_solar_state(ms, t.center_lat_deg, t.center_lon_east_deg)
     # manifest startUtc is truncated to whole seconds (sun moves ~0.004 deg/s): 0.01 deg tolerance
     np.testing.assert_allclose(storm.elev[:600], np.asarray(ref.elevation_deg), atol=1e-2)
     clear = MarsConditions(scenarios.get("jezero-v1/l2/solar-clear"), t)
     assert clear.sources["sun"] == "mars24" and clear.sources["owlt"] == "table:owlt"
+
+
+# ------------------------------------------------------------------ MEDA weather (missing data -> sentinel -1)
+def _summary(sol, temp_k=None, wind=None, tau=None):
+    hours = [{"hour": h, "temperatureK": temp_k, "windSpeedMs": wind} for h in range(24)]
+    return {"sol": sol, "hours": hours, "tau": tau}
+
+
+def test_meda_values_enter_observation_and_missing_is_sentinel():
+    from marsx.env.l2 import MISSING
+
+    sc = scenarios.get("jezero-v1/l2/solar-storm")
+    eng = NavBatch(flat(), sc, num_envs=1, seed=0, autoreset=False,
+                   sol_summaries={314: _summary(314, temp_k=200.0, wind=None, tau=2.0)})
+    eng.reset_to([0], starts=[(10, 10)], goals=[(10, 25)])
+    e = env_block(eng)
+    assert e[5] == pytest.approx((200.0 - 273.15 + 100.0) / 80.0, abs=1e-5)
+    assert e[6] == pytest.approx(2.0 / 3.0) and e[7] == MISSING
+    eng2 = NavBatch(flat(), sc, num_envs=1, seed=0, autoreset=False, sol_summaries={})
+    eng2.reset_to([0], starts=[(10, 10)], goals=[(10, 25)])
+    assert env_block(eng2)[5] == MISSING and env_block(eng2)[7] == MISSING
+    assert env_block(eng2)[6] == pytest.approx(2.0 / 3.0)  # scenario tau (Lemmon 2022) when MEDA has none
+
+
+def test_clear_scenario_starts_on_perseverance_sol_148():
+    from marsx.env.l2 import perseverance_sol
+
+    from marsx.env.l2 import utc_ms
+    assert perseverance_sol(utc_ms(scenarios.get("jezero-v1/l2/solar-clear").time.start_utc), 77.3935) == 148
+    assert perseverance_sol(utc_ms(scenarios.get("jezero-v1/l2/solar-storm").time.start_utc), 77.3935) == 314
+
+
+MEDA = DATA.parent.parent / "raw" / "meda"
+
+
+@pytest.mark.skipif(not (MEDA / "sol_0314").exists(), reason="MEDA sols not fetched")
+def test_real_meda_storm_sol_matches_summary():
+    from marsx.conditions import meda
+    from marsx.env.l2 import MISSING
+
+    eng = engine("jezero-v1/l2/solar-storm", meda_root=MEDA)
+    assert "314" in eng.conditions.sources["meda"]
+    s = meda.load_sol(314, MEDA)
+    hour = int(np.floor(eng.conditions.lmst[0])) % 24
+    t = s["hours"][hour]["temperatureK"]
+    e = env_block(eng)
+    assert e[5] == (MISSING if t is None else pytest.approx((t - 273.15 + 100) / 80, abs=1e-5))
+    assert e[7] == MISSING  # no wind data on sol 314 (sensor damaged in the storm)

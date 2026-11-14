@@ -7,6 +7,10 @@ Per-agent, per-step work is table lookups + the 16-azimuth horizon test of the a
 Normalisation follows obs/1 (marsx.contracts.obs): environment block =
 [sin(sunElev), sin(az), cos(az), sin(ltst), cos(ltst), (T_C+100)/80, tau/3, wind/30]; comm block =
 [linkAvailable, timeToUplinkSols, owlt/22 min].
+
+Missing measurements are never invented: temperature, tau and wind are ``MISSING`` (-1.0) when MEDA has no data
+for that sol/hour (and no tau is given by the scenario). -1 is impossible for these fields (it would mean
+-180 C, negative opacity or negative wind speed), so it is an unambiguous sentinel.
 """
 
 from __future__ import annotations
@@ -19,7 +23,9 @@ from marsx.conditions import comms, energy, insolation, mars24
 from marsx.contracts.scenario import Scenario
 from marsx.env.terrain import Terrain
 
+MISSING = -1.0
 MINUTE_S = 60.0
+PERSEVERANCE_LANDING_UTC = "2021-02-18T20:55:00Z"  # same convention as marsx.pipeline.tables (landing = sol 0)
 SOL_S = mars24.SOL_DAYS * 86400.0
 
 
@@ -67,10 +73,39 @@ def _table_rows(terrain: Terrain, kind: str, t_ms: np.ndarray) -> tuple[str, np.
     return "+".join(used), out
 
 
+def perseverance_sol(unix_ms, lon_east_deg: float):
+    """Perseverance sol number (local mean solar days since the landing sol) at ``lon_east_deg``."""
+    day = np.floor(np.asarray(mars24.mars_sol_date(np.asarray(unix_ms, np.int64)), np.float64) + lon_east_deg / 360.0)
+    day0 = np.floor(float(mars24.mars_sol_date(utc_ms(PERSEVERANCE_LANDING_UTC))) + lon_east_deg / 360.0)
+    out = (day - day0).astype(np.int64)
+    return int(out) if out.ndim == 0 else out
+
+
+def load_meda(sols, root=None) -> dict[int, dict]:
+    """Summaries (marsx.conditions.meda format) for the sols available under root / MARSX_MEDA / data/raw/meda."""
+    import os
+    from pathlib import Path
+
+    from marsx.conditions import meda
+
+    roots = [root] if root is not None else [os.environ.get("MARSX_MEDA"), "data/raw/meda", "../data/raw/meda"]
+    out = {}
+    for r in roots:
+        if not r or not Path(r).exists():
+            continue
+        for sol in sols:
+            if (Path(r) / f"sol_{int(sol):04d}" / "ats.csv").exists():
+                out[int(sol)] = meda.load_sol(int(sol), Path(r))
+        if out:
+            break
+    return out
+
+
 class MarsConditions:
     """Time tables + per-cell lighting for one scenario. ``sol_summary`` uses the marsx.conditions.meda format."""
 
-    def __init__(self, scenario: Scenario, terrain: Terrain, sol_summary: dict | None = None):
+    def __init__(self, scenario: Scenario, terrain: Terrain, sol_summaries: dict[int, dict] | None = None,
+                 meda_root=None):
         if scenario.time is None:
             raise ValueError("L2 conditions need scenario.time (startUtc, sols)")
         self.scenario = scenario
@@ -91,27 +126,30 @@ class MarsConditions:
         self.zen = 90.0 - self.elev
         self.ltst = np.asarray(st.ltst_h, np.float64)
         self.lmst = np.asarray(st.lmst_h, np.float64)
-        tau = None
-        if sol_summary is not None and sol_summary.get("tau") is not None:
-            tau = float(sol_summary["tau"])
-        elif scenario.conditions.tau is not None:
-            tau = float(scenario.conditions.tau.value)
-        self.tau = 0.0 if tau is None else tau
-        self.tau_known = tau is not None
-        glob, direct, diffuse = insolation.surface_irradiance(self.zen, self.tau, r_au)
+        # MEDA: per-minute sol number -> that sol's hourly series (by LMST hour); tau from MEDA, else scenario
+        sol_of = perseverance_sol(t_ms, terrain.center_lon_east_deg)
+        if sol_summaries is None:
+            wanted = sorted(set(scenario.conditions.meda_sols) | set(np.unique(sol_of).tolist()))
+            sol_summaries = load_meda(wanted, meda_root) if scenario.conditions.meda_sols else {}
+        self.sources["meda"] = "sols:" + ",".join(str(k) for k in sorted(sol_summaries)) if sol_summaries else "none"
+        hour = np.floor(self.lmst).astype(np.int64) % 24
+        temp_k, wind, tau = np.full(n, np.nan), np.full(n, np.nan), np.full(n, np.nan)
+        for sol, summ in sol_summaries.items():
+            m = sol_of == sol
+            if not m.any():
+                continue
+            hs = {int(h["hour"]): h for h in summ.get("hours", [])}
+            temp_k[m] = [np.nan if hs.get(h, {}).get("temperatureK") is None else hs[h]["temperatureK"] for h in hour[m]]
+            wind[m] = [np.nan if hs.get(h, {}).get("windSpeedMs") is None else hs[h]["windSpeedMs"] for h in hour[m]]
+            if summ.get("tau") is not None:
+                tau[m] = float(summ["tau"])
+        if scenario.conditions.tau is not None:
+            tau = np.where(np.isnan(tau), float(scenario.conditions.tau.value), tau)
+        self.temp_c, self.wind, self.tau_series = temp_k - 273.15, wind, tau
+        self.tau = float(np.nanmean(tau)) if np.isfinite(tau).any() else 0.0  # irradiance needs a value; see note
+        self.tau_known = bool(np.isfinite(tau).all())
+        glob, direct, diffuse = insolation.surface_irradiance(self.zen, np.nan_to_num(tau, nan=self.tau), r_au)
         self.direct, self.diffuse = np.asarray(direct, np.float64), np.asarray(diffuse, np.float64)
-        # MEDA hourly series by LMST hour (NaN where the sol has no data)
-        temp_k = np.full(24, np.nan)
-        wind = np.full(24, np.nan)
-        if sol_summary is not None:
-            for h in sol_summary.get("hours", []):
-                if h.get("temperatureK") is not None:
-                    temp_k[int(h["hour"])] = h["temperatureK"]
-                if h.get("windSpeedMs") is not None:
-                    wind[int(h["hour"])] = h["windSpeedMs"]
-        hour = np.floor(self.lmst).astype(int) % 24
-        self.temp_c = temp_k[hour] - 273.15
-        self.wind = wind[hour]
         # comms: link (conjunction moratorium), OWLT, next uplink (one plan per sol)
         ow = _table_rows(terrain, "owlt_table", t_ms)
         if ow is not None:
@@ -176,11 +214,13 @@ class MarsConditions:
         i = self._idx(t_s)
         el, az = np.radians(self.elev[i]), np.radians(self.az[i])
         ang = 2 * np.pi * self.ltst[i] / 24.0
-        temp = np.nan_to_num((self.temp_c[i] + 100.0) / 80.0, nan=0.0)
-        wind = np.nan_to_num(self.wind[i] / 30.0, nan=0.0)
-        tau = np.full(i.shape, self.tau / 3.0)
-        out = np.stack([np.sin(el), np.sin(az), np.cos(az), np.sin(ang), np.cos(ang), temp, tau, wind], 1)
-        return np.clip(out, -1, 1).astype(np.float32)
+        temp = np.clip((self.temp_c[i] + 100.0) / 80.0, 0, 1)
+        wind = np.clip(self.wind[i] / 30.0, 0, 1)
+        tau = np.clip(self.tau_series[i] / 3.0, 0, 1)
+        out = np.stack([np.sin(el), np.sin(az), np.cos(az), np.sin(ang), np.cos(ang),
+                        np.where(np.isnan(temp), MISSING, temp), np.where(np.isnan(tau), MISSING, tau),
+                        np.where(np.isnan(wind), MISSING, wind)], 1)
+        return out.astype(np.float32)
 
     def comm(self, t_s) -> np.ndarray:
         i = self._idx(t_s)

@@ -44,7 +44,8 @@ _SOLAR = Agent(
 # 09:00 LTST at Jezero (Mars24): aphelion clear season (Ls 74.5) and inside the Jan-2022 regional storm (Ls 153.8).
 _CLEAR = TimeSpec(start_utc="2021-07-20T15:09:00Z", sols=1)
 _STORM = TimeSpec(start_utc="2022-01-07T04:14:50Z", sols=1)  # 09:00 LTST, sol 314 (Ls 153.8); tables 314-315
-_TAU_CLEAR = Param(value=0.5, unit="-", provenance="assumption", note="typical aphelion-season dust opacity; replace with MEDA/SkyCam")
+_TAU_CLEAR = Param(value=0.3, unit="-", provenance="assumption",
+                   note="aphelion-season dust opacity; MEDA gives no per-sol tau for sol 148")
 _TAU_STORM = Param(value=2.0, unit="-", provenance="source", ref=LEMMON_2022)
 _ROCKS = RockSpec(enabled=True, abundance_k=Param(value=0.05, unit="fraction", provenance="assumption"),
                   sensor_radius_m=Param(value=8, unit="m", provenance="assumption"))
@@ -62,7 +63,7 @@ _BUILTIN = {
                  conditions=Conditions(hidden_rocks=_ROCKS)),
         Scenario(id="jezero-v1/l2/solar-clear", title="L2 conditions - solar rover, clear aphelion sol", level="L2",
                  window=_WINDOW, agent=_SOLAR, time=_CLEAR, max_steps=800,
-                 conditions=Conditions(tau=_TAU_CLEAR, lighting=True, energy=True)),
+                 conditions=Conditions(tau=_TAU_CLEAR, meda_sols=[148], lighting=True, energy=True)),
         Scenario(id="jezero-v1/l2/solar-storm", title="L2 conditions - solar rover, Jan-2022 dust storm", level="L2",
                  window=_WINDOW, agent=_SOLAR, time=_STORM, max_steps=800,
                  conditions=Conditions(tau=_TAU_STORM, meda_sols=[314, 315], lighting=True, energy=True)),
@@ -71,10 +72,10 @@ _BUILTIN = {
                  conditions=Conditions(tau=_TAU_STORM, meda_sols=[314, 315], lighting=True, energy=True)),
         Scenario(id="jezero-v1/l2/astronaut-clear", title="L2 conditions - astronaut EVA with space-weather alert",
                  level="L2", window=_WINDOW, agent=_ASTRONAUT, time=_CLEAR, max_steps=800,
-                 conditions=Conditions(tau=_TAU_CLEAR, lighting=True, energy=True, spe=SpeSpec(enabled=True))),
+                 conditions=Conditions(tau=_TAU_CLEAR, meda_sols=[148], lighting=True, energy=True, spe=SpeSpec(enabled=True))),
         Scenario(id="jezero-v1/l3/rtg-onesol", title="L3 autonomy - hidden rocks, one plan per sol", level="L3",
                  window=_WINDOW, agent=_ROVER, time=_CLEAR, max_steps=800,
-                 conditions=Conditions(tau=_TAU_CLEAR, lighting=True, energy=True, hidden_rocks=_ROCKS,
+                 conditions=Conditions(tau=_TAU_CLEAR, meda_sols=[148], lighting=True, energy=True, hidden_rocks=_ROCKS,
                                        comm=CommSpec(mode="one_plan_per_sol", uplink_lmst_h=9.0))),
     )
 }

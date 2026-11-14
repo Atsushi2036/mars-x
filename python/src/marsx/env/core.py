@@ -61,13 +61,14 @@ class NavBatch:
                  autoreset: bool = True, r_min: float = 10, r_max: float = 60, region: np.ndarray | None = None,
                  rocks: np.ndarray | None = None, rock_seed: int = DEFAULT_ROCK_SEED,
                  sensor_radius_m: float | None = None, conditions: ConditionsHook | str | None = "auto",
-                 sol_summary: dict | None = None, wait_s: float = 60.0, record: bool = False):
+                 sol_summaries: dict[int, dict] | None = None, meda_root=None, wait_s: float = 60.0,
+                 record: bool = False):
         self.terrain, self.scenario, self.N = terrain, scenario, int(num_envs)
         self.autoreset, self.r_min, self.r_max, self.wait_s, self.record = autoreset, r_min, r_max, wait_s, record
         if conditions == "auto":
             from marsx.env.l2 import MarsConditions
 
-            conditions = MarsConditions(scenario, terrain, sol_summary) if needs_l2(scenario) else None
+            conditions = MarsConditions(scenario, terrain, sol_summaries, meda_root) if needs_l2(scenario) else None
         self.conditions = conditions
         ag = scenario.agent
         self.kind = ag.kind

@@ -36,7 +36,8 @@ def _layout() -> tuple[Block, ...]:
         ("agent", 4, ("stateOfCharge", "slipEstimate", "sinHeading", "cosHeading"), "[0,1] / [-1,1]"),
         ("environment", 8, ("sinSunElevation", "sinSunAzimuth", "cosSunAzimuth", "sinLtst", "cosLtst",
                             "airTemperature", "tau", "wind"),
-         "T: (T_C+100)/80; tau/3; wind/30 m/s; LTST angle = 2*pi*ltst_h/24; azimuth clockwise from north"),
+         "T: (T_C+100)/80; tau/3; wind/30 m/s (clipped to [0,1]); -1 = MISSING (no MEDA measurement, never "
+         "invented); LTST angle = 2*pi*ltst_h/24; azimuth clockwise from north; all 0 when the scenario has no L2"),
         ("comm", 3, ("linkAvailable", "timeToUplinkSols", "owltOver22min"), "[0,1]"),
         ("time", 2, ("solFractionLeft", "stepsFractionLeft"), "[0,1]"),
     ]

@@ -57,7 +57,7 @@
         "tau",
         "wind"
       ],
-      "normalisation": "T: (T_C+100)/80; tau/3; wind/30 m/s; LTST angle = 2*pi*ltst_h/24; azimuth clockwise from north"
+      "normalisation": "T: (T_C+100)/80; tau/3; wind/30 m/s (clipped to [0,1]); -1 = MISSING (no MEDA measurement, never invented); LTST angle = 2*pi*ltst_h/24; azimuth clockwise from north; all 0 when the scenario has no L2"
     },
     {
       "name": "comm",
