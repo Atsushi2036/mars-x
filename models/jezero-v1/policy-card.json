@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "policyCard/1",
+  "contract": "policy/1",
+  "obsSpec": "obs/1",
+  "actSpec": "act/1",
+  "obsDim": 505,
+  "nActions": 9,
+  "inputName": "obs",
+  "outputName": "logits",
+  "name": "marsx/ppo-l1-reference",
+  "version": "0.1.0",
+  "onnxSha256": "125c8b3726b09478c17a2cc399b1ede0742b90423ef49be90f1459add760ed57",
+  "onnxBytes": 341506,
+  "opset": 20,
+  "ops": [
+    "Gemm",
+    "Tanh"
+  ],
+  "training": {
+    "algorithm": "PPO",
+    "library": "stable-baselines3 2.9.2",
+    "timesteps": 4000000,
+    "wallClockS": 1375.7,
+    "seed": 0,
+    "split": "train"
+  },
+  "metrics": {
+    "successTest": 0.965,
+    "successTestCi95Low": 0.9295293881131225,
+    "splCostTest": 0.9066475791180373,
+    "medianCostRatioTest": 1.0436189469974169,
+    "testEpisodes": 200.0
+  },
+  "intendedUse": "Reference local-navigation policy for MARS-X L1 (geometry) on the Jezero 2 m planning grid: a baseline to compare user models against, and a demo of real learning.",
+  "limitations": "Trained on synthetic start/goal pairs 20-120 m apart in the north part of the grid (rows < 768) and evaluated on the unseen south part. Sees only an 11x11 local window (22 m): dead ends larger than that cause failures; long routes need global waypoints (A*). Not trained with lighting, energy, comms or hidden rocks (L2/L3). Not a flight-ready controller.",
+  "license": "MIT",
+  "authors": [
+    "MARS-X team"
+  ]
+}

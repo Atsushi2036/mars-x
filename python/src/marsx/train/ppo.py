@@ -104,6 +104,8 @@ def main(argv=None) -> dict:
                      "energy, comms or hidden rocks (L2/L3). Not a flight-ready controller."))
     (out / "policy-card.json").write_text(card.model_dump_json(by_alias=True, indent=2, exclude_none=True) + "\n",
                                           encoding="utf-8")
+    test_eng.seed(7)
+    export_onnx.write_golden(onnx_path, np.round(test_eng.reset()[:16], 7), out / "golden.json")  # web parity fixture
     print("final", json.dumps({k: res[k] for k in ("n", "success", "successCi95", "splCost", "medianCostRatio",
                                                     "outcomes")}), flush=True)
     return res

@@ -93,6 +93,23 @@ def validate(path: str | Path) -> OnnxReport:
     return OnnxReport(ops, opset, len(m.graph.node), len(raw), sha256_bytes(raw))
 
 
+def write_golden(path: str | Path, obs: "np.ndarray", out_json: str | Path) -> dict:
+    """Parity fixture for the web: observations + logits/actions from onnxruntime (Python) for this exact model."""
+    import json
+
+    import numpy as np
+    import onnxruntime as ort
+
+    x = np.ascontiguousarray(obs, dtype=np.float32)
+    sess = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+    logits = sess.run([pc.OUTPUT_NAME], {pc.INPUT_NAME: x})[0]
+    doc = {"onnxSha256": validate(path).sha256, "obsDim": spec.OBS_DIM, "batch": int(x.shape[0]),
+           "obs": [round(float(v), 7) for v in x.ravel()], "logits": [float(v) for v in logits.ravel()],
+           "actions": [int(a) for a in logits.argmax(1)]}
+    Path(out_json).write_text(json.dumps(doc) + "\n", encoding="utf-8")
+    return doc
+
+
 def policy_card(path: str | Path, *, name: str, version: str, intended_use: str, limitations: str,
                 metrics: dict[str, float] | None = None, training: pc.TrainingInfo | None = None,
                 license: str = "MIT", authors: list[str] | None = None) -> pc.PolicyCard:
