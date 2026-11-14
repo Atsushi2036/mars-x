@@ -3,8 +3,9 @@ import type { EnvLite, EnvState } from './env-lite'
 
 /**
  * Replays a recorded trajectory through env-lite and RECOMPUTES the episode result, so the UI shows
- * what the dynamics say, not what the file claims. traj/1 convention (python NavBatch record=True):
- * point 0 = start (action WAIT), point i = cell after action i.
+ * what the dynamics say, not what the file claims. traj/1 convention (bench T5): entry k is the state
+ * BEFORE action k and action[k] is the action taken from it; the last entry is the terminal state with the
+ * WAIT(8) sentinel, so trajectory.steps == episode.steps + 1.
  */
 export interface ReplayReport {
   ok: boolean
@@ -25,10 +26,11 @@ export function replayEpisode(env: EnvLite, ep: Episode, traj: TrajArrays): Repl
   }
   const n = traj.row.length
   env.reset(ep.start, ep.goal)
+  if (n > 0 && traj.action[n - 1] !== 8) note('last trajectory entry must carry the WAIT sentinel')
   if (n === 0 || traj.row[0] !== ep.start[0] || traj.col[0] !== ep.start[1]) note('trajectory does not begin at the episode start')
   const states: EnvState[] = [{ ...env.state }]
   for (let i = 1; i < n; i++) {
-    env.step(traj.action[i]!)
+    env.step(traj.action[i - 1]!)
     const s = env.state
     states.push({ ...s })
     if (s.row !== traj.row[i] || s.col !== traj.col[i]) {

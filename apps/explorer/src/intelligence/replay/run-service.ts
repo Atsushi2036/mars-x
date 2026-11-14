@@ -46,8 +46,8 @@ export function parseRun(buffer: ArrayBuffer): RunLoadResult {
   }
   const run = r.data
   for (const e of run.episodes) {
-    if (e.trajectory && e.trajectory.steps !== e.steps + 1 && e.trajectory.steps !== e.steps) {
-      throw new RunValidationError(`Episode ${e.index}: trajectory length does not match steps`, `episodes.${e.index}.trajectory`)
+    if (e.trajectory && e.trajectory.steps !== e.steps + 1) {
+      throw new RunValidationError(`Episode ${e.index}: trajectory must have steps + 1 entries (state before each action plus the terminal state)`, `episodes.${e.index}.trajectory`)
     }
   }
   const recomputed = computeMetrics(run.episodes)

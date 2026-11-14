@@ -9,7 +9,12 @@ import { EnvLite, type EnvConfig } from '../sim/env-lite'
 import { replayEpisode } from '../sim/replay'
 
 const dir = import.meta.dirname
-const example = readFileSync(path.resolve(dir, '../../../../../packages/schemas/examples/run.example.json'), 'utf8')
+// the repo example has steps == trajectory.steps (3); the bench convention is steps + 1 entries, so fix it here
+const example = (() => {
+  const r = JSON.parse(readFileSync(path.resolve(dir, '../../../../../packages/schemas/examples/run.example.json'), 'utf8'))
+  r.episodes[0].steps = 2
+  return JSON.stringify(r)
+})()
 const buf = (s: string) => {
   const u = new TextEncoder().encode(s)
   return u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength) as ArrayBuffer
@@ -139,12 +144,17 @@ function trajBytes(points: [number, number, number, number, number][]) {
   return b
 }
 
+/** python NavBatch(record=True) stores (state after action i, action i); bench traj/1 stores (state before action k, action k) + terminal WAIT. */
+function toBenchConvention(pts: [number, number, number, number, number][]): [number, number, number, number, number][] {
+  return pts.map(([r, c, t, s], k) => [r, c, Math.round(t), s, k + 1 < pts.length ? pts[k + 1]![4] : 8])
+}
+
 describe('replay of python trajectories through env-lite', () => {
   for (const c of golden.cases) {
     it(`${c.id}: reproduces the episode and recomputes its result`, () => {
       const pts = c.traj as [number, number, number, number, number][]
       // traj/1 stores time as uint32 whole seconds
-      const traj = decodeTrajBytes(trajBytes(pts.map(([r, cc, t, s, a]) => [r, cc, Math.round(t), s, a])), pts.length)
+      const traj = decodeTrajBytes(trajBytes(toBenchConvention(pts)), pts.length)
       const last = c.steps.at(-1)
       const ep = {
         index: 0, seed: 1, start: c.start, goal: c.goal, outcome: last.outcome || 'timeout', steps: last.steps, pathM: last.pathM,
@@ -162,7 +172,7 @@ describe('replay of python trajectories through env-lite', () => {
     const pts = c.traj as [number, number, number, number, number][]
     const tampered = pts.map((p) => [...p]) as typeof pts
     tampered[5] = [tampered[5]![0] + 3, tampered[5]![1], tampered[5]![2], tampered[5]![3], tampered[5]![4]]
-    const traj = decodeTrajBytes(trajBytes(tampered), tampered.length)
+    const traj = decodeTrajBytes(trajBytes(toBenchConvention(tampered)), tampered.length)
     const ep = { index: 0, seed: 1, start: c.start, goal: c.goal, outcome: 'success', steps: 3, pathM: 1, violations: 0, risk: { timeSlopeGt15S: 0 }, events: [] } as unknown as Episode
     const rep = replayEpisode(buildEnv(c), ep, traj)
     expect(rep.ok).toBe(false)
