@@ -1,0 +1,710 @@
+{
+  "$defs": {
+    "Center": {
+      "additionalProperties": false,
+      "properties": {
+        "lat": {
+          "title": "Lat",
+          "type": "number"
+        },
+        "lon": {
+          "title": "Lon",
+          "type": "number"
+        }
+      },
+      "required": [
+        "lon",
+        "lat"
+      ],
+      "title": "Center",
+      "type": "object"
+    },
+    "Crs": {
+      "additionalProperties": false,
+      "properties": {
+        "center": {
+          "$ref": "#/$defs/Center"
+        },
+        "geographic": {
+          "title": "Geographic",
+          "type": "string"
+        },
+        "localOrigin": {
+          "title": "Localorigin",
+          "type": "string"
+        },
+        "localProj4": {
+          "title": "Localproj4",
+          "type": "string"
+        },
+        "localWkt2": {
+          "title": "Localwkt2",
+          "type": "string"
+        },
+        "sourceProj4": {
+          "title": "Sourceproj4",
+          "type": "string"
+        },
+        "verticalDatum": {
+          "title": "Verticaldatum",
+          "type": "string"
+        }
+      },
+      "required": [
+        "geographic",
+        "sourceProj4",
+        "localProj4",
+        "localWkt2",
+        "verticalDatum",
+        "center",
+        "localOrigin"
+      ],
+      "title": "Crs",
+      "type": "object"
+    },
+    "Encoding": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dtype": {
+          "enum": [
+            "uint8",
+            "uint16",
+            "float32",
+            "image/webp",
+            "image/png"
+          ],
+          "title": "Dtype",
+          "type": "string"
+        },
+        "endian": {
+          "default": "little",
+          "enum": [
+            "little",
+            "n/a"
+          ],
+          "title": "Endian",
+          "type": "string"
+        },
+        "nodata": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nodata"
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Offset"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scale"
+        }
+      },
+      "required": [
+        "dtype"
+      ],
+      "title": "Encoding",
+      "type": "object"
+    },
+    "Grid": {
+      "additionalProperties": false,
+      "properties": {
+        "bbox": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Bbox",
+          "type": "array"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "integer"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "northUp": {
+          "default": true,
+          "title": "Northup",
+          "type": "boolean"
+        },
+        "pixelIs": {
+          "const": "area",
+          "default": "area",
+          "title": "Pixelis",
+          "type": "string"
+        },
+        "resM": {
+          "exclusiveMinimum": 0,
+          "title": "Resm",
+          "type": "number"
+        },
+        "transform": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 6,
+          "minItems": 6,
+          "title": "Transform",
+          "type": "array"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "width",
+        "height",
+        "resM",
+        "transform",
+        "bbox"
+      ],
+      "title": "Grid",
+      "type": "object"
+    },
+    "Layer": {
+      "additionalProperties": false,
+      "properties": {
+        "axes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Axes"
+        },
+        "bytes": {
+          "minimum": 0,
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "encoding": {
+          "$ref": "#/$defs/Encoding"
+        },
+        "gridId": {
+          "title": "Gridid",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "elevation",
+            "slope",
+            "aspect",
+            "roughness",
+            "step",
+            "hazard",
+            "normal",
+            "horizon",
+            "orthoimage",
+            "mineral",
+            "vector"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "legend": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/LegendItem"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Legend"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "origin": {
+          "enum": [
+            "observed",
+            "derived",
+            "simulated"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "shape": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shape"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "stats": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Stats"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tiling": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Tiling"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "validation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayerValidation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "gridId",
+        "path",
+        "sha256",
+        "bytes",
+        "encoding",
+        "origin",
+        "source"
+      ],
+      "title": "Layer",
+      "type": "object"
+    },
+    "LayerValidation": {
+      "additionalProperties": false,
+      "properties": {
+        "alignRmseM": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alignrmsem"
+        },
+        "coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Coverage",
+          "type": "number"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        }
+      },
+      "required": [
+        "coverage",
+        "method"
+      ],
+      "title": "LayerValidation",
+      "type": "object"
+    },
+    "LegendItem": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "title": "Color",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "pixels": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pixels"
+        }
+      },
+      "required": [
+        "color",
+        "label"
+      ],
+      "title": "LegendItem",
+      "type": "object"
+    },
+    "Pipeline": {
+      "additionalProperties": false,
+      "properties": {
+        "gitCommit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Gitcommit"
+        },
+        "paramsHash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Paramshash",
+          "type": "string"
+        },
+        "tools": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Tools",
+          "type": "object"
+        }
+      },
+      "required": [
+        "gitCommit",
+        "paramsHash",
+        "tools"
+      ],
+      "title": "Pipeline",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "attribution": {
+          "title": "Attribution",
+          "type": "string"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi"
+        },
+        "license": {
+          "title": "License",
+          "type": "string"
+        },
+        "rawSha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rawsha256"
+        },
+        "retrievedAt": {
+          "title": "Retrievedat",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "title",
+        "license",
+        "attribution",
+        "retrievedAt"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "Stats": {
+      "additionalProperties": false,
+      "properties": {
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "validFraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Validfraction"
+        }
+      },
+      "title": "Stats",
+      "type": "object"
+    },
+    "Tiling": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "webp",
+          "title": "Format",
+          "type": "string"
+        },
+        "levels": {
+          "items": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "title": "Levels",
+          "type": "array"
+        },
+        "pathTemplate": {
+          "title": "Pathtemplate",
+          "type": "string"
+        },
+        "tileSize": {
+          "title": "Tilesize",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tileSize",
+        "format",
+        "levels",
+        "pathTemplate"
+      ],
+      "title": "Tiling",
+      "type": "object"
+    }
+  },
+  "$id": "https://mars-x.dev/schemas/manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "bboxLonLat": {
+      "items": {
+        "type": "number"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "title": "Bboxlonlat",
+      "type": "array"
+    },
+    "contentHash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Contenthash",
+      "type": "string"
+    },
+    "crs": {
+      "$ref": "#/$defs/Crs"
+    },
+    "datasetId": {
+      "title": "Datasetid",
+      "type": "string"
+    },
+    "extras": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extras"
+    },
+    "generatedAt": {
+      "title": "Generatedat",
+      "type": "string"
+    },
+    "grid": {
+      "$ref": "#/$defs/Grid"
+    },
+    "grids": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Grid"
+      },
+      "title": "Grids",
+      "type": "object"
+    },
+    "layers": {
+      "items": {
+        "$ref": "#/$defs/Layer"
+      },
+      "title": "Layers",
+      "type": "array"
+    },
+    "pipeline": {
+      "$ref": "#/$defs/Pipeline"
+    },
+    "schemaVersion": {
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "datasetId",
+    "version",
+    "contentHash",
+    "generatedAt",
+    "pipeline",
+    "crs",
+    "grid",
+    "grids",
+    "bboxLonLat",
+    "layers"
+  ],
+  "title": "Manifest",
+  "type": "object"
+}
