@@ -93,6 +93,13 @@ for (const [vpName, vp] of Object.entries(VIEWPORTS)) {
       page.on('response', (r) => {
         if (r.status() >= 400) errors.push(`[http ${r.status()}] ${r.url()}`)
       })
+      // hold the elevation download back so the loading screen can be captured with partial progress
+      if (name === 'loading') {
+        await page.route('**/height.u16', async (route) => {
+          await new Promise((r) => setTimeout(r, 4000))
+          await route.continue()
+        })
+      }
       if (name !== 'webgl_error') await page.goto(`${URL_BASE}/?data=${DATA}`, { waitUntil: 'domcontentloaded' })
       const file = path.join(out, `${name}__${vpName}__${theme}.png`)
       if (name === 'webgl_error') {
@@ -107,7 +114,7 @@ for (const [vpName, vp] of Object.entries(VIEWPORTS)) {
         await page.screenshot({ path: file })
         report.push({ name, vp: vpName, theme, errors: errors.filter((e) => !e.includes('webgl')) })
       } else if (name === 'loading') {
-        await page.waitForTimeout(250)
+        await page.waitForTimeout(1500)
         await page.screenshot({ path: file })
       } else {
         const t0 = Date.now()

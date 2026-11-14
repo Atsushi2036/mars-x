@@ -35,6 +35,13 @@ Coordinates: three.js world is x = east, y = up, z = SOUTH (z = -northing). Pixe
 - Layers: `terrainUniforms.uLayer` (0 none, 1 slope, 2 hazard, 3 CRISM; 2 and 3 reserved) and `uLayerOpacity`.
 - `window.__marsx = { ready, fps, frameCount, chunks, triangles, mode, drawCalls, renderedTriangles, geometries, textures }` for Playwright.
 
+## Slots for feature modules
+
+`src/ui/slots.tsx`: a feature adds `src/features/<name>/register.ts(x)` (loaded eagerly by `main.tsx`; register lazy components) and calls
+`registerSlot({ id, slot, component, order?, mode? })`. Slots: `panel:{explore,layers,mission,lab,data}` (inspector body; `mode: 'replace'`
+swaps the built-in content, default appends), `topbar:right`, `scene` (R3F children inside the Canvas), `overlay` (HTML over the canvas).
+State APIs a feature can drive: `setSun`, `setHaze`, `useRover.followPath`, `useCamera`, `terrainUniforms`; read `useApp` (dataset, telemetry).
+
 ## Notes
 
 - The orthoimage is one monochrome HiRISE RED band, shown through a false-colour tint (declared in the UI).

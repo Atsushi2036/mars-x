@@ -3,6 +3,9 @@ import './index.css'
 import { applyTheme, useApp } from '@/store/app'
 import App from './App'
 
+// feature modules self-register their UI/scene slots (see src/ui/slots.tsx); register files must only register lazy components
+import.meta.glob('./features/*/register.{ts,tsx}', { eager: true })
+
 // No StrictMode on purpose: R3F + workers + GPU resources are created once per mount.
 // @react-three/fiber 9.x still instantiates THREE.Clock, which three 0.187 flags as deprecated (harmless, upstream).
 const warn = console.warn.bind(console)

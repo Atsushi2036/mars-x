@@ -4,6 +4,7 @@ import { Joystick } from './Joystick'
 import { Onboarding } from './Onboarding'
 import { ModeRail } from './ModeRail'
 import { TelemetryBar } from './TelemetryBar'
+import { Slot } from './slots'
 import { Topbar } from './Topbar'
 
 /**
@@ -24,6 +25,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {children}
         <Topbar />
         <Onboarding />
+        <Slot name="overlay" />
         <Inspector />
         <Joystick />
         <TelemetryBar />

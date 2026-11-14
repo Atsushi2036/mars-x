@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useApp } from '@/store/app'
 import { LogoMark } from './Logo'
 import { MODES } from './modes'
+import { Slot } from './slots'
 
 export function Topbar() {
   const mode = useApp((s) => s.mode)
@@ -28,6 +29,7 @@ export function Topbar() {
         </nav>
       </div>
       <div className="ml-auto flex items-center gap-2">
+        <Slot name="topbar:right" />
         {ds?.synthetic && (
           <Badge variant="outline" className="h-6 gap-1.5 border-input text-muted-foreground">
             <span className="size-1.5 rounded-full bg-warning" aria-hidden="true" />

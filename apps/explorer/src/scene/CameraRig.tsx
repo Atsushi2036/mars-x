@@ -147,6 +147,11 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
         f.yaw = Math.atan2(-dir.x, -dir.z)
         f.pitch = 0
         f.eyeY = hf.sampleHeight(f.x, f.z) + FPV.eyeHeight
+      } else if (mode === 'chase' && roverLive.ready) {
+        // snap behind the rover instead of flying in from wherever the previous camera was
+        const tx = roverLive.x - Math.cos(roverLive.yaw) * 9
+        const tz = roverLive.z - Math.sin(roverLive.yaw) * 9
+        camera.position.set(tx, Math.max(hf.sampleHeight(tx, tz) + 2.5, hf.sampleHeight(roverLive.x, roverLive.z) + 4.2), tz)
       } else if (mode === 'orbit' && c) {
         const dir = camera.getWorldDirection(tmp.current)
         const gx = camera.position.x + dir.x * 40

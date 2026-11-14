@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useApp } from '@/store/app'
 import { MODES } from './modes'
+import { PanelSlot } from './slots'
 import { DataPanel } from './panels/DataPanel'
 import { ExplorePanel } from './panels/ExplorePanel'
 import { LayersPanel } from './panels/LayersPanel'
@@ -14,15 +15,15 @@ function PanelBody() {
   const mode = useApp((s) => s.mode)
   switch (mode) {
     case 'explore':
-      return <ExplorePanel />
+      return <PanelSlot name="panel:explore" builtin={<ExplorePanel />} />
     case 'layers':
-      return <LayersPanel />
+      return <PanelSlot name="panel:layers" builtin={<LayersPanel />} />
     case 'mission':
-      return <MissionPanel />
+      return <PanelSlot name="panel:mission" builtin={<MissionPanel />} />
     case 'lab':
-      return <LabPanel />
+      return <PanelSlot name="panel:lab" builtin={<LabPanel />} />
     case 'data':
-      return <DataPanel />
+      return <PanelSlot name="panel:data" builtin={<DataPanel />} />
   }
 }
 

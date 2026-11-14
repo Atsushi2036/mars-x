@@ -18,7 +18,7 @@ import { createTerrainWorker, type TerrainWorker } from '@/core/terrain/worker-c
 import { createTerrainMaterial, terrainUniforms } from './terrain-material'
 
 /** Distance (m, to the chunk's bounding box) below which a chunk uses LOD 0, 1, 2; beyond the last it uses LOD 3. */
-const LOD_DISTANCES = [260, 620, 1500]
+const LOD_DISTANCES = [170, 420, 1000]
 const MAX_LOD = LOD_DISTANCES.length
 /** ortho pixels across a chunk, by mesh LOD */
 const ORTHO_TARGET_PX = [1024, 512, 256, 256]

@@ -5,6 +5,7 @@ import type { Dataset } from '@/core/data/loader'
 import { LAYER_IDS, terrainUniforms } from './terrain-material'
 import { ChunkManager } from './chunk-manager'
 import { CameraRig } from './CameraRig'
+import { Slot } from '@/ui/slots'
 import { MissionLayer } from './MissionLayer'
 import { Rover } from './Rover'
 import { Sky } from './Sky'
@@ -162,6 +163,7 @@ export default function Scene({ dataset }: { dataset: Dataset }) {
       <MissionLayer ds={dataset} />
       <CameraRig hf={dataset.heightfield} />
       <Probes ds={dataset} />
+      <Slot name="scene" />
     </Canvas>
   )
 }
