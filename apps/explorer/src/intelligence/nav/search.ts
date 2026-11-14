@@ -121,7 +121,7 @@ function search(
   let hn = 1
   let expanded = 0
   while (hn > 0) {
-    const u = heap[0]!
+    const u: number = heap[0]!
     hn--
     if (hn > 0) {
       heap[0] = heap[hn]!
@@ -131,11 +131,11 @@ function search(
     pos[u] = -2
     expanded++
     if (stopAtGoal && u === goal) break
-    const ur = (u / nc) | 0
+    const ur: number = (u / nc) | 0
     const uc = u - ur * nc
     const cu = cost[u]!
     for (let k = 0; k < 8; k++) {
-      const vr = ur + DR[k]!
+      const vr: number = ur + DR[k]!
       const vc = uc + DC[k]!
       if (vr < 0 || vr >= nr || vc < 0 || vc >= nc) continue
       const v = vr * nc + vc
@@ -178,10 +178,10 @@ function regionSize(cost: Float32Array, nr: number, nc: number, from: number): n
   while (sp > 0) {
     const u = stack[--sp]!
     count++
-    const ur = (u / nc) | 0
+    const ur: number = (u / nc) | 0
     const uc = u - ur * nc
     for (let k = 0; k < 8; k++) {
-      const vr = ur + DR[k]!
+      const vr: number = ur + DR[k]!
       const vc = uc + DC[k]!
       if (vr < 0 || vr >= nr || vc < 0 || vc >= nc) continue
       const v = vr * nc + vc
@@ -292,7 +292,7 @@ export function bottleneckSlope(slope: Float32Array, nr: number, nc: number, sta
     const [k, u] = pop()
     if (k > best[u]!) continue
     if (u === goal) return k
-    const ur = (u / nc) | 0
+    const ur: number = (u / nc) | 0
     const uc = u - ur * nc
     for (let d = 0; d < 8; d++) {
       const vr = ur + DR[d]!
