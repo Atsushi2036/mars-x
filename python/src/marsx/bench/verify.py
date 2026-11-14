@@ -76,8 +76,14 @@ def _metrics_equal(a: Metrics, b: Metrics) -> bool:
     return True
 
 
-def verify_run(run: Run, suite: Suite, make_env: R.EnvFactory, batch_size: int = R.DEFAULT_BATCH) -> Verification:
+def verify_run(
+    run: Run, suite: Suite, make_env: R.EnvFactory, batch_size: int = R.DEFAULT_BATCH,
+    dataset_sha256: str | None = None,
+) -> Verification:
+    """``dataset_sha256``: hash of the dataset the verifier loaded; a run produced on other data is rejected."""
     reasons: list[str] = []
+    if dataset_sha256 is not None and run.dataset.sha256 != dataset_sha256:
+        return _fail([f"dataset mismatch: run used {run.dataset.sha256[:12]}, verifier loaded {dataset_sha256[:12]}"])
     ref = run.suite
     if (ref.id, ref.version, ref.split, ref.root_seed) != (suite.id, suite.version, suite.split, suite.root_seed):
         reasons.append(f"suite mismatch: run references {ref.id} {ref.version}, expected {suite.id} {suite.version}")

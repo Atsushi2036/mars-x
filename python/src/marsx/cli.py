@@ -69,10 +69,15 @@ def _write(path: str | None, text: str) -> None:
 
 def cmd_evaluate(args: argparse.Namespace, make_env: R.EnvFactory | None) -> int:
     suite = S.load_suite(args.suite)
-    make_env = make_env or _vec_factory(args.data)
+    data_sha = None
+    if make_env is None:
+        make_env, data_sha = _vec_factory(args.data)
+        if suite.dataset_sha256 and data_sha != suite.dataset_sha256:
+            print(f"warning: suite was generated for dataset {suite.dataset_sha256[:12]}, loaded {str(data_sha)[:12]}",
+                  file=sys.stderr)
     policy, name, kind, sha = _policy(args.policy)
     run = R.evaluate(suite, args.level, policy, make_env, policy_name=args.name or name, policy_kind=kind,
-                     policy_sha256=sha, batch_size=args.batch)
+                     policy_sha256=sha, batch_size=args.batch, dataset_sha256=data_sha)
     text = R.run_to_json(run)
     _write(args.out or f"run_{args.level}.json", text)
     mt = run.metrics
@@ -95,8 +100,10 @@ def cmd_scorecard(args: argparse.Namespace, make_env: R.EnvFactory | None) -> in
     except (OSError, ValueError, ValidationError) as exc:
         print(f"invalid run.json: {exc}", file=sys.stderr)
         return 1
-    make_env = make_env or _vec_factory(args.data)
-    checks = [V.verify_run(r, suite, make_env, batch_size=args.batch) for r in runs]
+    data_sha = None
+    if make_env is None:
+        make_env, data_sha = _vec_factory(args.data)
+    checks = [V.verify_run(r, suite, make_env, batch_size=args.batch, dataset_sha256=data_sha) for r in runs]
     rep = sc.build_report(runs, checks, suite, S.suite_sha256(args.suite))
     _write(args.out, json.dumps(rep, indent=1, ensure_ascii=False) + "\n")
     print(f"{rep['program']} · {rep['header']['status']}")
@@ -108,10 +115,11 @@ def cmd_scorecard(args: argparse.Namespace, make_env: R.EnvFactory | None) -> in
     return 0 if all(c.verified for c in checks) else 2
 
 
-def _vec_factory(data: str | None) -> R.EnvFactory:
-    from marsx.bench.env_factory import vec_env_factory
+def _vec_factory(data: str | None) -> tuple[R.EnvFactory, str | None]:
+    from marsx.bench.env_factory import load_terrain_cached, vec_env_factory
 
-    return vec_env_factory(_data_dir(data))
+    d = _data_dir(data)
+    return vec_env_factory(d), load_terrain_cached(str(d)).dataset_sha256
 
 
 def build_parser() -> argparse.ArgumentParser:

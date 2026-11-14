@@ -90,3 +90,14 @@ def test_tampered_oracle_energy_is_not_verifiable(run, suite, make_env):
     eps[0] = eps[0].model_copy(update={"oracle": eps[0].oracle.model_copy(update={"energy_wh": 1e6})})
     v = V.verify_run(run.model_copy(update={"episodes": eps}), suite, make_env)
     assert v.status == V.NOT_VERIFIABLE and any("oracle" in r for r in v.reasons)
+
+
+def test_run_on_a_different_dataset_is_not_verifiable(run, suite, make_env):
+    assert V.verify_run(run, suite, make_env, dataset_sha256="b" * 64).status == V.VERIFIED
+    v = V.verify_run(run, suite, make_env, dataset_sha256="d" * 64)
+    assert v.status == V.NOT_VERIFIABLE and any("dataset" in r for r in v.reasons)
+
+
+def test_evaluate_records_the_dataset_actually_loaded(suite, make_env):
+    r = R.evaluate(suite, "L1", P.AStarPolicy(), make_env, dataset_sha256="e" * 64)
+    assert r.dataset.sha256 == "e" * 64

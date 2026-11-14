@@ -201,7 +201,9 @@ def evaluate(
     policy_kind: str = "python",
     policy_sha256: str | None = None,
     batch_size: int = DEFAULT_BATCH,
+    dataset_sha256: str | None = None,
 ) -> Run:
+    """``dataset_sha256``: hash of the dataset actually loaded (defaults to the suite's pinned dataset)."""
     specs = S.level_episodes(suite, level)
     if not specs:
         raise ValueError(f"suite {suite.id} has no episodes for level {level}")
@@ -214,7 +216,7 @@ def evaluate(
         created_utc=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         producer=_producer(),
         suite=SuiteRef(id=suite.id, version=suite.version, level=level, split=suite.split, root_seed=suite.root_seed),
-        dataset=DatasetRef(id=S.SUITE_ID, sha256=suite.dataset_sha256 or "0" * 64),
+        dataset=DatasetRef(id=S.SUITE_ID, sha256=dataset_sha256 or suite.dataset_sha256 or "0" * 64),
         scenario=scenario_ref(sids, level),
         policy=PolicyRef(name=policy_name[:96], kind=policy_kind, sha256=policy_sha256),
         conditions=conditions_summary(sids),
