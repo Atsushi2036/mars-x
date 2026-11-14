@@ -7,7 +7,6 @@ vectorised environment can call them for thousands of agents per step. Every num
 
 from __future__ import annotations
 
-
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

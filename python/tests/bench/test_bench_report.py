@@ -10,7 +10,7 @@ from marsx.bench import verify as V
 @pytest.fixture
 def suite(grid):
     return S.build_suite(lambda sid: grid, dataset_sha256="b" * 64,
-                         plan={"L1": [("jezero-v1/l1/rtg-geometry", 6)], "L2": [("jezero-v1/l2/rtg-clear", 4)]},
+                         plan={"L1": [("jezero-v1/l1/rtg-geometry", 6)], "L2": [("jezero-v1/l2/rtg-storm", 4)]},
                          bands_m=((6, 20), (20, 30)), max_oracle_steps=40)
 
 

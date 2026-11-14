@@ -27,7 +27,9 @@ def test_all_suite_scenarios_are_valid_contract_objects():
             sc = S.scenario(sid)
             assert isinstance(sc, Scenario) and sc.level == level and sc.id == sid
             assert sid.startswith(f"jezero-v1/{level.lower()}/")
-    assert S.scenario("jezero-v1/l3/astronaut-dusty").conditions.spe.enabled
+    assert [sid for sid, _ in S.LEVEL_PLAN["L2"]] == [
+        "jezero-v1/l2/rtg-storm", "jezero-v1/l2/solar-clear", "jezero-v1/l2/solar-storm", "jezero-v1/l2/astronaut-clear"]
+    assert S.scenario("jezero-v1/l3/astronaut-storm").conditions.spe.enabled
     assert S.scenario("jezero-v1/l3/rtg-clear").conditions.hidden_rocks.enabled
     assert S.scenario("jezero-v1/l3/rtg-clear").conditions.comm.mode == "one_plan_per_sol"
 
@@ -47,7 +49,7 @@ def test_train_and_test_regions_are_disjoint_and_cover_with_guard():
 
 def test_generated_episodes_are_deterministic_feasible_and_in_region():
     cost = flat_cost()
-    kw = dict(n=12, seed=123, split="test", res_m=2.0, bands_m=((10, 30), (30, 60)), max_oracle_steps=80)
+    kw = {"n": 12, "seed": 123, "split": "test", "res_m": 2.0, "bands_m": ((10, 30), (30, 60)), "max_oracle_steps": 80}
     a = S.generate_episodes(cost, "jezero-v1/l1/rtg-geometry", **kw)
     b = S.generate_episodes(cost, "jezero-v1/l1/rtg-geometry", **kw)
     assert [e.model_dump() for e in a] == [e.model_dump() for e in b]
@@ -67,7 +69,7 @@ def test_generated_episodes_are_deterministic_feasible_and_in_region():
 def test_build_suite_produces_valid_versioned_suite():
     cost = flat_cost()
     counts = {"L1": [("jezero-v1/l1/rtg-geometry", 4)],
-              "L2": [("jezero-v1/l2/rtg-clear", 3)],
+              "L2": [("jezero-v1/l2/rtg-storm", 3)],
               "L3": [("jezero-v1/l3/rtg-clear", 2)]}
     suite = S.build_suite(lambda sid: cost, dataset_sha256="a" * 64, plan=counts,
                           bands_m=((10, 30),), max_oracle_steps=80)
@@ -94,10 +96,10 @@ def test_save_and_load_roundtrip(tmp_path):
 def test_level_episodes_selects_by_level():
     cost = flat_cost()
     suite = S.build_suite(lambda sid: cost, dataset_sha256=None,
-                          plan={"L1": [("jezero-v1/l1/rtg-geometry", 2)], "L2": [("jezero-v1/l2/rtg-clear", 3)]},
+                          plan={"L1": [("jezero-v1/l1/rtg-geometry", 2)], "L2": [("jezero-v1/l2/rtg-storm", 3)]},
                           bands_m=((10, 30),), max_oracle_steps=80)
     assert len(S.level_episodes(suite, "L2")) == 3
-    assert all(e.scenario_id == "jezero-v1/l2/rtg-clear" for e in S.level_episodes(suite, "L2"))
+    assert all(e.scenario_id == "jezero-v1/l2/rtg-storm" for e in S.level_episodes(suite, "L2"))
 
 
 def test_oracle_may_leave_the_test_region_when_cheaper():
@@ -119,3 +121,14 @@ def test_suite_hash_ignores_line_endings(tmp_path):
     crlf = tmp_path / "crlf.json"
     crlf.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
     assert S.suite_sha256(p) == S.suite_sha256(crlf)
+
+
+def test_suite_scenarios_reuse_env_builtins():
+    from marsx.env import scenarios as env_scenarios
+
+    for sid in ("jezero-v1/l1/rtg-geometry", "jezero-v1/l2/solar-clear", "jezero-v1/l2/rtg-storm"):
+        assert S.scenario(sid) == env_scenarios.get(sid)
+    l3 = S.scenario("jezero-v1/l3/solar-storm")
+    base = env_scenarios.get("jezero-v1/l2/solar-storm")
+    assert l3.agent == base.agent and l3.time == base.time and l3.conditions.tau == base.conditions.tau
+    assert l3.time is not None

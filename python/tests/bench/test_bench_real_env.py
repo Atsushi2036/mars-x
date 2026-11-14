@@ -5,7 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from marsx.bench import env_factory, policies as P, runner as R, suite as S
+from marsx.bench import env_factory
+from marsx.bench import policies as P
+from marsx.bench import runner as R
+from marsx.bench import suite as S
 
 REPO = Path(__file__).resolve().parents[3]
 DATA = Path(os.environ.get("MARSX_DATA", REPO / "data" / "processed" / "jezero-v1"))

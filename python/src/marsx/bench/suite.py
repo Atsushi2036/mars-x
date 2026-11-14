@@ -2,7 +2,7 @@
 
 Composition (T5, PO v0.1):
 - L1 Nominal navigation: 600 episodes, terrain only.
-- L2 Under Mars conditions: 4 families x 200 (RTG, solar clear, solar dusty, astronaut with SPE rule).
+- L2 Under Mars conditions: 4 families x 200 (RTG storm, solar clear, solar storm, astronaut with SPE rule).
 - L3 Consistent across sols & seeds: 6 families (profile x sol) x 100, with hidden rocks and one plan
   per sol; the pass rule is evaluated per family (Wilson 95 % lower bound, n >= 20).
 
@@ -22,19 +22,9 @@ from pathlib import Path
 import numpy as np
 
 from marsx.contracts.canonical import sha256_json
-from marsx.contracts.scenario import (
-    NASA_BLOG_2026,
-    NASA_ROVER,
-    Agent,
-    CommSpec,
-    Conditions,
-    Param,
-    RockSpec,
-    Scenario,
-    SpeSpec,
-    Window,
-)
+from marsx.contracts.scenario import CommSpec, Scenario, SpeSpec
 from marsx.contracts.suite import EpisodeSpec, LevelSpec, Suite
+from marsx.env import scenarios as env_scenarios
 from marsx.nav import NavStatus, astar
 
 SUITE_ID = "jezero-v1"
@@ -42,71 +32,43 @@ SUITE_VERSION = "0.1.0"
 ROOT_SEED = 20261115
 DISTANCE_BANDS_M: tuple[tuple[float, float], ...] = ((50.0, 150.0), (150.0, 400.0), (400.0, 1000.0))
 ORACLE_STEP_FRACTION = 0.8  # oracle path must use <= 80 % of the scenario step budget
-_LEMMON = "Lemmon et al. 2022, GRL 49(17) e2022GL100126, doi:10.1029/2022GL100126"
 
 # ------------------------------------------------------------------ scenarios
-_ROVER_LIMITS = dict(
-    max_slope_deg=Param(value=24, unit="deg", provenance="source", ref=NASA_BLOG_2026,
-                        note="Perseverance tilt limit raised to 24 deg (Oct 2026)"),
-    max_step_m=Param(value=0.525, unit="m", provenance="source", ref=NASA_ROVER, note="wheel diameter"),
-    speed_m_s=Param(value=0.042, unit="m/s", provenance="source", ref=NASA_ROVER, note="152 m/h top speed"),
-)
-_AGENTS = {
-    "rtg": Agent(kind="rtg_rover", **_ROVER_LIMITS),
-    "solar": Agent(kind="solar_rover", **_ROVER_LIMITS),
-    "astronaut": Agent(
-        kind="astronaut",
-        max_slope_deg=Param(value=15, unit="deg", provenance="assumption", note="PO decision v0.1"),
-        max_step_m=Param(value=0.3, unit="m", provenance="assumption"),
-        speed_m_s=Param(value=1.0, unit="m/s", provenance="assumption"),
-        params={"evaDuration": Param(value=4, unit="h", provenance="assumption", note="PO decision v0.1")},
-    ),
+# Single source of truth: L1/L2 families are the env's built-in scenarios; L3 families are the L2 sols
+# (clear aphelion sol, Jan-2022 storm) for each profile, plus hidden rocks and one plan per sol (rovers).
+_L3_ROCKS = "jezero-v1/l3/rtg-hidden-rocks"
+_L3_BASES = {
+    "rtg-clear": "jezero-v1/l3/rtg-onesol", "rtg-storm": "jezero-v1/l2/rtg-storm",
+    "solar-clear": "jezero-v1/l2/solar-clear", "solar-storm": "jezero-v1/l2/solar-storm",
+    "astronaut-clear": "jezero-v1/l2/astronaut-clear", "astronaut-storm": "jezero-v1/l2/astronaut-clear",
 }
-_SOLS = {
-    # Clear: aphelion-season sol with the lowest tau in MEDA, chosen by the data team (tau is an assumption
-    # until that sol is pinned). Dusty: regional storm that entered Jezero at the end of sol 313 (Lemmon 2022).
-    "clear": dict(meda_sols=[], tau=Param(value=0.4, unit="-", provenance="assumption",
-                                          note="clear-season opacity until the MEDA sol is pinned")),
-    "dusty": dict(meda_sols=[314], tau=Param(value=2.0, unit="-", provenance="source", ref=_LEMMON,
-                                             note="peak visible optical depth of the Jan 2022 regional storm")),
-}
-_WINDOW = Window(dataset_id="jezero-v1", grid_id="plan", row0=0, col0=0, rows=1024, cols=1024)
-_ROCKS = RockSpec(
-    enabled=True,
-    abundance_k=Param(value=0.05, unit="fraction", provenance="assumption",
-                      note="Golombek & Rapp 1997 model, k range 1-10 % at landing sites"),
-    sensor_radius_m=Param(value=8, unit="m", provenance="assumption"),
-)
+_STORM_FROM = "jezero-v1/l2/solar-storm"
 
 
-def _make(level: str, name: str, profile: str, sol: str | None, *, hidden: bool, spe: bool,
-          one_plan: bool, max_steps: int, title: str) -> Scenario:
-    sol_kw = _SOLS[sol] if sol else {}
-    physics = level != "L1"
-    cond = Conditions(
-        **sol_kw,
-        comm=CommSpec(mode="one_plan_per_sol", uplink_lmst_h=9.0) if one_plan else CommSpec(),
-        spe=SpeSpec(enabled=spe),
-        hidden_rocks=_ROCKS if hidden else RockSpec(),
-        lighting=physics, energy=physics, slip=physics and profile != "astronaut",
-    )
-    return Scenario(id=f"jezero-v1/{level.lower()}/{name}", title=title, level=level, window=_WINDOW,
-                    agent=_AGENTS[profile], conditions=cond, max_steps=max_steps)
+def _l3(name: str) -> Scenario:
+    base = env_scenarios.get(_L3_BASES[name])
+    storm = env_scenarios.get(_STORM_FROM)
+    rocks = env_scenarios.get(_L3_ROCKS).conditions.hidden_rocks
+    cond = base.conditions.model_copy(update={"hidden_rocks": rocks})
+    time = base.time
+    if name.endswith("storm"):
+        cond = cond.model_copy(update={"tau": storm.conditions.tau, "meda_sols": storm.conditions.meda_sols})
+        time = storm.time
+    if base.agent.kind != "astronaut":
+        cond = cond.model_copy(update={"comm": CommSpec(mode="one_plan_per_sol", uplink_lmst_h=9.0)})
+    else:
+        cond = cond.model_copy(update={"spe": SpeSpec(enabled=True)})
+    return base.model_copy(update={
+        "id": f"jezero-v1/l3/{name}", "level": "L3", "conditions": cond, "time": time,
+        "title": f"L3 consistency - {name.replace('-', ', ')} sol, hidden rocks",
+    })
 
 
 def _scenarios() -> dict[str, Scenario]:
-    out = [_make("L1", "rtg-geometry", "rtg", None, hidden=False, spe=False, one_plan=False, max_steps=600,
-                 title="L1 nominal navigation - RTG rover")]
-    l2 = [("rtg-clear", "rtg", "clear", False), ("solar-clear", "solar", "clear", False),
-          ("solar-dusty", "solar", "dusty", False), ("astronaut-spe", "astronaut", "clear", True)]
-    for name, prof, sol, spe in l2:
-        out.append(_make("L2", name, prof, sol, hidden=False, spe=spe, one_plan=False, max_steps=1500,
-                         title=f"L2 under Mars conditions - {name}"))
-    for prof in ("rtg", "solar", "astronaut"):
-        for sol in ("clear", "dusty"):
-            out.append(_make("L3", f"{prof}-{sol}", prof, sol, hidden=True, spe=prof == "astronaut",
-                             one_plan=prof != "astronaut", max_steps=1500,
-                             title=f"L3 consistency - {prof}, {sol} sol, hidden rocks"))
+    out = [env_scenarios.get(sid) for sid in (
+        "jezero-v1/l1/rtg-geometry", "jezero-v1/l2/rtg-storm", "jezero-v1/l2/solar-clear",
+        "jezero-v1/l2/solar-storm", "jezero-v1/l2/astronaut-clear")]
+    out += [_l3(n) for n in _L3_BASES]
     return {s.id: s for s in out}
 
 
@@ -114,8 +76,8 @@ SCENARIOS = _scenarios()
 
 LEVEL_PLAN: dict[str, list[tuple[str, int]]] = {
     "L1": [("jezero-v1/l1/rtg-geometry", 600)],
-    "L2": [(f"jezero-v1/l2/{n}", 200) for n in ("rtg-clear", "solar-clear", "solar-dusty", "astronaut-spe")],
-    "L3": [(f"jezero-v1/l3/{p}-{s}", 100) for p in ("rtg", "solar", "astronaut") for s in ("clear", "dusty")],
+    "L2": [(f"jezero-v1/l2/{n}", 200) for n in ("rtg-storm", "solar-clear", "solar-storm", "astronaut-clear")],
+    "L3": [(f"jezero-v1/l3/{n}", 100) for n in _L3_BASES],
 }
 
 

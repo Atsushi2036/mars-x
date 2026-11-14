@@ -56,7 +56,7 @@ def test_param_serialises_to_camel_friendly_dict():
 
 
 def test_param_maps_to_scenario_contract_provenance():
-    from marsx.conditions.gravity import JEZERO_GRAVITY, G_EQUATORIAL
+    from marsx.conditions.gravity import G_EQUATORIAL, JEZERO_GRAVITY
     from marsx.conditions.params import assumption
 
     c = JEZERO_GRAVITY.to_contract()
