@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+
+jobs:
+  web:
+    name: web (lint, typecheck, vitest, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Enable corepack (pnpm version from package.json)
+        run: corepack enable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        if: ${{ hashFiles('apps/explorer/package.json') != '' }}
+        run: pnpm -r --if-present lint
+      - name: Typecheck
+        if: ${{ hashFiles('apps/explorer/package.json') != '' }}
+        run: pnpm -r --if-present typecheck
+      - name: Unit tests (vitest)
+        if: ${{ hashFiles('apps/explorer/package.json') != '' }}
+        run: pnpm -r --if-present test
+      - name: Build
+        if: ${{ hashFiles('apps/explorer/package.json') != '' }}
+        run: pnpm --filter "./apps/*" --if-present build
+
+  python:
+    name: python (ruff, pytest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        if: ${{ hashFiles('python/pyproject.toml') != '' }}
+        with:
+          enable-cache: true
+          cache-dependency-glob: python/uv.lock
+      - name: Install (locked)
+        if: ${{ hashFiles('python/pyproject.toml') != '' }}
+        run: uv sync --project python --locked
+      - name: Ruff
+        if: ${{ hashFiles('python/pyproject.toml') != '' }}
+        run: uvx ruff check python
+      - name: Pytest
+        if: ${{ hashFiles('python/pyproject.toml') != '' }}
+        run: uv run --project python pytest
+
+  security:
+    name: security (audit, pip-audit, gitleaks)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Enable corepack
+        run: corepack enable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: pnpm audit (high+)
+        if: ${{ hashFiles('pnpm-lock.yaml') != '' }}
+        run: pnpm audit --audit-level=high
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        if: ${{ hashFiles('python/uv.lock') != '' }}
+      - name: pip-audit (from uv.lock)
+        if: ${{ hashFiles('python/uv.lock') != '' }}
+        run: |
+          uv export --project python --locked --no-hashes --no-emit-project -o "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit --no-deps --disable-pip -r "$RUNNER_TEMP/requirements.txt"
+      - name: gitleaks (pinned binary, sha256 verified)
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/gitleaks.tar.gz" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" detect --source . --redact --verbose

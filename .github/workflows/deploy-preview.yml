@@ -1,0 +1,40 @@
+name: Deploy preview (manual)
+
+# Manual only. Deploys to the Cloudflare Pages "preview" branch, never to production.
+# Requires repository secrets (set by the owner, never committed):
+#   CLOUDFLARE_API_TOKEN  (scope: Account > Cloudflare Pages > Edit, nothing else)
+#   CLOUDFLARE_ACCOUNT_ID
+# Requires data/dataset.lock.json pointing to a published GitHub Release asset (see docs/devops/deploy.md).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: preview
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Enable corepack
+        run: corepack enable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Fetch dataset (sha256 verified)
+        run: node scripts/dataset.mjs fetch jezero-v1
+      - name: Build web + data
+        run: |
+          pnpm --filter "./apps/*" --if-present build
+          node scripts/copy-data.mjs jezero-v1
+      - name: Deploy preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/deploy.mjs preview
