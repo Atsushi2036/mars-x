@@ -10,7 +10,7 @@ import { resolve, join } from "node:path";
 const target = process.argv[2];
 const PROJECT = process.env.CF_PAGES_PROJECT ?? "mars-x";
 const root = resolve(import.meta.dirname, "..");
-const dist = join(root, "apps", "explorer", "dist");
+const dist = process.env.MARSX_DIST ? resolve(process.env.MARSX_DIST) : join(root, "apps", "explorer", "dist"); // MARSX_DIST: override for testing
 
 if (!["preview", "prod"].includes(target)) {
   console.error("Usage: node scripts/deploy.mjs <preview|prod>");
@@ -47,6 +47,7 @@ if (target === "prod") {
 const r = spawnSync(
   "pnpm",
   ["exec", "wrangler", "pages", "deploy", dist, `--project-name=${PROJECT}`, `--branch=${branch}`, "--commit-dirty=true"],
+  // No --force here: the Pages project must already exist (see docs/devops/deploy.md and ADR-0009).
   { stdio: "inherit", cwd: root, shell: process.platform === "win32" },
 );
 process.exit(r.status ?? 1);

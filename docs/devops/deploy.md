@@ -22,9 +22,16 @@ Local PC note: the globally installed pnpm is 10.15.1 (older than `minimumReleas
 ! corepack pnpm exec wrangler login
 ```
 
-This opens a browser to authorize Cloudflare (OAuth; no token is stored in the repo). Suggested Pages project name: `mars-x`
-(create it on the first deploy: wrangler asks, or run `corepack pnpm exec wrangler pages project create mars-x --production-branch=main`).
-Override the name with env var `CF_PAGES_PROJECT` if `mars-x` is taken.
+This opens a browser to authorize Cloudflare (OAuth; no token is stored in the repo).
+Create the Pages project once (needs `--force`, otherwise wrangler 4.158 delegates to Workers and tries to auto-configure and rewrite the repo; see ADR-0009).
+Run it from any folder OUTSIDE the repo or from the root, never from `apps/explorer`:
+
+```
+corepack pnpm exec wrangler pages project create mars-x --production-branch=main --force
+```
+
+Done on 2026-11-14: project `mars-x`, production URL `https://mars-x-7k9.pages.dev`, previews at `https://preview.mars-x-7k9.pages.dev`.
+Never accept wrangler's auto-configuration prompts. Override the name with env var `CF_PAGES_PROJECT` if needed.
 
 Install `just` (optional; `pnpm run <script>` has an equivalent for every recipe):
 `winget install Casey.Just` (Windows PowerShell), then reopen the terminal.
