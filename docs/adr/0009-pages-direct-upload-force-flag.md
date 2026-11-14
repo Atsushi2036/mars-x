@@ -1,6 +1,6 @@
 # ADR-0009: Keep Cloudflare Pages (Direct Upload), bypass wrangler's Workers delegation with `--force`
 
-- Status: Proposed (2026-11-14, awaiting team lead approval)
+- Status: Accepted (2026-11-14) (2026-11-14, awaiting team lead approval)
 - Modifies: [ADR-0006](0006-hosting-ci-cd.md) (hosting mechanics only; the hosting choice stays Cloudflare Pages)
 - Deciders: devops-senior, team lead
 

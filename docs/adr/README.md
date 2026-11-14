@@ -12,5 +12,6 @@ Decisions taken at the MARS-X kickoff (2026-11-14) by consensus of the product, 
 | [0006](0006-hosting-ci-cd.md) | Hosting, CI/CD and repository workflow |
 | [0007](0007-security-baseline.md) | Security baseline |
 | [0008](0008-testing-strategy.md) | Testing strategy |
+| [0009](0009-pages-direct-upload-force-flag.md) | Cloudflare Pages Direct Upload (project created with `--force`); amends 0006 |
 
 New decisions or reversals require a new ADR.
