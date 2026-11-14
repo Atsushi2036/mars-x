@@ -94,3 +94,12 @@ def test_evaluate_builds_a_valid_run(small_suite, make_env):
     assert run.scenario.sha256 == S.scenario_sha256("jezero-v1/l1/rtg-geometry")
     assert run.conditions.gravity == pytest.approx(3.694, abs=1e-3)
     assert json.loads(doc)["schemaVersion"] == "run/1"
+
+
+def test_oracle_energy_comes_from_replaying_the_oracle_in_the_env(small_suite, make_env):
+    run = R.evaluate(small_suite, "L1", P.RandomPolicy(seed=3), make_env)
+    for e, s in zip(run.episodes, S.level_episodes(small_suite, "L1")):
+        # the fake env charges 0.5 Wh per metre
+        assert e.oracle.energy_wh == pytest.approx(0.5 * s.oracle_path_m, abs=1e-6)
+    astar = R.evaluate(small_suite, "L1", P.AStarPolicy(), make_env)
+    assert astar.metrics.energy_ratio == pytest.approx(1.0)

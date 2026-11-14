@@ -3,8 +3,8 @@
 1. The run must reference this suite (id, version, level, split, root seed) and contain exactly the
    suite's episodes for that level (same index, seed, scenario, start, goal).
 2. Every episode needs a valid traj/1 block (sha256 of the decoded bytes must match).
-3. The recorded actions are replayed on the env; outcome, steps, path, energy, violations and the
-   re-simulated trajectory bytes must match what the run reports.
+3. The recorded actions are replayed on the env; outcome, steps, path, energy, violations, the oracle
+   reference (A* replayed in the same env) and the re-simulated trajectory bytes must match the run.
 4. Metrics are recomputed from the re-simulated episodes and must equal the reported metrics.
 Any failure -> "Not verifiable" and no level is granted.
 """
@@ -119,6 +119,11 @@ def verify_run(run: Run, suite: Suite, make_env: R.EnvFactory, batch_size: int =
             diffs.append(f"energyWh {e.energy_wh} != {r.energy_wh}")
         if r.violations != e.violations:
             diffs.append(f"violations {e.violations} != {r.violations}")
+        if (r.oracle is None) != (e.oracle is None) or (r.oracle and e.oracle and (
+                not _close(r.oracle.path_m, e.oracle.path_m, PATH_TOL_M)
+                or not _close(r.oracle.cost, e.oracle.cost, PATH_TOL_M)
+                or not _close(r.oracle.energy_wh, e.oracle.energy_wh, ENERGY_TOL_WH))):
+            diffs.append("oracle reference differs from the suite oracle")
         if r.trajectory.sha256 != e.trajectory.sha256:  # type: ignore[union-attr]
             diffs.append("trajectory differs from re-simulation")
         if diffs:

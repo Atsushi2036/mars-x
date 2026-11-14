@@ -121,9 +121,14 @@ def _run_batch(specs: Sequence[EpisodeSpec], scenario: Scenario, policy: Policy,
 
 
 def run_episodes(
-    specs: Sequence[EpisodeSpec], policy: Policy, make_env: EnvFactory, batch_size: int = DEFAULT_BATCH
+    specs: Sequence[EpisodeSpec], policy: Policy, make_env: EnvFactory, batch_size: int = DEFAULT_BATCH,
+    oracle_energy: bool = True,
 ) -> list[EpisodeResult]:
-    """Run every spec (grouped by scenario family, in batches) and return results in spec order."""
+    """Run every spec (grouped by scenario family, in batches) and return results in spec order.
+
+    With ``oracle_energy`` the oracle (A* on the env's map) is replayed in the same env and its measured
+    energy becomes ``oracle.energyWh`` (denominator of the energy ratio; recomputed again on verification).
+    """
     by_family: dict[str, list[EpisodeSpec]] = defaultdict(list)
     for s in specs:
         by_family[s.scenario_id].append(s)
@@ -135,7 +140,22 @@ def run_episodes(
         for k in range(0, len(fam), size):
             for r in _run_batch(fam[k:k + size], scenario, policy, env):
                 results[r.index] = r
-    return [results[s.index] for s in specs]
+    out = [results[s.index] for s in specs]
+    return _attach_oracle_energy(specs, out, make_env, batch_size) if oracle_energy else out
+
+
+def _attach_oracle_energy(
+    specs: Sequence[EpisodeSpec], results: list[EpisodeResult], make_env: EnvFactory, batch_size: int
+) -> list[EpisodeResult]:
+    from marsx.bench.policies import AStarPolicy
+
+    ref = run_episodes(specs, AStarPolicy(), make_env, batch_size, oracle_energy=False)
+    out = []
+    for r, o in zip(results, ref):
+        if r.oracle is not None and o.outcome == "success" and o.energy_wh is not None:
+            r = r.model_copy(update={"oracle": r.oracle.model_copy(update={"energy_wh": o.energy_wh})})
+        out.append(r)
+    return out
 
 
 def _git_sha() -> str | None:
