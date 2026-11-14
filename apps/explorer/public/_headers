@@ -1,0 +1,43 @@
+# Cloudflare Pages headers (applies to static assets only, not to Pages Functions).
+# Approved by security review. No COEP on purpose (ONNX Runtime runs with numThreads=1).
+# Rules are concatenated; use "! Header-Name" to detach an inherited header.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), fullscreen=(self)
+  Cross-Origin-Opener-Policy: same-origin
+
+# Hashed build output: cache forever
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Versioned datasets (region folder carries the version, e.g. jezero-v1): cache forever
+/data/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# ...except manifests, which must always revalidate
+/data/*/manifest.json
+  ! Cache-Control
+  Cache-Control: no-cache
+
+# App shell and metadata: never long-cached
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/manifest.json
+  Cache-Control: no-cache
+/version.json
+  Cache-Control: no-cache
+
+# --- Future: ONNX policy Worker with its own, stricter CSP -------------------
+# Serve the worker bundle from /workers/policy/ and uncomment. "! Content-Security-Policy"
+# removes the global CSP so only this one applies. The page downloads the .wasm and hands it
+# to the worker (env.wasm.wasmBinary), so the worker needs no network at all.
+#
+# /workers/policy/*
+#   ! Content-Security-Policy
+#   Content-Security-Policy: default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'none'; worker-src 'none'
