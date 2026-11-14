@@ -1,0 +1,93 @@
+{
+  "conditions": {
+    "gravity": 3.694,
+    "medaSols": []
+  },
+  "createdUtc": "2026-11-15T03:00:00Z",
+  "dataset": {
+    "id": "jezero-v1",
+    "layers": {},
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "episodes": [
+    {
+      "events": [
+        {
+          "cell": [
+            10,
+            11
+          ],
+          "t": 48.0,
+          "type": "replan"
+        }
+      ],
+      "goal": [
+        11,
+        12
+      ],
+      "index": 0,
+      "oracle": {
+        "cost": 5.1,
+        "pathM": 4.83
+      },
+      "outcome": "success",
+      "pathM": 4.83,
+      "risk": {
+        "timeSlopeGt15S": 0.0
+      },
+      "seed": 1,
+      "start": [
+        10,
+        10
+      ],
+      "steps": 3,
+      "trajectory": {
+        "data": "CgAKAAsACgALAAwAAAAAADAAAABzAAAAADwAPP47AgYI",
+        "encoding": "traj/1",
+        "sha256": "d386b0b22f52892fd29926d7f9eefe7145367d0703d26878114a9f275a960a73",
+        "steps": 3
+      },
+      "violations": 0
+    }
+  ],
+  "metrics": {
+    "n": 1,
+    "spl": 1.0,
+    "success": 1.0,
+    "successCi95": [
+      0.2065,
+      1.0
+    ],
+    "violations": 0
+  },
+  "policy": {
+    "contract": "policy/1",
+    "kind": "baseline",
+    "name": "baseline/astar",
+    "obsSpec": "obs/1"
+  },
+  "producer": {
+    "marsxVersion": "0.1.0",
+    "platform": "win-amd64",
+    "python": "3.13.3"
+  },
+  "runId": "00000000-0000-4000-8000-000000000000",
+  "scenario": {
+    "id": "jezero-v1/l1/rtg-geometry",
+    "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "schemaVersion": "run/1",
+  "scorecard": {
+    "passed": {
+      "L1": true
+    },
+    "thresholdsVersion": "v0.1"
+  },
+  "suite": {
+    "id": "jezero-v1",
+    "level": "L1",
+    "rootSeed": 20261115,
+    "split": "test",
+    "version": "0.1.0"
+  }
+}

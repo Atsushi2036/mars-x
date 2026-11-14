@@ -1,0 +1,687 @@
+{
+  "$defs": {
+    "ConditionsSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "gravity": {
+          "title": "Gravity",
+          "type": "number"
+        },
+        "medaSols": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 8,
+          "title": "Medasols",
+          "type": "array"
+        },
+        "owltMin": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owltmin"
+        },
+        "tau": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tau"
+        }
+      },
+      "required": [
+        "gravity"
+      ],
+      "title": "ConditionsSummary",
+      "type": "object"
+    },
+    "DatasetRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 96,
+          "title": "Id",
+          "type": "string"
+        },
+        "layers": {
+          "additionalProperties": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "maxProperties": 64,
+          "title": "Layers",
+          "type": "object"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sha256"
+      ],
+      "title": "DatasetRef",
+      "type": "object"
+    },
+    "EpisodeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "energyWh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Energywh"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "maxItems": 1000,
+          "title": "Events",
+          "type": "array"
+        },
+        "goal": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Goal",
+          "type": "array"
+        },
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "oracle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Oracle"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "outcome": {
+          "enum": [
+            "success",
+            "collision",
+            "hazard",
+            "battery",
+            "stuck",
+            "spe_violation",
+            "timeout"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "pathM": {
+          "minimum": 0,
+          "title": "Pathm",
+          "type": "number"
+        },
+        "risk": {
+          "$ref": "#/$defs/Risk",
+          "default": {
+            "minHazardDistM": null,
+            "timeSlopeGt15S": 0.0
+          }
+        },
+        "scenarioId": {
+          "anyOf": [
+            {
+              "maxLength": 96,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scenarioid"
+        },
+        "seed": {
+          "exclusiveMaximum": 9223372036854775808,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "start": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Start",
+          "type": "array"
+        },
+        "steps": {
+          "maximum": 20000,
+          "minimum": 0,
+          "title": "Steps",
+          "type": "integer"
+        },
+        "trajectory": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TrajectoryBlock"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "violations": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Violations",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "index",
+        "seed",
+        "start",
+        "goal",
+        "outcome",
+        "steps",
+        "pathM"
+      ],
+      "title": "EpisodeResult",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "cell": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cell"
+        },
+        "t": {
+          "minimum": 0,
+          "title": "T",
+          "type": "number"
+        },
+        "type": {
+          "enum": [
+            "rockRevealed",
+            "uplink",
+            "speAlert",
+            "shelterReached",
+            "stuck",
+            "batteryLow",
+            "replan"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "t",
+        "type"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "Metrics": {
+      "additionalProperties": false,
+      "properties": {
+        "energyRatio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Energyratio"
+        },
+        "meanPathM": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Meanpathm"
+        },
+        "n": {
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "spl": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spl"
+        },
+        "success": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Success",
+          "type": "number"
+        },
+        "successCi95": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Successci95",
+          "type": "array"
+        },
+        "violations": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Violations",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "n",
+        "success",
+        "successCi95"
+      ],
+      "title": "Metrics",
+      "type": "object"
+    },
+    "Oracle": {
+      "additionalProperties": false,
+      "properties": {
+        "cost": {
+          "minimum": 0,
+          "title": "Cost",
+          "type": "number"
+        },
+        "energyWh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Energywh"
+        },
+        "pathM": {
+          "minimum": 0,
+          "title": "Pathm",
+          "type": "number"
+        }
+      },
+      "required": [
+        "pathM",
+        "cost"
+      ],
+      "title": "Oracle",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "properties": {
+        "contract": {
+          "const": "policy/1",
+          "default": "policy/1",
+          "title": "Contract",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "onnx",
+            "python",
+            "baseline"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 96,
+          "title": "Name",
+          "type": "string"
+        },
+        "obsSpec": {
+          "const": "obs/1",
+          "default": "obs/1",
+          "title": "Obsspec",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "name",
+        "kind"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "gitSha": {
+          "anyOf": [
+            {
+              "maxLength": 96,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gitsha"
+        },
+        "marsxVersion": {
+          "maxLength": 96,
+          "title": "Marsxversion",
+          "type": "string"
+        },
+        "platform": {
+          "maxLength": 96,
+          "title": "Platform",
+          "type": "string"
+        },
+        "python": {
+          "maxLength": 96,
+          "title": "Python",
+          "type": "string"
+        }
+      },
+      "required": [
+        "marsxVersion",
+        "python",
+        "platform"
+      ],
+      "title": "Producer",
+      "type": "object"
+    },
+    "Risk": {
+      "additionalProperties": false,
+      "properties": {
+        "minHazardDistM": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minhazarddistm"
+        },
+        "timeSlopeGt15S": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Timeslopegt15S",
+          "type": "number"
+        }
+      },
+      "title": "Risk",
+      "type": "object"
+    },
+    "ScenarioRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 96,
+          "title": "Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sha256"
+      ],
+      "title": "ScenarioRef",
+      "type": "object"
+    },
+    "Scorecard": {
+      "additionalProperties": false,
+      "properties": {
+        "passed": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "maxProperties": 8,
+          "title": "Passed",
+          "type": "object"
+        },
+        "thresholdsVersion": {
+          "maxLength": 96,
+          "title": "Thresholdsversion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "thresholdsVersion"
+      ],
+      "title": "Scorecard",
+      "type": "object"
+    },
+    "SuiteRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 96,
+          "title": "Id",
+          "type": "string"
+        },
+        "level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "rootSeed": {
+          "exclusiveMaximum": 9223372036854775808,
+          "minimum": 0,
+          "title": "Rootseed",
+          "type": "integer"
+        },
+        "split": {
+          "enum": [
+            "train",
+            "test"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 96,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "level",
+        "split",
+        "rootSeed"
+      ],
+      "title": "SuiteRef",
+      "type": "object"
+    },
+    "TrajectoryBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "maxLength": 293336,
+          "title": "Data",
+          "type": "string"
+        },
+        "encoding": {
+          "const": "traj/1",
+          "default": "traj/1",
+          "title": "Encoding",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "steps": {
+          "maximum": 20000,
+          "minimum": 0,
+          "title": "Steps",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "steps",
+        "data",
+        "sha256"
+      ],
+      "title": "TrajectoryBlock",
+      "type": "object"
+    }
+  },
+  "$id": "https://mars-x.dev/schemas/run.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "conditions": {
+      "$ref": "#/$defs/ConditionsSummary"
+    },
+    "createdUtc": {
+      "maxLength": 96,
+      "title": "Createdutc",
+      "type": "string"
+    },
+    "dataset": {
+      "$ref": "#/$defs/DatasetRef"
+    },
+    "episodes": {
+      "items": {
+        "$ref": "#/$defs/EpisodeResult"
+      },
+      "maxItems": 5000,
+      "title": "Episodes",
+      "type": "array"
+    },
+    "metrics": {
+      "$ref": "#/$defs/Metrics"
+    },
+    "policy": {
+      "$ref": "#/$defs/PolicyRef"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "runId": {
+      "maxLength": 96,
+      "title": "Runid",
+      "type": "string"
+    },
+    "scenario": {
+      "$ref": "#/$defs/ScenarioRef"
+    },
+    "schemaVersion": {
+      "const": "run/1",
+      "default": "run/1",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "scorecard": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Scorecard"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "suite": {
+      "$ref": "#/$defs/SuiteRef"
+    }
+  },
+  "required": [
+    "runId",
+    "createdUtc",
+    "producer",
+    "suite",
+    "dataset",
+    "scenario",
+    "policy",
+    "conditions",
+    "episodes",
+    "metrics"
+  ],
+  "title": "Run",
+  "type": "object"
+}

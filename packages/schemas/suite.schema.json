@@ -1,0 +1,255 @@
+{
+  "$defs": {
+    "EpisodeSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "goal": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Goal",
+          "type": "array"
+        },
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "oracleCost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Oraclecost"
+        },
+        "oraclePathM": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Oraclepathm"
+        },
+        "scenarioId": {
+          "maxLength": 96,
+          "title": "Scenarioid",
+          "type": "string"
+        },
+        "seed": {
+          "exclusiveMaximum": 9223372036854775808,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "start": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Start",
+          "type": "array"
+        }
+      },
+      "required": [
+        "index",
+        "seed",
+        "scenarioId",
+        "start",
+        "goal"
+      ],
+      "title": "EpisodeSpec",
+      "type": "object"
+    },
+    "LevelSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "episodes": {
+          "exclusiveMinimum": 0,
+          "maximum": 20000,
+          "title": "Episodes",
+          "type": "integer"
+        },
+        "level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "scenarioIds": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Scenarioids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "level",
+        "scenarioIds",
+        "episodes"
+      ],
+      "title": "LevelSpec",
+      "type": "object"
+    },
+    "PassCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "metric": {
+          "enum": [
+            "success",
+            "successWilson95Lower",
+            "spl"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "minEpisodes": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Minepisodes",
+          "type": "integer"
+        },
+        "op": {
+          "const": ">=",
+          "default": ">=",
+          "title": "Op",
+          "type": "string"
+        },
+        "threshold": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Threshold",
+          "type": "number"
+        },
+        "version": {
+          "default": "v0.1",
+          "maxLength": 16,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "level",
+        "metric",
+        "threshold"
+      ],
+      "title": "PassCriterion",
+      "type": "object"
+    }
+  },
+  "$id": "https://mars-x.dev/schemas/suite.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "datasetSha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Datasetsha256"
+    },
+    "episodes": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/EpisodeSpec"
+          },
+          "maxItems": 20000,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Episodes"
+    },
+    "id": {
+      "maxLength": 64,
+      "title": "Id",
+      "type": "string"
+    },
+    "levels": {
+      "items": {
+        "$ref": "#/$defs/LevelSpec"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "title": "Levels",
+      "type": "array"
+    },
+    "passCriteria": {
+      "items": {
+        "$ref": "#/$defs/PassCriterion"
+      },
+      "title": "Passcriteria",
+      "type": "array"
+    },
+    "rootSeed": {
+      "exclusiveMaximum": 9223372036854775808,
+      "minimum": 0,
+      "title": "Rootseed",
+      "type": "integer"
+    },
+    "schemaVersion": {
+      "const": "suite/1",
+      "default": "suite/1",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "split": {
+      "default": "test",
+      "enum": [
+        "train",
+        "test"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "version": {
+      "maxLength": 16,
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "rootSeed",
+    "levels"
+  ],
+  "title": "Suite",
+  "type": "object"
+}

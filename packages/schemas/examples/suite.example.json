@@ -1,0 +1,57 @@
+{
+  "episodes": [
+    {
+      "goal": [
+        11,
+        12
+      ],
+      "index": 0,
+      "scenarioId": "jezero-v1/l1/rtg-geometry",
+      "seed": 1,
+      "start": [
+        10,
+        10
+      ]
+    }
+  ],
+  "id": "jezero-v1",
+  "levels": [
+    {
+      "episodes": 1,
+      "level": "L1",
+      "scenarioIds": [
+        "jezero-v1/l1/rtg-geometry"
+      ]
+    }
+  ],
+  "passCriteria": [
+    {
+      "level": "L1",
+      "metric": "success",
+      "minEpisodes": 1,
+      "op": ">=",
+      "threshold": 0.8,
+      "version": "v0.1"
+    },
+    {
+      "level": "L2",
+      "metric": "success",
+      "minEpisodes": 1,
+      "op": ">=",
+      "threshold": 0.7,
+      "version": "v0.1"
+    },
+    {
+      "level": "L3",
+      "metric": "successWilson95Lower",
+      "minEpisodes": 20,
+      "op": ">=",
+      "threshold": 0.6,
+      "version": "v0.1"
+    }
+  ],
+  "rootSeed": 20261115,
+  "schemaVersion": "suite/1",
+  "split": "test",
+  "version": "0.1.0"
+}

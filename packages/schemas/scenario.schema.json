@@ -1,0 +1,527 @@
+{
+  "$defs": {
+    "Agent": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "rtg_rover",
+            "solar_rover",
+            "astronaut"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "maxSlopeDeg": {
+          "$ref": "#/$defs/Param"
+        },
+        "maxStepM": {
+          "$ref": "#/$defs/Param"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Param"
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "speedMS": {
+          "$ref": "#/$defs/Param"
+        }
+      },
+      "required": [
+        "kind",
+        "maxSlopeDeg",
+        "maxStepM",
+        "speedMS"
+      ],
+      "title": "Agent",
+      "type": "object"
+    },
+    "CommSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "default": "none",
+          "enum": [
+            "none",
+            "delayed",
+            "one_plan_per_sol"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "uplinkLmstH": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 24.7,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uplinklmsth"
+        }
+      },
+      "title": "CommSpec",
+      "type": "object"
+    },
+    "Conditions": {
+      "additionalProperties": false,
+      "properties": {
+        "comm": {
+          "$ref": "#/$defs/CommSpec",
+          "default": {
+            "mode": "none",
+            "uplinkLmstH": null
+          }
+        },
+        "energy": {
+          "default": false,
+          "title": "Energy",
+          "type": "boolean"
+        },
+        "gravity": {
+          "$ref": "#/$defs/Param",
+          "default": {
+            "note": "g_eq + (g_pole - g_eq) * sin^2(lat), lat 18.49 N (Jezero window centre)",
+            "provenance": "computed",
+            "ref": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html",
+            "unit": "m/s2",
+            "value": 3.694
+          }
+        },
+        "hiddenRocks": {
+          "$ref": "#/$defs/RockSpec",
+          "default": {
+            "abundanceK": null,
+            "enabled": false,
+            "sensorRadiusM": null
+          }
+        },
+        "lighting": {
+          "default": false,
+          "title": "Lighting",
+          "type": "boolean"
+        },
+        "medaSols": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 8,
+          "title": "Medasols",
+          "type": "array"
+        },
+        "slip": {
+          "default": false,
+          "title": "Slip",
+          "type": "boolean"
+        },
+        "spe": {
+          "$ref": "#/$defs/SpeSpec",
+          "default": {
+            "enabled": false,
+            "warningMin": {
+              "note": "NESC recommends >= 30 min SEP warning; no NASA rule fixes EVA return time",
+              "provenance": "assumption",
+              "ref": "https://ntrs.nasa.gov/api/citations/20210014156/downloads/Parker%20el%20al.%20Helio%202050%20workshop%20poster_final.pdf",
+              "unit": "min",
+              "value": 30.0
+            }
+          }
+        },
+        "tau": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Param"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Conditions",
+      "type": "object"
+    },
+    "Param": {
+      "additionalProperties": false,
+      "properties": {
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "provenance": {
+          "enum": [
+            "source",
+            "computed",
+            "assumption"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        },
+        "unit": {
+          "maxLength": 32,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "unit",
+        "provenance"
+      ],
+      "title": "Param",
+      "type": "object"
+    },
+    "RewardWeights": {
+      "additionalProperties": false,
+      "properties": {
+        "energy": {
+          "default": 0.0,
+          "title": "Energy",
+          "type": "number"
+        },
+        "failure": {
+          "default": 10.0,
+          "title": "Failure",
+          "type": "number"
+        },
+        "goal": {
+          "default": 10.0,
+          "title": "Goal",
+          "type": "number"
+        },
+        "hazardAttempt": {
+          "default": 1.0,
+          "title": "Hazardattempt",
+          "type": "number"
+        },
+        "progress": {
+          "default": 0.3,
+          "title": "Progress",
+          "type": "number"
+        },
+        "risk": {
+          "default": 0.0,
+          "title": "Risk",
+          "type": "number"
+        },
+        "stepCost": {
+          "default": 0.1,
+          "title": "Stepcost",
+          "type": "number"
+        },
+        "time": {
+          "default": 0.0,
+          "title": "Time",
+          "type": "number"
+        }
+      },
+      "title": "RewardWeights",
+      "type": "object"
+    },
+    "RockSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "abundanceK": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Param"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "sensorRadiusM": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Param"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "RockSpec",
+      "type": "object"
+    },
+    "SpeSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "warningMin": {
+          "$ref": "#/$defs/Param",
+          "default": {
+            "note": "NESC recommends >= 30 min SEP warning; no NASA rule fixes EVA return time",
+            "provenance": "assumption",
+            "ref": "https://ntrs.nasa.gov/api/citations/20210014156/downloads/Parker%20el%20al.%20Helio%202050%20workshop%20poster_final.pdf",
+            "unit": "min",
+            "value": 30.0
+          }
+        }
+      },
+      "title": "SpeSpec",
+      "type": "object"
+    },
+    "TimeSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "sols": {
+          "exclusiveMinimum": 0,
+          "maximum": 30,
+          "title": "Sols",
+          "type": "number"
+        },
+        "startUtc": {
+          "maxLength": 32,
+          "title": "Startutc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "startUtc",
+        "sols"
+      ],
+      "title": "TimeSpec",
+      "type": "object"
+    },
+    "Window": {
+      "additionalProperties": false,
+      "properties": {
+        "col0": {
+          "minimum": 0,
+          "title": "Col0",
+          "type": "integer"
+        },
+        "cols": {
+          "exclusiveMinimum": 0,
+          "maximum": 4096,
+          "title": "Cols",
+          "type": "integer"
+        },
+        "datasetId": {
+          "maxLength": 64,
+          "title": "Datasetid",
+          "type": "string"
+        },
+        "gridId": {
+          "maxLength": 64,
+          "title": "Gridid",
+          "type": "string"
+        },
+        "row0": {
+          "minimum": 0,
+          "title": "Row0",
+          "type": "integer"
+        },
+        "rows": {
+          "exclusiveMinimum": 0,
+          "maximum": 4096,
+          "title": "Rows",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "datasetId",
+        "gridId",
+        "row0",
+        "col0",
+        "rows",
+        "cols"
+      ],
+      "title": "Window",
+      "type": "object"
+    }
+  },
+  "$id": "https://mars-x.dev/schemas/scenario.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "$ref": "#/$defs/Agent"
+    },
+    "conditions": {
+      "$ref": "#/$defs/Conditions",
+      "default": {
+        "comm": {
+          "mode": "none",
+          "uplinkLmstH": null
+        },
+        "energy": false,
+        "gravity": {
+          "note": "g_eq + (g_pole - g_eq) * sin^2(lat), lat 18.49 N (Jezero window centre)",
+          "provenance": "computed",
+          "ref": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html",
+          "unit": "m/s2",
+          "value": 3.694
+        },
+        "hiddenRocks": {
+          "abundanceK": null,
+          "enabled": false,
+          "sensorRadiusM": null
+        },
+        "lighting": false,
+        "medaSols": [],
+        "slip": false,
+        "spe": {
+          "enabled": false,
+          "warningMin": {
+            "note": "NESC recommends >= 30 min SEP warning; no NASA rule fixes EVA return time",
+            "provenance": "assumption",
+            "ref": "https://ntrs.nasa.gov/api/citations/20210014156/downloads/Parker%20el%20al.%20Helio%202050%20workshop%20poster_final.pdf",
+            "unit": "min",
+            "value": 30.0
+          }
+        },
+        "tau": null
+      }
+    },
+    "goal": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Goal"
+    },
+    "id": {
+      "maxLength": 96,
+      "pattern": "^[a-z0-9][a-z0-9_./-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "level": {
+      "enum": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "title": "Level",
+      "type": "string"
+    },
+    "maxSteps": {
+      "default": 600,
+      "exclusiveMinimum": 0,
+      "maximum": 20000,
+      "title": "Maxsteps",
+      "type": "integer"
+    },
+    "reward": {
+      "$ref": "#/$defs/RewardWeights",
+      "default": {
+        "energy": 0.0,
+        "failure": 10.0,
+        "goal": 10.0,
+        "hazardAttempt": 1.0,
+        "progress": 0.3,
+        "risk": 0.0,
+        "stepCost": 0.1,
+        "time": 0.0
+      }
+    },
+    "schemaVersion": {
+      "const": "scenario/1",
+      "default": "scenario/1",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "start": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Start"
+    },
+    "time": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TimeSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "title": {
+      "maxLength": 160,
+      "title": "Title",
+      "type": "string"
+    },
+    "window": {
+      "$ref": "#/$defs/Window"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "level",
+    "window",
+    "agent"
+  ],
+  "title": "Scenario",
+  "type": "object"
+}

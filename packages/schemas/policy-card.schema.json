@@ -1,0 +1,207 @@
+{
+  "$defs": {
+    "TrainingInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "maxLength": 64,
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "library": {
+          "maxLength": 64,
+          "title": "Library",
+          "type": "string"
+        },
+        "seed": {
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "split": {
+          "default": "train",
+          "enum": [
+            "train",
+            "test"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "suiteId": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suiteid"
+        },
+        "timesteps": {
+          "minimum": 0,
+          "title": "Timesteps",
+          "type": "integer"
+        },
+        "wallClockS": {
+          "minimum": 0,
+          "title": "Wallclocks",
+          "type": "number"
+        }
+      },
+      "required": [
+        "algorithm",
+        "library",
+        "timesteps",
+        "wallClockS",
+        "seed"
+      ],
+      "title": "TrainingInfo",
+      "type": "object"
+    }
+  },
+  "$id": "https://mars-x.dev/schemas/policy-card.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actSpec": {
+      "const": "act/1",
+      "default": "act/1",
+      "title": "Actspec",
+      "type": "string"
+    },
+    "authors": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Authors",
+      "type": "array"
+    },
+    "contract": {
+      "const": "policy/1",
+      "default": "policy/1",
+      "title": "Contract",
+      "type": "string"
+    },
+    "inputName": {
+      "const": "obs",
+      "default": "obs",
+      "title": "Inputname",
+      "type": "string"
+    },
+    "intendedUse": {
+      "maxLength": 1000,
+      "title": "Intendeduse",
+      "type": "string"
+    },
+    "license": {
+      "maxLength": 64,
+      "title": "License",
+      "type": "string"
+    },
+    "limitations": {
+      "maxLength": 2000,
+      "title": "Limitations",
+      "type": "string"
+    },
+    "metrics": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Metrics",
+      "type": "object"
+    },
+    "nActions": {
+      "const": 9,
+      "default": 9,
+      "title": "Nactions",
+      "type": "integer"
+    },
+    "name": {
+      "maxLength": 96,
+      "title": "Name",
+      "type": "string"
+    },
+    "obsDim": {
+      "const": 505,
+      "default": 505,
+      "title": "Obsdim",
+      "type": "integer"
+    },
+    "obsSpec": {
+      "const": "obs/1",
+      "default": "obs/1",
+      "title": "Obsspec",
+      "type": "string"
+    },
+    "onnxBytes": {
+      "exclusiveMinimum": 0,
+      "maximum": 20971520,
+      "title": "Onnxbytes",
+      "type": "integer"
+    },
+    "onnxSha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Onnxsha256",
+      "type": "string"
+    },
+    "ops": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Ops",
+      "type": "array"
+    },
+    "opset": {
+      "maximum": 21,
+      "minimum": 17,
+      "title": "Opset",
+      "type": "integer"
+    },
+    "outputName": {
+      "const": "logits",
+      "default": "logits",
+      "title": "Outputname",
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "policyCard/1",
+      "default": "policyCard/1",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "training": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TrainingInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "version": {
+      "maxLength": 32,
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "version",
+    "onnxSha256",
+    "onnxBytes",
+    "opset",
+    "ops",
+    "intendedUse",
+    "limitations",
+    "license"
+  ],
+  "title": "PolicyCard",
+  "type": "object"
+}

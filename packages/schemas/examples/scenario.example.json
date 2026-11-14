@@ -1,0 +1,76 @@
+{
+  "agent": {
+    "kind": "rtg_rover",
+    "maxSlopeDeg": {
+      "provenance": "source",
+      "ref": "https://science.nasa.gov/blog/tracks-along-the-longest-drive-on-another-world/",
+      "unit": "deg",
+      "value": 24.0
+    },
+    "maxStepM": {
+      "provenance": "source",
+      "ref": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
+      "unit": "m",
+      "value": 0.525
+    },
+    "params": {},
+    "speedMS": {
+      "provenance": "source",
+      "ref": "https://science.nasa.gov/mission/mars-2020-perseverance/rover-components/",
+      "unit": "m/s",
+      "value": 0.042
+    }
+  },
+  "conditions": {
+    "comm": {
+      "mode": "none"
+    },
+    "energy": false,
+    "gravity": {
+      "note": "g_eq + (g_pole - g_eq) * sin^2(lat), lat 18.49 N (Jezero window centre)",
+      "provenance": "computed",
+      "ref": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html",
+      "unit": "m/s2",
+      "value": 3.694
+    },
+    "hiddenRocks": {
+      "enabled": false
+    },
+    "lighting": false,
+    "medaSols": [],
+    "slip": false,
+    "spe": {
+      "enabled": false,
+      "warningMin": {
+        "note": "NESC recommends >= 30 min SEP warning; no NASA rule fixes EVA return time",
+        "provenance": "assumption",
+        "ref": "https://ntrs.nasa.gov/api/citations/20210014156/downloads/Parker%20el%20al.%20Helio%202050%20workshop%20poster_final.pdf",
+        "unit": "min",
+        "value": 30.0
+      }
+    }
+  },
+  "id": "jezero-v1/l1/rtg-geometry",
+  "level": "L1",
+  "maxSteps": 600,
+  "reward": {
+    "energy": 0.0,
+    "failure": 10.0,
+    "goal": 10.0,
+    "hazardAttempt": 1.0,
+    "progress": 0.3,
+    "risk": 0.0,
+    "stepCost": 0.1,
+    "time": 0.0
+  },
+  "schemaVersion": "scenario/1",
+  "title": "L1 geometry - RTG rover on the Jezero delta front",
+  "window": {
+    "col0": 0,
+    "cols": 512,
+    "datasetId": "jezero-v1",
+    "gridId": "nav2m",
+    "row0": 0,
+    "rows": 512
+  }
+}

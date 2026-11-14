@@ -1,0 +1,24 @@
+{
+  "actSpec": "act/1",
+  "authors": [],
+  "contract": "policy/1",
+  "inputName": "obs",
+  "intendedUse": "Example card.",
+  "license": "MIT",
+  "limitations": "Example only.",
+  "metrics": {},
+  "nActions": 9,
+  "name": "example/ppo",
+  "obsDim": 505,
+  "obsSpec": "obs/1",
+  "onnxBytes": 206942,
+  "onnxSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "ops": [
+    "Gemm",
+    "Tanh"
+  ],
+  "opset": 20,
+  "outputName": "logits",
+  "schemaVersion": "policyCard/1",
+  "version": "0.0.0"
+}

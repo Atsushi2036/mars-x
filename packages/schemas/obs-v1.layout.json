@@ -1,0 +1,141 @@
+{
+  "obsSpec": "obs/1",
+  "actSpec": "act/1",
+  "obsDim": 505,
+  "patchK": 11,
+  "patchChannels": [
+    "cost",
+    "knownHazard",
+    "relElevation",
+    "revealedRocks"
+  ],
+  "blocks": [
+    {
+      "name": "terrain",
+      "start": 0,
+      "size": 484,
+      "fields": [
+        "channel-major cost,knownHazard,relElevation,revealedRocks; each 11x11 row-major, centre = agent"
+      ],
+      "normalisation": "cost: clip((c-1)/4,0,1), blocked=1; hazard/rocks: 0|1; relElevation: clip(dz/5 m,-1,1)"
+    },
+    {
+      "name": "goal",
+      "start": 484,
+      "size": 4,
+      "fields": [
+        "dRow/64",
+        "dCol/64",
+        "unitRow",
+        "unitCol"
+      ],
+      "normalisation": "clip to [-1,1]"
+    },
+    {
+      "name": "agent",
+      "start": 488,
+      "size": 4,
+      "fields": [
+        "stateOfCharge",
+        "slipEstimate",
+        "sinHeading",
+        "cosHeading"
+      ],
+      "normalisation": "[0,1] / [-1,1]"
+    },
+    {
+      "name": "environment",
+      "start": 492,
+      "size": 8,
+      "fields": [
+        "sinSunElevation",
+        "sinSunAzimuth",
+        "cosSunAzimuth",
+        "sinLtst",
+        "cosLtst",
+        "airTemperature",
+        "tau",
+        "wind"
+      ],
+      "normalisation": "T: (T_C+100)/80; tau/3; wind/30 m/s; LTST angle = 2*pi*ltst_h/24; azimuth clockwise from north"
+    },
+    {
+      "name": "comm",
+      "start": 500,
+      "size": 3,
+      "fields": [
+        "linkAvailable",
+        "timeToUplinkSols",
+        "owltOver22min"
+      ],
+      "normalisation": "[0,1]"
+    },
+    {
+      "name": "time",
+      "start": 503,
+      "size": 2,
+      "fields": [
+        "solFractionLeft",
+        "stepsFractionLeft"
+      ],
+      "normalisation": "[0,1]"
+    }
+  ],
+  "actions": [
+    {
+      "index": 0,
+      "name": "N",
+      "dRow": -1,
+      "dCol": 0
+    },
+    {
+      "index": 1,
+      "name": "S",
+      "dRow": 1,
+      "dCol": 0
+    },
+    {
+      "index": 2,
+      "name": "E",
+      "dRow": 0,
+      "dCol": 1
+    },
+    {
+      "index": 3,
+      "name": "W",
+      "dRow": 0,
+      "dCol": -1
+    },
+    {
+      "index": 4,
+      "name": "NE",
+      "dRow": -1,
+      "dCol": 1
+    },
+    {
+      "index": 5,
+      "name": "NW",
+      "dRow": -1,
+      "dCol": -1
+    },
+    {
+      "index": 6,
+      "name": "SE",
+      "dRow": 1,
+      "dCol": 1
+    },
+    {
+      "index": 7,
+      "name": "SW",
+      "dRow": 1,
+      "dCol": -1
+    },
+    {
+      "index": 8,
+      "name": "WAIT",
+      "dRow": 0,
+      "dCol": 0
+    }
+  ],
+  "gridConvention": "north-up; row grows southwards; col grows eastwards; cell = 2 m"
+}
