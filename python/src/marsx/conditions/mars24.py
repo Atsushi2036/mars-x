@@ -152,3 +152,13 @@ def mars_solar_state(unix_ms, lat_deg, lon_east_deg) -> SolarState:
         out(dt), out(m), out(fms), out(pbs), out(nu_m), out(ls), out(eot), out(mst),
         out(lmst), out(ltst), out(sub_lon), out(dec), out(r_au), out(zen), out(90.0 - zen), out(az),
     )
+
+
+def unix_ms_from_msd(msd):
+    """Inverse of :func:`mars_sol_date` (milliseconds, rounded; |error| <= 1 ms)."""
+    jd_tt = (np.asarray(msd, dtype=float) - 44796.0 + 0.0009626) * SOL_DAYS + 2451549.5
+    ms = np.round((jd_tt - 2440587.5) * 8.64e7 - 64184.0).astype(np.int64)  # first guess, TT-UTC = 64.184 s
+    for _ in range(2):  # refine with the exact leap-second count
+        tt_utc = TT_MINUS_TAI_S + np.asarray(leap_seconds_tai_utc(ms), dtype=float)
+        ms = np.round((jd_tt - 2440587.5) * 8.64e7 - tt_utc * 1000.0).astype(np.int64)
+    return int(ms) if ms.ndim == 0 else ms

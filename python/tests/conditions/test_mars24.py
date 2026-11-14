@@ -80,3 +80,18 @@ def test_sol_length_and_mars_sol_date():
     a = mars_sol_date(EX1["ms"])
     b = mars_sol_date(EX1["ms"] + int(round(88775.2441 * 1000)))
     assert b - a == pytest.approx(1.0, abs=1e-6)
+
+
+def test_unix_ms_from_msd_roundtrip():
+    from marsx.conditions.mars24 import mars_sol_date, unix_ms_from_msd
+
+    ms = np.array([EX1["ms"], EX2["ms"], 1_800_000_000_000], dtype=np.int64)
+    back = unix_ms_from_msd(mars_sol_date(ms))
+    assert np.abs(back - ms).max() <= 2  # milliseconds
+
+
+def test_perseverance_landing_local_time():
+    # NASA: Perseverance landed 2021-02-18 ~20:55 UTC at ~15:55 local mean solar time (Jezero 77.45 E).
+    ms = int(np.datetime64("2021-02-18T20:55:00", "ms").astype(np.int64))
+    s = mars_solar_state(ms, 18.44, 77.45)
+    assert 15.0 < s.lmst_h < 16.5
