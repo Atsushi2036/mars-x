@@ -1,0 +1,50 @@
+name: Export check (Gazebo, manual)
+
+# NOT RUN YET: written but never executed. Manual only (workflow_dispatch).
+# Needs the processed dataset as a GitHub Release asset (data/dataset.lock.json, see docs/devops/deploy.md).
+# Checks the generated world.sdf with Gazebo's own parser (gz sdf -k). It installs Gazebo Harmonic from the official
+# OSRF apt repository (packages.osrfoundation.org); pin or replace by an official image once verified.
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: Scenario id to export and check
+        default: jezero-v1/l2/solar-clear
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  gazebo-sdf:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Enable corepack
+        run: corepack enable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - name: Fetch dataset (sha256 verified)
+        run: node scripts/dataset.mjs fetch jezero-v1
+      - name: Export package
+        env:
+          SCENARIO: ${{ inputs.scenario }}
+        run: |
+          uv sync --project python --locked
+          uv run --project python python -m marsx.export --scenario "$SCENARIO" --data data/processed/jezero-v1 --out "$RUNNER_TEMP/pkg"
+          unzip -q "$RUNNER_TEMP"/pkg/*.zip -d "$RUNNER_TEMP/unz"
+      - name: Install Gazebo Harmonic (official OSRF repository)
+        run: |
+          sudo curl -fsSL https://packages.osrfoundation.org/gazebo.gpg -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list
+          sudo apt-get update
+          sudo apt-get install -y gz-harmonic
+      - name: Validate world.sdf with gz
+        run: |
+          cd "$RUNNER_TEMP"/unz/*/
+          gz sdf -k world.sdf
