@@ -85,9 +85,10 @@ class AStarReplanPolicy:
     """
 
     name = "baseline/astar-replan"
+    WINDOW_MARGIN = 48  # cells around the start/goal bounding box searched first
 
     def begin(self, specs: Sequence[EpisodeSpec], env: Any) -> None:
-        self.base = np.asarray(getattr(env, "engine", env).cost, dtype=np.float32)
+        self.base = np.array(getattr(env, "engine", env).cost, dtype=np.float32)  # private copy, edited in place
         self.goals = [tuple(int(x) for x in s.goal) for s in specs]
         self.blocked: list[set[tuple[int, int]]] = [set() for _ in specs]
         self.paths: list[list[tuple[int, int]]] = [[] for _ in specs]
@@ -96,13 +97,31 @@ class AStarReplanPolicy:
         self._k = k
 
     def _plan(self, i: int, cur: tuple[int, int]) -> None:
-        cost = self.base
-        if self.blocked[i]:
-            cost = self.base.copy()
-            rr, cc = zip(*self.blocked[i])
-            cost[list(rr), list(cc)] = np.inf
-        p = astar_path(cost, cur, self.goals[i])
-        self.paths[i] = [tuple(int(x) for x in q) for q in p]
+        """A* inside the start/goal bounding box (+margin) with this env's rocks set in place, then restored;
+        falls back to the full map when the window has no path."""
+        goal = self.goals[i]
+        h, w = self.base.shape
+        m = self.WINDOW_MARGIN
+        r0, r1 = max(0, min(cur[0], goal[0]) - m), min(h, max(cur[0], goal[0]) + m + 1)
+        c0, c1 = max(0, min(cur[1], goal[1]) - m), min(w, max(cur[1], goal[1]) + m + 1)
+        blocked = list(self.blocked[i])
+        saved = None
+        if blocked:
+            rr = np.fromiter((q[0] for q in blocked), np.int64, len(blocked))
+            cc = np.fromiter((q[1] for q in blocked), np.int64, len(blocked))
+            saved = self.base[rr, cc].copy()
+            self.base[rr, cc] = np.inf
+        try:
+            for (a0, a1, b0, b1) in ((r0, r1, c0, c1), (0, h, 0, w)):
+                sub = self.base[a0:a1, b0:b1]
+                p = astar_path(sub, (cur[0] - a0, cur[1] - b0), (goal[0] - a0, goal[1] - b0))
+                if len(p):
+                    self.paths[i] = [(int(q[0]) + a0, int(q[1]) + b0) for q in p]
+                    return
+            self.paths[i] = []
+        finally:
+            if saved is not None:
+                self.base[rr, cc] = saved
 
     def act(self, obs: np.ndarray, info: Mapping[str, Any] | None = None) -> np.ndarray:
         if info is None or "cell" not in info:

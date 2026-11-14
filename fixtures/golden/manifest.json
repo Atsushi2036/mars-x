@@ -1,0 +1,22 @@
+{
+ "specVersion": "golden/1",
+ "generator": "python/tests/parity/golden_gen.py",
+ "files": {
+  "nav/cases.json": {
+   "sha256": "d4318776c365c999fb708b4e0cd1cbe8d7b555422f60858ab9b2ffdbc0ef2fd8",
+   "bytes": 27502
+  },
+  "env/env-golden.json": {
+   "sha256": "c726d16d3ba546d8f2d636489bb848556063ac75603839ec27ddeb82ac975aea",
+   "bytes": 330780
+  },
+  "env/env-l2-golden.json": {
+   "sha256": "353d178a73d2cfb4433230562be438abb430ff2d0337903c165668ac0cd9f32b",
+   "bytes": 95976
+  },
+  "metrics/metrics-golden.json": {
+   "sha256": "9b0e493869cddbbd05f61bd2ee7d653c56d9ebd6694be802a4a6afce5813ec62",
+   "bytes": 29139
+  }
+ }
+}
