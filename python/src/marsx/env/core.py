@@ -332,8 +332,10 @@ class NavBatch:
         reward = np.where(act, reward, 0.0).astype(np.float32)
 
         if self.record:
-            for i in np.flatnonzero(act):
-                self.trajs[i].append((*self.cell(int(i)), float(self.t_s[i]), float(self.soc[i]), int(a[i])))
+            for i in np.flatnonzero(act):  # traj/1: action of the previous state, then the new state + WAIT sentinel
+                r_, c_, t_, soc_, _ = self.trajs[i][-1]
+                self.trajs[i][-1] = (r_, c_, t_, soc_, int(a[i]))
+                self.trajs[i].append((*self.cell(int(i)), float(self.t_s[i]), float(self.soc[i]), spec.WAIT))
 
         done = terminated | truncated
         info = self.info(outcome)

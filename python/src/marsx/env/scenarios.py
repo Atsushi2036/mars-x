@@ -41,9 +41,9 @@ _SOLAR = Agent(
     max_step_m=Param(value=0.525, unit="m", provenance="assumption", note="Perseverance wheel diameter reused"),
     speed_m_s=Param(value=0.042, unit="m/s", provenance="assumption", note="Perseverance top speed reused"),
 )
-# 09:00 LTST at Jezero (Mars24): aphelion clear season (Ls 74.5) and inside the Jan-2022 regional storm (Ls 154.4).
+# 09:00 LTST at Jezero (Mars24): aphelion clear season (Ls 74.5) and inside the Jan-2022 regional storm (Ls 153.8).
 _CLEAR = TimeSpec(start_utc="2021-07-20T15:09:00Z", sols=1)
-_STORM = TimeSpec(start_utc="2022-01-08T04:54:00Z", sols=1)
+_STORM = TimeSpec(start_utc="2022-01-07T04:14:50Z", sols=1)  # 09:00 LTST, sol 314 (Ls 153.8); tables 314-315
 _TAU_CLEAR = Param(value=0.5, unit="-", provenance="assumption", note="typical aphelion-season dust opacity; replace with MEDA/SkyCam")
 _TAU_STORM = Param(value=2.0, unit="-", provenance="source", ref=LEMMON_2022)
 _ROCKS = RockSpec(enabled=True, abundance_k=Param(value=0.05, unit="fraction", provenance="assumption"),
@@ -65,10 +65,10 @@ _BUILTIN = {
                  conditions=Conditions(tau=_TAU_CLEAR, lighting=True, energy=True)),
         Scenario(id="jezero-v1/l2/solar-storm", title="L2 conditions - solar rover, Jan-2022 dust storm", level="L2",
                  window=_WINDOW, agent=_SOLAR, time=_STORM, max_steps=800,
-                 conditions=Conditions(tau=_TAU_STORM, meda_sols=[313], lighting=True, energy=True)),
+                 conditions=Conditions(tau=_TAU_STORM, meda_sols=[314, 315], lighting=True, energy=True)),
         Scenario(id="jezero-v1/l2/rtg-storm", title="L2 conditions - RTG rover, Jan-2022 dust storm", level="L2",
                  window=_WINDOW, agent=_ROVER, time=_STORM, max_steps=800,
-                 conditions=Conditions(tau=_TAU_STORM, meda_sols=[313], lighting=True, energy=True)),
+                 conditions=Conditions(tau=_TAU_STORM, meda_sols=[314, 315], lighting=True, energy=True)),
         Scenario(id="jezero-v1/l2/astronaut-clear", title="L2 conditions - astronaut EVA with space-weather alert",
                  level="L2", window=_WINDOW, agent=_ASTRONAUT, time=_CLEAR, max_steps=800,
                  conditions=Conditions(tau=_TAU_CLEAR, lighting=True, energy=True, spe=SpeSpec(enabled=True))),

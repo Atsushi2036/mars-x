@@ -61,7 +61,7 @@ def example_documents() -> dict[str, dict]:
         scenario=run.ScenarioRef(id=sc.id, sha256="1" * 64),
         policy=run.PolicyRef(name="baseline/astar", kind="baseline"),
         conditions=run.ConditionsSummary(gravity=scenario.JEZERO_GRAVITY.value),
-        episodes=[run.EpisodeResult(index=0, seed=1, start=[10, 10], goal=[11, 12], outcome="success", steps=3,
+        episodes=[run.EpisodeResult(index=0, seed=1, start=[10, 10], goal=[11, 12], outcome="success", steps=2,
                                     path_m=4.83, oracle=run.Oracle(path_m=4.83, cost=5.1),
                                     events=[run.Event(t=48, type="replan", cell=[10, 11])], trajectory=tr)],
         metrics=run.Metrics(n=1, success=1.0, success_ci95=[0.2065, 1.0], spl=1.0),

@@ -104,3 +104,23 @@ def test_spe_violation_when_shelter_not_reached_in_time():
             outcome = info["outcome"][0]
             break
     assert outcome == "spe_violation"
+
+
+DATA = __import__("pathlib").Path(__file__).resolve().parents[2] / "data" / "processed" / "jezero-v1"
+
+
+@pytest.mark.skipif(not (DATA / "manifest.json").exists(), reason="processed dataset not built")
+def test_l2_reads_pipeline_tables_as_single_source():
+    from marsx.conditions import mars24
+    from marsx.env.l2 import MarsConditions
+    from marsx.env.terrain import load_terrain
+
+    t = load_terrain(DATA)
+    storm = MarsConditions(scenarios.get("jezero-v1/l2/solar-storm"), t)
+    assert storm.sources == {"sun": "table:sun_sol_314+sun_sol_315", "owlt": "table:owlt", "skyView": "layer:sky_view"}
+    ms = storm.t0_ms + np.arange(0, 600) * 60_000
+    ref = mars24.mars_solar_state(ms, t.center_lat_deg, t.center_lon_east_deg)
+    # manifest startUtc is truncated to whole seconds (sun moves ~0.004 deg/s): 0.01 deg tolerance
+    np.testing.assert_allclose(storm.elev[:600], np.asarray(ref.elevation_deg), atol=1e-2)
+    clear = MarsConditions(scenarios.get("jezero-v1/l2/solar-clear"), t)
+    assert clear.sources["sun"] == "mars24" and clear.sources["owlt"] == "table:owlt"

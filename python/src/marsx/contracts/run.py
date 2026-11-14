@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from marsx.contracts.scenario import Cell, Finite, Level
 from marsx.contracts.traj import TrajectoryBlock
@@ -94,6 +94,13 @@ class EpisodeResult(Model):
     violations: int = Field(default=0, ge=0)
     events: list[Event] = Field(default_factory=list, max_length=MAX_EVENTS)
     trajectory: TrajectoryBlock | None = None
+
+    @model_validator(mode="after")
+    def _traj_one_entry_per_state(self) -> EpisodeResult:
+        # traj/1: entry k = state before action k (entry 0 = start); last entry = terminal state, action WAIT.
+        if self.trajectory is not None and self.trajectory.steps != self.steps + 1:
+            raise ValueError("trajectory.steps must equal steps + 1 (one entry per state, WAIT sentinel last)")
+        return self
 
 
 class Metrics(Model):

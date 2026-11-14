@@ -97,6 +97,18 @@ def test_run_rejects_unknown_outcome():
         run.Run.model_validate(doc)
 
 
+def test_trajectory_has_one_entry_per_state_with_wait_sentinel():
+    doc = _example_run()
+    ep = doc["episodes"][0]
+    assert ep["trajectory"]["steps"] == ep["steps"] + 1
+    t = traj.decode(run.Run.model_validate(doc).episodes[0].trajectory)
+    assert int(t.action[-1]) == obs.WAIT
+    bad = _example_run()
+    bad["episodes"][0]["steps"] = bad["episodes"][0]["trajectory"]["steps"]  # old layout: one entry per action
+    with pytest.raises(ValidationError, match="steps \\+ 1"):
+        run.Run.model_validate(bad)
+
+
 def test_run_caps_number_of_episodes():
     doc = _example_run()
     doc["episodes"] = doc["episodes"] * (run.MAX_EPISODES + 1)

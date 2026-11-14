@@ -92,6 +92,17 @@ def test_diagonal_corner_cutting_is_refused_like_marsx_nav():
     assert env.cell(0) == (10, 10) and env.shield[0] == 1
 
 
+def test_recorded_trajectory_follows_traj1_state_convention():
+    env = make(record=True, autoreset=False)
+    env.reset_to([0], starts=[(10, 10)], goals=[(10, 12)])
+    env.step(np.array([2]))
+    env.step(np.array([2]))
+    tr = env.finished[-1]["traj"]
+    assert [(r, c) for r, c, *_ in tr] == [(10, 10), (10, 11), (10, 12)]
+    assert [a for *_, a in tr] == [2, 2, obs_spec.WAIT]  # action taken FROM each state; WAIT sentinel last
+    assert len(tr) == env.finished[-1]["steps"] + 1
+
+
 def test_wait_keeps_position_and_advances_time():
     env = make()
     env.reset_to([0], starts=[(10, 10)], goals=[(10, 20)])

@@ -7,6 +7,8 @@ Binary layout (little-endian, structure of arrays, n = steps, 11 bytes per step)
     soc    float16[n]  offset 8n     (state of charge / suit consumables, 0..1)
     action uint8[n]    offset 10n    (act/1 index)
 ``sha256`` is the hex digest of the decoded bytes.
+Entries are STATES: entry k = state before action k (entry 0 = start), ``action[k]`` = action taken from it;
+the last entry is the terminal state with ``action = WAIT`` (sentinel). So ``n = episode steps + 1``.
 """
 
 from __future__ import annotations

@@ -23,6 +23,9 @@ class Terrain:
     horizon_deg: np.ndarray | None = None  # float16 (16, H, W): horizon elevation per azimuth k*22.5 deg from north
     center_lat_deg: float = 18.49
     center_lon_east_deg: float = 77.40
+    sky_view: np.ndarray | None = None  # float32 (H, W) from the pipeline's sky_view layer
+    slip_class: np.ndarray | None = None  # float32 (H, W): 0 fines, 1 mixed, 2 rock, NaN unknown (THEMIS proxy)
+    tables: dict[str, tuple[np.ndarray, dict]] | None = None  # time tables (sun_table, owlt_table): id -> (rows, meta)
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -48,15 +51,19 @@ def load_terrain(data_dir: str | Path, grid_id: str = "plan") -> Terrain:
     manifest = json.loads((data_dir / "manifest.json").read_text(encoding="utf-8"))
     layers = {(l["kind"], l["gridId"]): l for l in manifest["layers"]}
     get = lambda kind: _decode(data_dir, layers[(kind, grid_id)])  # noqa: E731
-    horizon = None
-    if ("horizon", grid_id) in layers:
-        hz = get("horizon")
-        horizon = np.nan_to_num(hz, nan=0.0).astype(np.float16)  # nodata -> open sky
+    opt = lambda kind: get(kind) if (kind, grid_id) in layers else None  # noqa: E731
+    hz = opt("horizon")
+    horizon = None if hz is None else np.nan_to_num(hz, nan=0.0).astype(np.float16)  # nodata -> open sky
+    sky = opt("sky_view")
+    tables = {l["id"]: (_decode(data_dir, l), l["table"]) for l in manifest["layers"]
+              if l["kind"] in ("sun_table", "owlt_table") and l.get("table")}
     center = manifest.get("crs", {}).get("center") or {}
     return Terrain(slope_deg=get("slope"), step_m=get("step"), height_m=get("elevation"),
                    res_m=float(manifest["grids"][grid_id]["resM"]), source=f"{manifest['datasetId']}:{grid_id}",
                    dataset_sha256=manifest.get("contentHash"), horizon_deg=horizon,
-                   center_lat_deg=float(center.get("lat", 18.49)), center_lon_east_deg=float(center.get("lon", 77.40)))
+                   center_lat_deg=float(center.get("lat", 18.49)), center_lon_east_deg=float(center.get("lon", 77.40)),
+                   sky_view=None if sky is None else np.nan_to_num(sky, nan=1.0), slip_class=opt("slip_class"),
+                   tables=tables or None)
 
 
 def synthetic_terrain(n: int = 128, seed: int = 0, res_m: float = 2.0, relief_m: float = 4.0) -> Terrain:
