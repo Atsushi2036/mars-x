@@ -83,6 +83,15 @@ def test_move_into_known_hazard_is_refused_and_penalised():
     assert r[0] == pytest.approx(-1.0)
 
 
+def test_diagonal_corner_cutting_is_refused_like_marsx_nav():
+    t = flat_terrain()
+    t.slope_deg[9, 10] = 40.0  # north neighbour blocked -> NE diagonal must be refused
+    env = make(t)
+    env.reset_to([0], starts=[(10, 10)], goals=[(5, 15)])
+    env.step(np.array([4]))  # NE
+    assert env.cell(0) == (10, 10) and env.shield[0] == 1
+
+
 def test_wait_keeps_position_and_advances_time():
     env = make()
     env.reset_to([0], starts=[(10, 10)], goals=[(10, 20)])

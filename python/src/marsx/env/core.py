@@ -235,7 +235,11 @@ class NavBatch:
         wait = (a == spec.WAIT) & act
         target = pos + self.move_off[a]
         try_move = act & ~wait
-        blocked = try_move & ~np.isfinite(self.cost_flat[target])
+        mvs = _MOVES[a]
+        diag = (mvs[:, 0] != 0) & (mvs[:, 1] != 0)
+        corner = diag & (~np.isfinite(self.cost_flat[pos + mvs[:, 0] * self.Wp])
+                         | ~np.isfinite(self.cost_flat[pos + mvs[:, 1]]))  # no corner cutting (as marsx.nav)
+        blocked = try_move & (~np.isfinite(self.cost_flat[target]) | corner)
         rock = try_move & ~blocked & self.rocks_flat[target]
         moved = try_move & ~blocked & ~rock
         new = np.where(moved, target, pos)
