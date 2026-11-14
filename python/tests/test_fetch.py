@@ -119,3 +119,35 @@ def test_fetch_file_records_sha256_and_detects_tampering(tmp_path):
 def test_fetch_file_rejects_plain_http_by_default(tmp_path):
     with pytest.raises(ValueError, match="https"):
         fetch.fetch_file("http://example.com/a", tmp_path, "a", "a", tmp_path / "l.json")
+
+
+def test_get_with_retry_survives_transient_connection_resets(tmp_path):
+    import http.server
+    import threading
+
+    calls = {"n": 0}
+
+    class Flaky(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            calls["n"] += 1
+            if calls["n"] < 3:
+                self.connection.close()  # abrupt reset, like Zenodo under load
+                return
+            self.send_response(200)
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *a):
+            pass
+
+    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Flaky)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        r = fetch.get_with_retry(f"http://127.0.0.1:{httpd.server_address[1]}/x", attempts=4, backoff_s=0.01)
+        assert r.content == b"ok" and calls["n"] == 3
+        calls["n"] = -100  # always fails
+        with pytest.raises(Exception):
+            fetch.get_with_retry(f"http://127.0.0.1:{httpd.server_address[1]}/x", attempts=2, backoff_s=0.01)
+    finally:
+        httpd.shutdown()

@@ -68,9 +68,12 @@ def alignment_report(ortho_1m: np.ndarray, dem: np.ndarray, grid_res: float = 1.
     """
     o = _highpass(ortho_1m)
     best = (0.0, 0.0, 30.0)
+    o_s = _highpass(ortho_1m[::2, ::2], 3.0).ravel()  # coarse scan on a 2x subsample (4x cheaper)
+    dem_s = np.ascontiguousarray(dem[::2, ::2])
     for alt in (15.0, 25.0, 35.0, 45.0):
         for az in range(0, 360, 15):
-            c = float(np.corrcoef(o.ravel(), _highpass(hillshade(dem, grid_res, float(az), alt)).ravel())[0, 1])
+            hs = _highpass(hillshade(dem_s, grid_res * 2.0, float(az), alt), 3.0)
+            c = float(np.corrcoef(o_s, hs.ravel())[0, 1])
             if abs(c) > abs(best[1]):
                 best = (float(az), c, alt)
     az, corr, alt = best

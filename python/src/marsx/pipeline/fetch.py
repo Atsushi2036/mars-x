@@ -198,6 +198,25 @@ class ChecksumMismatch(RuntimeError):
     pass
 
 
+def get_with_retry(url: str, attempts: int = 5, backoff_s: float = 2.0, timeout: float = 120.0):
+    """``requests.get`` (TLS verified) retried with exponential backoff on connection errors / 5xx."""
+    import requests
+
+    last: Exception | None = None
+    for i in range(attempts):
+        try:
+            r = requests.get(url, timeout=timeout)
+            if r.status_code >= 500 or r.status_code == 429:
+                raise requests.HTTPError(f"{r.status_code} for {url}")
+            r.raise_for_status()
+            return r
+        except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as e:
+            last = e
+            if i < attempts - 1:
+                time.sleep(backoff_s * (2**i))
+    raise last  # type: ignore[misc]
+
+
 def fetch_file(
     url: str,
     cache_dir: Path,
@@ -226,8 +245,7 @@ def fetch_file(
     entry = lock["sources"].get(name)
     if entry and not refresh and path.exists() and sha256_file(path) == entry["sha256"]:
         return path
-    r = requests.get(url, timeout=120)  # verify=True by default
-    r.raise_for_status()
+    r = get_with_retry(url)
     digest = hashlib.sha256(r.content).hexdigest()
     if entry and not refresh and entry["sha256"] != digest:
         raise ChecksumMismatch(f"{name}: upstream sha256 {digest} != locked {entry['sha256']}")

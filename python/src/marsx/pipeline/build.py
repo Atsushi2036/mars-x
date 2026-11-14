@@ -19,7 +19,7 @@ import rasterio
 from PIL import Image
 
 from .. import schemas
-from . import derive, encode, features, fetch, tiles, validate
+from . import derive, encode, features, fetch, tables, tiles, validate
 from .geo import Grid, LocalProjection, sample_bilinear
 from .reproject import reproject_to_grid
 
@@ -32,6 +32,7 @@ HIRISE = "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/"
 DEM_URL = HIRISE + "JEZ_hirise_soc_006_DTM_MOLAtopography_DeltaGeoid_1m_Eqc_latTs0_lon0_blend40.tif"
 ORTHO_URL = HIRISE + "JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first.tif"
 CRISM_URL = "https://zenodo.org/records/5575824/files/jezeroFinal.tif"
+THEMIS_URL = "https://zenodo.org/records/4931348/files/Jezero_Thermal_Inertia_v1.tiff"
 CRISM_README_URL = "https://zenodo.org/records/5575824/files/Jezero_readme.pdf"
 M20 = "https://mars.nasa.gov/mmgis-maps/M20/Layers/json/"
 
@@ -70,6 +71,9 @@ class Region:
     horizon_max_m: float = 600.0
     webp_quality: int = 82
 
+
+# dust-storm window (Lemmon et al. 2022); 'clear' sols are added once the data team pins them
+SUN_SOLS = (313, 314, 315)
 
 REGIONS = {
     # Delta-front window: densest stretch of the real traverse inside DEM ∩ ortho ∩ CRISM (see validation report).
@@ -197,6 +201,11 @@ def build(region: Region, workers: int | None = None, bench: bool = True, refres
         fetch.fetch_file(
             CRISM_README_URL, RAW / "crism", "crism_readme", "Jezero_readme.pdf", LOCK, refresh=refresh,
             title="CRISM Jezero map README (colour key)", license="CC-BY-4.0", attribution="Parente et al.")
+        themis_path = fetch.fetch_file(
+            THEMIS_URL, RAW / "themis", "themis_ti", "Jezero_Thermal_Inertia_v1.tiff", LOCK, refresh=refresh,
+            title="THEMIS-derived thermal inertia of Jezero crater (100 m/px)", doi="10.5281/zenodo.4931348",
+            license="CC-BY-4.0",
+            attribution="C. S. Edwards, J. Buz (Northern Arizona University); THEMIS / 2001 Mars Odyssey")
         trav_path = fetch.fetch_file(
             M20 + "M20_traverse.json", RAW / "m20", "m20_traverse", "M20_traverse.json", LOCK, refresh=refresh,
             title="Mars 2020 Perseverance traverse (MMGIS)", license="NASA public data (no licence text published)",
@@ -251,11 +260,11 @@ def build(region: Region, workers: int | None = None, bench: bool = True, refres
                 ("slope+roughness+step 2048^2",
                  lambda parallel: (derive.slope_deg(dem, 1.0, parallel), derive.roughness(dem, 1.0, parallel=parallel),
                                    derive.step_height(dem, parallel)), {}),
-                ("horizon 16 az 1024^2",
-                 lambda parallel: derive.horizon_maps(plan_h, 2.0, region.n_az, region.horizon_max_m, parallel), {}),
+                ("horizon 16 az (512^2 crop of the 2 m grid)",
+                 lambda parallel: derive.horizon_maps(plan_h[:512, :512], 2.0, region.n_az, region.horizon_max_m, parallel), {}),
             ]:
                 s = min(timed(fn, parallel=False) for _ in range(2))
-                p = min(timed(fn, parallel=True) for _ in range(2))
+                p = min(timed(fn, parallel=True) for _ in range(3))
                 par[name] = {"serialS": round(s, 3), "parallelS": round(p, 3), "speedup": round(s / p, 2),
                              "threads": int(__import__("numba").get_num_threads())}
 
@@ -278,7 +287,9 @@ def build(region: Region, workers: int | None = None, bench: bool = True, refres
         # alignment first: it is attached to the layers it validates
         ortho_1m = ortho.reshape(G["dem"].height, region.ortho_factor, G["dem"].width, region.ortho_factor)
         ortho_1m = ortho_1m.astype(np.float32).mean(axis=(1, 3))
+        t_a = time.perf_counter()
         align = validate.alignment_report(ortho_1m, dem, region.dem_res)
+        tm.stages['encode:alignment'] = round(time.perf_counter() - t_a, 3)
         cov_dem = float(1 - np.isnan(dem).mean())
         cov_ortho = float((ortho > 0).mean())
 
@@ -346,7 +357,9 @@ def build(region: Region, workers: int | None = None, bench: bool = True, refres
             validation=schemas.LayerValidation(coverage=cov_dem, method="derived from the validated DEM")))
 
         buf = io.BytesIO()
+        t_a = time.perf_counter()
         Image.fromarray(normals, mode="RGB").save(buf, format="WEBP", lossless=True, method=4)
+        tm.stages["encode:normals-webp"] = round(time.perf_counter() - t_a, 3)
         sha, nb = write_raw("normals.webp", buf.getvalue())
         layers.append(schemas.Layer(
             id="normals", kind="normal", grid_id="dem", path="normals.webp", sha256=sha, bytes=nb,
@@ -356,7 +369,9 @@ def build(region: Region, workers: int | None = None, bench: bool = True, refres
             validation=schemas.LayerValidation(coverage=cov_dem, method="derived from the validated DEM")))
 
         # ortho pyramid (parallel encode) + serial benchmark on the same 32 tiles
+        t_a = time.perf_counter()
         pyr = tiles.write_pyramid(ortho, out, tile=region.tile, quality=region.webp_quality, workers=workers)
+        tm.stages['encode:ortho-pyramid'] = round(time.perf_counter() - t_a, 3)
         if bench:
             sample = [np.ascontiguousarray(ortho[(i // 16) * region.tile:(i // 16 + 1) * region.tile,
                                                  (i % 16) * region.tile:(i % 16 + 1) * region.tile]) for i in range(32)]
@@ -408,10 +423,85 @@ def build(region: Region, workers: int | None = None, bench: bool = True, refres
                                   retrieved_at=crism_lock["retrievedAt"], raw_sha256=crism_lock["sha256"]),
             validation=schemas.LayerValidation(coverage=float(covered), method="fraction of the window inside CRISM scenes (non-white fill)")))
 
+        # ---- condition tables (T2)
+        svf = tables.sky_view_u8(horizon)
+        sha, nb = write_raw("sky_view.u8", svf.tobytes())
+        layers.append(schemas.Layer(
+            id="sky_view", kind="sky_view", grid_id="plan", path="sky_view.u8", sha256=sha, bytes=nb,
+            shape=list(svf.shape), axes="row,col",
+            encoding=schemas.Encoding(dtype="uint8", endian="n/a", scale=1.0 / tables.SVF_ONE, offset=0.0, nodata=255,
+                                      description="sky view factor = mean over 16 azimuths of cos^2(horizon elevation); q/254"),
+            stats=_stats(np.where(svf == 255, np.nan, svf / tables.SVF_ONE)), origin="derived", source=src(dem_lock, True),
+            validation=schemas.LayerValidation(coverage=cov_dem, method="derived from the horizon maps")))
+        with rasterio.open(themis_path) as ds:
+            ti, slip_cls = tables.thermal_inertia_to_grid(ds.read(1), ds.transform, ds.crs, G["plan"], proj, nodata=ds.nodata)
+        themis = lock["themis_ti"]
+        themis_src = schemas.Source(title=themis["title"], doi=themis["doi"], url=themis["url"], license=themis["license"],
+                                    attribution=themis["attribution"], retrieved_at=themis["retrievedAt"],
+                                    raw_sha256=themis["sha256"])
+        ti_cov = float(1 - np.isnan(ti).mean())
+        qt, enc_t = encode.height_to_u16(ti)
+        sha, nb = write_raw("thermal_inertia.u16", encode.to_le_bytes(qt))
+        layers.append(schemas.Layer(
+            id="thermal_inertia", kind="thermal_inertia", grid_id="plan", path="thermal_inertia.u16", sha256=sha, bytes=nb,
+            shape=list(ti.shape), axes="row,col",
+            encoding=schemas.Encoding(**enc_t, description="J m^-2 K^-1 s^-1/2 = q * scale + offset; native 100 m/px resampled bilinearly (no real detail below 100 m)"),
+            stats=_stats(ti), origin="observed", source=themis_src,
+            validation=schemas.LayerValidation(coverage=ti_cov, method="fraction of the window with non-null THEMIS pixels")))
+        sha, nb = write_raw("slip_class.u8", slip_cls.tobytes())
+        layers.append(schemas.Layer(
+            id="slip_class", kind="slip_class", grid_id="plan", path="slip_class.u8", sha256=sha, bytes=nb,
+            shape=list(slip_cls.shape), axes="row,col",
+            encoding=schemas.Encoding(dtype="uint8", endian="n/a", nodata=255,
+                                      description="0 loose fines (TI<150), 1 mixed, 2 rock/bedrock (TI>=400), 255 unknown; thresholds are team assumptions (marsx.conditions.slip)"),
+            legend=[schemas.LegendItem(color="#d9b26f", label="loose fines / sand", pixels=int((slip_cls == 0).sum())),
+                    schemas.LegendItem(color="#a67c52", label="mixed / indurated", pixels=int((slip_cls == 1).sum())),
+                    schemas.LegendItem(color="#5b5b5b", label="rock / bedrock", pixels=int((slip_cls == 2).sum()))],
+            notes="material class from THEMIS night-time thermal inertia (100 m/px, ~20 % accuracy); a PROXY, not wheel-soil mechanics",
+            origin="derived", source=themis_src,
+            validation=schemas.LayerValidation(coverage=ti_cov, method="derived from THEMIS thermal inertia")))
+        now_utc = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        mars24_src = schemas.Source(
+            title="Mars24 sun position algorithm (Allison & McEwen 2000), marsx.conditions.mars24",
+            url="https://www.giss.nasa.gov/tools/mars24/help/algorithm.html", license="algorithm (no data licence)",
+            attribution="Allison & McEwen 2000, Planet. Space Sci. 48", retrieved_at=now_utc)
+        (out / "sun").mkdir(exist_ok=True)
+        for sol in SUN_SOLS:
+            start = tables.perseverance_sol_start_ms(sol, region.lon0)
+            tab = tables.sun_table(start, 1481, 60.0, region.lat0, region.lon0)  # one sol + 1 sample, every minute
+            sha, nb = write_raw(f"sun/sol-{sol}.f32", encode.to_le_bytes(tab))
+            layers.append(schemas.Layer(
+                id=f"sun_sol_{sol}", kind="sun_table", path=f"sun/sol-{sol}.f32", sha256=sha, bytes=nb,
+                shape=list(tab.shape), axes="minute,[azimuth_deg_cw_from_north, elevation_deg, mars_sun_au]",
+                encoding=schemas.Encoding(dtype="float32", endian="little",
+                                          description="Mars24 sun position at the window centre, every 60 s from local mean solar midnight"),
+                table=schemas.TableInfo(
+                    columns=["azimuth_deg", "elevation_deg", "r_au"],
+                    start_utc=datetime.fromtimestamp(start / 1000, UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    step_s=60.0, rows=int(tab.shape[0]), lat=region.lat0, lon_east=region.lon0),
+                origin="derived", source=mars24_src))
+        o_start = int(datetime(2021, 2, 18, tzinfo=UTC).timestamp() * 1000)
+        o_end = int(datetime(2028, 1, 1, tzinfo=UTC).timestamp() * 1000)
+        ow = tables.owlt_table(o_start, o_end, 1.0)
+        sha, nb = write_raw("owlt.f32", encode.to_le_bytes(ow))
+        layers.append(schemas.Layer(
+            id="owlt", kind="owlt_table", path="owlt.f32", sha256=sha, bytes=nb, shape=list(ow.shape),
+            axes="hour,[owlt_s, link_available]",
+            encoding=schemas.Encoding(dtype="float32", endian="little",
+                                      description="one-way light time (s) and link 1/0 (0 inside the solar-conjunction moratorium); approximate Keplerian ephemeris"),
+            table=schemas.TableInfo(columns=["owlt_s", "link_available"], start_utc="2021-02-18T00:00:00Z",
+                                    step_s=3600.0, rows=int(ow.shape[0])),
+            origin="derived",
+            source=schemas.Source(title="Approximate Keplerian ephemeris (JPL) in marsx.conditions.comms",
+                                  url="https://ssd.jpl.nasa.gov/planets/approx_pos.html",
+                                  license="algorithm (no data licence)", attribution="NASA/JPL Solar System Dynamics",
+                                  retrieved_at=now_utc)))
+
         # vector layers
         trav = json.loads(trav_path.read_text(encoding="utf-8"))
         wps = json.loads(wp_path.read_text(encoding="utf-8"))
-        sampler = lambda x, y: sample_bilinear(np.nan_to_num(dem, nan=0.0), G["dem"], x, y)  # noqa: E731
+        dem0 = np.nan_to_num(dem, nan=0.0)  # hoisted: copying a 2048^2 array per sample was the slowest step
+        sampler = lambda x, y: sample_bilinear(dem0, G["dem"], x, y)  # noqa: E731
         trav_fc = features.traverse_geojson(trav, proj, G["dem"], sampler)
         wp_fc = features.waypoints_geojson(wps, proj, G["dem"], sampler)
         for fn, fc, key, lid in (("traverse.geojson", trav_fc, "m20_traverse", "traverse"),
@@ -454,7 +544,7 @@ def build(region: Region, workers: int | None = None, bench: bool = True, refres
         (out / "manifest.json").write_text(manifest.model_dump_json(by_alias=True, indent=2), encoding="utf-8")
         schemas.export_schemas(REPO / "packages" / "schemas")
 
-    timings = {"stagesSeconds": tm.stages, "totalSeconds": round(sum(tm.stages.values()), 2), "workers": workers,
+    timings = {"stagesSeconds": tm.stages, "totalSeconds": round(sum(v for k, v in tm.stages.items() if ":" not in k), 2), "workers": workers,
                "cpuCount": os.cpu_count(), "parallelism": par,
                "note": "bench-derive and the tiles benchmark are extra runs used only to measure the speed-up"}
     (out / "timings.json").write_text(json.dumps(timings, indent=2), encoding="utf-8")
@@ -481,7 +571,8 @@ def build_validation(region, G, proj, dem, slope, wp_fc, trav_fc, align, cov_dem
 
     wps = wp_fc["features"]
     xy = np.array([w["properties"]["local"][:2] for w in wps]) if wps else np.zeros((0, 2))
-    s_pt = np.array([sample_bilinear(np.nan_to_num(slope, nan=0.0), G["dem"], x, y) for x, y in xy]) if len(xy) else np.zeros(0)
+    slope0 = np.nan_to_num(slope, nan=0.0)
+    s_pt = np.array([sample_bilinear(slope0, G["dem"], x, y) for x, y in xy]) if len(xy) else np.zeros(0)
     dem_s = gaussian_filter(np.nan_to_num(dem, nan=float(np.nanmean(dem))), 1.5)
     from . import derive as dv
 

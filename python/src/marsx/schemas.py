@@ -103,13 +103,25 @@ class LegendItem(Model):
     pixels: int | None = None
 
 
+class TableInfo(Model):
+    """Layout of a non-gridded table: row i is time start_utc + i * step_s."""
+
+    columns: list[str]
+    start_utc: str
+    step_s: float
+    rows: int
+    lat: float | None = None
+    lon_east: float | None = None
+
+
 class Layer(Model):
     id: str
     kind: Literal[
         "elevation", "slope", "aspect", "roughness", "step", "hazard", "normal",
         "horizon", "orthoimage", "mineral", "vector",
+        "sky_view", "thermal_inertia", "slip_class", "sun_table", "owlt_table",
     ]
-    grid_id: str
+    grid_id: str | None = None  # None for non-gridded tables
     path: str
     sha256: Sha256
     bytes: int = Field(ge=0)
@@ -119,6 +131,7 @@ class Layer(Model):
     stats: Stats | None = None
     legend: list[LegendItem] | None = None
     tiling: Tiling | None = None
+    table: TableInfo | None = None
     notes: str | None = None
     origin: Literal["observed", "derived", "simulated"]
     source: Source
@@ -142,7 +155,7 @@ class Manifest(Model):
     @model_validator(mode="after")
     def _layers_reference_grids(self) -> Manifest:
         for layer in self.layers:
-            if layer.grid_id not in self.grids:
+            if layer.grid_id is not None and layer.grid_id not in self.grids:
                 raise ValueError(f"layer {layer.id}: gridId {layer.grid_id!r} is not declared in grids")
         return self
 

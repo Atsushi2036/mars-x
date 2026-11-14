@@ -13,6 +13,9 @@ dependencies = [
   "gymnasium>=1.4,<1.5",
 ]
 
+[project.scripts]
+marsx = "marsx.cli:main"
+
 [project.optional-dependencies]
 # geospatial data pipeline (data/raw -> data/processed); not needed to use the SDK on prepared data
 pipeline = [

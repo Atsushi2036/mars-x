@@ -228,8 +228,16 @@
           "$ref": "#/$defs/Encoding"
         },
         "gridId": {
-          "title": "Gridid",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gridid"
         },
         "id": {
           "title": "Id",
@@ -247,7 +255,12 @@
             "horizon",
             "orthoimage",
             "mineral",
-            "vector"
+            "vector",
+            "sky_view",
+            "thermal_inertia",
+            "slip_class",
+            "sun_table",
+            "owlt_table"
           ],
           "title": "Kind",
           "type": "string"
@@ -326,6 +339,17 @@
           ],
           "default": null
         },
+        "table": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TableInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "tiling": {
           "anyOf": [
             {
@@ -352,7 +376,6 @@
       "required": [
         "id",
         "kind",
-        "gridId",
         "path",
         "sha256",
         "bytes",
@@ -581,6 +604,63 @@
         }
       },
       "title": "Stats",
+      "type": "object"
+    },
+    "TableInfo": {
+      "additionalProperties": false,
+      "description": "Layout of a non-gridded table: row i is time start_utc + i * step_s.",
+      "properties": {
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Columns",
+          "type": "array"
+        },
+        "lat": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lat"
+        },
+        "lonEast": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loneast"
+        },
+        "rows": {
+          "title": "Rows",
+          "type": "integer"
+        },
+        "startUtc": {
+          "title": "Startutc",
+          "type": "string"
+        },
+        "stepS": {
+          "title": "Steps",
+          "type": "number"
+        }
+      },
+      "required": [
+        "columns",
+        "startUtc",
+        "stepS",
+        "rows"
+      ],
+      "title": "TableInfo",
       "type": "object"
     },
     "Tiling": {

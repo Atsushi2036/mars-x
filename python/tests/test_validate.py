@@ -45,3 +45,15 @@ def test_agreement_stats_perfect_and_biased():
     s = validate.agreement_stats(x + 2.0, x)
     assert s["bias"] == pytest.approx(2.0) and s["rmse"] == pytest.approx(2.0)
     assert validate.agreement_stats(np.array([1.0]), np.array([1.0]))["pearson"] is None  # too few points
+
+
+def test_alignment_report_recovers_a_known_global_shift_and_sun_direction():
+    rng = np.random.default_rng(7)
+    dem = gaussian_filter(rng.normal(size=(512, 512)), 6.0).astype(np.float32) * 80.0
+    ortho = validate.hillshade(dem, 1.0, 270.0, 45.0)
+    ortho = shift(ortho, (1.5, -2.0), order=3, mode="nearest")
+    rep = validate.alignment_report(ortho * 100.0 + 120.0, dem, 1.0, n=2, min_quality=0.2)
+    assert rep["globalShiftPx"]["dy"] == pytest.approx(1.5, abs=0.3)
+    assert rep["globalShiftPx"]["dx"] == pytest.approx(-2.0, abs=0.3)
+    assert rep["sunAzimuthDeg"] == pytest.approx(270.0, abs=15.0)
+    assert rep["validPatches"] >= 1
