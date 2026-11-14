@@ -117,9 +117,9 @@ def _search(cost, sr, sc, gr, gc, use_h, stop_at_goal, hmin, nbrs):
     inf = np.inf
     g = np.full(n, inf)
     f = np.full(n, inf)
-    parent = np.full(n, -1, np.int64)
-    pos = np.full(n, -1, np.int64)  # -1 never queued, -2 closed, >=0 heap slot
-    heap = np.empty(n, np.int64)
+    parent = np.full(n, -1, np.int32)
+    pos = np.full(n, -1, np.int32)  # -1 never queued, -2 closed, >=0 heap slot
+    heap = np.empty(n, np.int32)
     s = sr * nc + sc
     g[s] = 0.0
     f[s] = 0.0
