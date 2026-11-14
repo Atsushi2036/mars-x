@@ -78,7 +78,7 @@ export const useApp = create<AppState>((set) => ({
   progress: { manifest: 0, elevation: 0, ortho: 0, mesh: 0, ready: 0 },
   dataset: null,
   layer: 'none',
-  layerOpacity: 0.7,
+  layerOpacity: 0.85,
   sun: { azimuthDeg: 250, elevationDeg: 32 },
   haze: 0.5,
   sheetExpanded: false,

@@ -16,6 +16,14 @@ export function DataPanel() {
     )
   }
   const m = ds.manifest
+  // derived layers share their parent's source: list each distinct source once, with the layers it feeds
+  const sources = new Map<string, { layer: (typeof m.layers)[number]; ids: string[] }>()
+  for (const l of m.layers) {
+    const key = `${l.source.title}|${l.source.attribution}|${l.source.license}|${l.origin}`
+    const e = sources.get(key)
+    if (e) e.ids.push(l.id)
+    else sources.set(key, { layer: l, ids: [l.id] })
+  }
   const g = m.grid
   const hf = ds.heightfield
   return (
@@ -45,8 +53,8 @@ export function DataPanel() {
 
       <Section title="Sources">
         <ul className="space-y-3">
-          {m.layers.map((l) => (
-            <li key={l.id} className="space-y-0.5 text-xs">
+          {[...sources.entries()].map(([key, { layer: l, ids }]) => (
+            <li key={key} className="space-y-0.5 text-xs">
               <p className="font-medium text-foreground">{l.source.title}</p>
               <p className="text-muted-foreground">{l.source.attribution}</p>
               <p className="text-muted-foreground">
@@ -55,6 +63,8 @@ export function DataPanel() {
               </p>
               <p className="text-muted-foreground">
                 {l.origin === 'observed' ? 'Observed' : l.origin === 'derived' ? 'Derived from observations' : 'Simulated'}
+                {' · '}
+                {ids.join(', ')}
               </p>
             </li>
           ))}
