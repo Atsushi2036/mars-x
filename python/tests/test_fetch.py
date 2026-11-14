@@ -84,3 +84,38 @@ def test_download_budget_guard_refuses_over_2gb():
     with pytest.raises(fetch.DownloadTooLarge):
         fetch.check_budget(width=40000, height=30000, bytes_per_px=4)  # 4.8 GB
     fetch.check_budget(width=2300, height=2200, bytes_per_px=4)  # ~20 MB ok
+
+
+def test_fetch_file_records_sha256_and_detects_tampering(tmp_path):
+    import functools
+    import http.server
+    import threading
+
+    srv_dir = tmp_path / "srv"
+    srv_dir.mkdir()
+    (srv_dir / "a.json").write_bytes(b'{"x": 1}')
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(srv_dir))
+    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{httpd.server_address[1]}/a.json"
+        lock = tmp_path / "lock.json"
+        p = fetch.fetch_file(url, tmp_path / "raw", "a", "a.json", lock, license="CC0-1.0", allow_http=True)
+        import hashlib
+
+        entry = json.loads(lock.read_text())["sources"]["a"]
+        assert entry["sha256"] == hashlib.sha256(b'{"x": 1}').hexdigest() == fetch.sha256_file(p)
+        # upstream changes: the locked hash no longer matches -> refuse to use silently
+        (srv_dir / "a.json").write_bytes(b'{"x": 2}')
+        p.unlink()
+        with pytest.raises(fetch.ChecksumMismatch):
+            fetch.fetch_file(url, tmp_path / "raw", "a", "a.json", lock, license="CC0-1.0", allow_http=True)
+        p2 = fetch.fetch_file(url, tmp_path / "raw", "a", "a.json", lock, license="CC0-1.0", allow_http=True, refresh=True)
+        assert p2.read_bytes() == b'{"x": 2}'
+    finally:
+        httpd.shutdown()
+
+
+def test_fetch_file_rejects_plain_http_by_default(tmp_path):
+    with pytest.raises(ValueError, match="https"):
+        fetch.fetch_file("http://example.com/a", tmp_path, "a", "a", tmp_path / "l.json")

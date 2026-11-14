@@ -55,3 +55,16 @@ def test_proj_string_declares_sphere_and_center():
     s = LocalProjection(lon0=77.39, lat0=18.46).proj4
     assert "+proj=eqc" in s and "+R=3396190" in s and "+units=m" in s
     assert "+lat_ts=18.46" in s and "+lon_0=77.39" in s
+
+
+def test_sample_bilinear_reproduces_a_ramp_at_world_coordinates():
+    from marsx.pipeline.geo import sample_bilinear
+
+    g = Grid(x0=0.0, y0=8.0, res=1.0, width=8, height=8)
+    # z = 10*x + 100*y evaluated at pixel centres (world coordinates)
+    cols, rows = np.meshgrid(np.arange(8), np.arange(8))
+    x, y = g.pixel_to_world(cols, rows, center=True)
+    arr = (10 * x + 100 * y).astype(np.float32)
+    assert sample_bilinear(arr, g, 3.5, 4.5) == pytest.approx(10 * 3.5 + 100 * 4.5)
+    assert sample_bilinear(arr, g, 4.0, 4.0) == pytest.approx(10 * 4.0 + 100 * 4.0, abs=1e-4)  # between 4 pixels
+    assert sample_bilinear(arr, g, 2.25, 6.75) == pytest.approx(10 * 2.25 + 100 * 6.75, abs=1e-4)

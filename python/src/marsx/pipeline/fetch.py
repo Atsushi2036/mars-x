@@ -192,3 +192,56 @@ def fetch_cached(
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_path.write_text(json.dumps(lock, indent=2, sort_keys=True), encoding="utf-8")
     return path
+
+
+class ChecksumMismatch(RuntimeError):
+    pass
+
+
+def fetch_file(
+    url: str,
+    cache_dir: Path,
+    name: str,
+    filename: str,
+    lock_path: Path,
+    license: str = "",
+    attribution: str = "",
+    title: str = "",
+    doi: str | None = None,
+    allow_http: bool = False,
+    refresh: bool = False,
+) -> Path:
+    """Download a small file (TLS verified) and pin it by sha256 in the lock file.
+
+    First download = trust on first use. Later runs refuse a changed upstream file
+    (``ChecksumMismatch``) unless ``refresh=True`` is passed on purpose.
+    """
+    if not url.startswith("https://") and not allow_http:
+        raise ValueError("only https URLs are allowed")
+    import requests
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    path = cache_dir / filename
+    lock = _load_lock(lock_path)
+    entry = lock["sources"].get(name)
+    if entry and not refresh and path.exists() and sha256_file(path) == entry["sha256"]:
+        return path
+    r = requests.get(url, timeout=120)  # verify=True by default
+    r.raise_for_status()
+    digest = hashlib.sha256(r.content).hexdigest()
+    if entry and not refresh and entry["sha256"] != digest:
+        raise ChecksumMismatch(f"{name}: upstream sha256 {digest} != locked {entry['sha256']}")
+    path.write_bytes(r.content)
+    lock["sources"][name] = {
+        "url": url,
+        "sha256": digest,
+        "bytes": len(r.content),
+        "retrievedAt": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "license": license,
+        "attribution": attribution,
+        "title": title,
+        "doi": doi,
+    }
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path.write_text(json.dumps(lock, indent=2, sort_keys=True), encoding="utf-8")
+    return path

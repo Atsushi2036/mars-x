@@ -1,21 +1,47 @@
 [project]
 name = "marsx"
 version = "0.1.0"
-description = "MARS-X geospatial data pipeline (Jezero) and intelligence modules"
-requires-python = ">=3.13"
+description = "MARS-X: real-terrain Jezero test bench for planetary autonomy (SDK, conditions engine, geospatial pipeline)"
+readme = "README.md"
+requires-python = ">=3.12"
 dependencies = [
-  "numpy>=2.5",
-  "numba>=0.68",
+  "numpy>=2.3",
+  "scipy>=1.16",
+  "numba>=0.62",
+  "pydantic>=2.12",
+  "jsonschema>=4.25",
+  "gymnasium>=1.4,<1.5",
+]
+
+[project.optional-dependencies]
+# geospatial data pipeline (data/raw -> data/processed); not needed to use the SDK on prepared data
+pipeline = [
   "rasterio>=1.5",
   "pyproj>=3.8",
-  "pydantic>=2.12",
   "pillow>=12",
-  "scipy>=1.17",
   "requests>=2.32",
+]
+# training and ONNX export (CPU only)
+train = [
+  "torch>=2.9",
+  "stable-baselines3>=2.9,<2.10",
+  "onnx>=1.19",
+  "onnxscript>=0.5",
+  "onnxruntime>=1.23,<1.32",
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "jsonschema>=4"]
+dev = [
+  "pytest>=8",
+  "ruff>=0.14",
+  "mypy>=1.18",
+  "hypothesis>=6.140",
+  # pipeline tests need the geospatial stack too
+  "rasterio>=1.5",
+  "pyproj>=3.8",
+  "pillow>=12",
+  "requests>=2.32",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -26,6 +52,7 @@ packages = ["src/marsx"]
 
 [tool.uv]
 exclude-newer = "2026-11-07"
+default-groups = ["dev"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

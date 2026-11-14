@@ -59,7 +59,7 @@ class Pipeline(Model):
 
 
 class Encoding(Model):
-    dtype: Literal["uint8", "uint16", "float32", "image/webp", "image/png"]
+    dtype: Literal["uint8", "uint16", "float32", "image/webp", "image/png", "application/geo+json"]
     endian: Literal["little", "n/a"] = "little"
     scale: float | None = None
     offset: float | None = None

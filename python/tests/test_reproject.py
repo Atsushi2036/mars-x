@@ -60,3 +60,16 @@ def test_uint8_nodata_zero_is_preserved_as_zero():
     g = Grid(-512.0, 512.0, 1.0, 1024, 1024)
     out = reproject_to_grid(arr, tr, SRC_PROJ4, g, proj, resampling="bilinear", dtype="uint8", src_nodata=0)
     assert out.dtype == np.uint8 and out[512, 512] == 120
+
+
+def test_declare_nodata_false_keeps_zero_valued_pixels_intact():
+    arr = np.zeros((3000, 3000), np.uint8)  # all black, e.g. a CRISM "not identified" colour
+    tr = from_origin(4577366.0, 1106618.0, 1.0, 1.0)
+    lon0 = math.degrees((4577366.0 + 1500.0) / MARS_RADIUS_M)
+    lat0 = math.degrees((1106618.0 - 1500.0) / MARS_RADIUS_M)
+    proj = LocalProjection(lon0, lat0)
+    g = Grid(-512.0, 512.0, 1.0, 1024, 1024)
+    out = reproject_to_grid(arr, tr, SRC_PROJ4, g, proj, "nearest", dtype="uint8", declare_nodata=False)
+    assert out[512, 512] == 0 and out.max() == 0  # not remapped to 1
+    out2 = reproject_to_grid(arr, tr, SRC_PROJ4, g, proj, "nearest", dtype="uint8", declare_nodata=True)
+    assert out2[512, 512] == 1  # documents the GDAL behaviour we avoid

@@ -20,8 +20,12 @@ def reproject_to_grid(
     src_nodata: float | None = None,
     dtype: str = "float32",
     threads: int = 8,
+    declare_nodata: bool = True,
 ) -> np.ndarray:
-    """Float outputs use NaN for nodata/outside; integer outputs use 0."""
+    """Float outputs use NaN for nodata/outside; integer outputs use 0.
+
+    ``declare_nodata=False`` keeps 0 as a valid value (GDAL would otherwise remap source 0 to 1).
+    """
     src_crs = CRS.from_string(src_crs) if isinstance(src_crs, str) else src_crs
     is_float = np.dtype(dtype).kind == "f"
     dst_nodata = np.nan if is_float else 0
@@ -34,7 +38,7 @@ def reproject_to_grid(
         src_nodata=src_nodata,
         dst_transform=Affine(*grid.transform),
         dst_crs=CRS.from_wkt(proj.crs.to_wkt()),
-        dst_nodata=dst_nodata,
+        dst_nodata=dst_nodata if declare_nodata else None,
         resampling=getattr(Resampling, resampling),
         num_threads=threads,
     )

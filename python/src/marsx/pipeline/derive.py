@@ -10,6 +10,7 @@ Angles are stored as ``u8`` with a 0.5 degree step (``ANGLE_SCALE``), nodata = 2
 from __future__ import annotations
 
 import math
+import types
 from collections.abc import Callable
 
 import numba as nb
@@ -26,8 +27,14 @@ ROUGH_LIMIT_M = 0.25
 
 
 def _dual(fn: Callable) -> tuple[Callable, Callable]:
-    """Compile ``fn`` twice: with ``parallel=True`` and as a plain serial loop."""
-    return nb.njit(parallel=True, cache=True)(fn), nb.njit(cache=True)(fn)
+    """Compile ``fn`` twice: with ``parallel=True`` and as a plain serial loop.
+
+    The serial flavour is a renamed copy: numba's on-disk cache is keyed by the function's
+    qualified name, so two flavours of the same name would silently share one cached binary.
+    """
+    ser = types.FunctionType(fn.__code__, fn.__globals__, fn.__name__ + "_serial", fn.__defaults__, fn.__closure__)
+    ser.__qualname__ = fn.__qualname__ + "_serial"
+    return nb.njit(parallel=True, cache=True)(fn), nb.njit(cache=True)(ser)
 
 
 # ----------------------------------------------------------------------------- Horn

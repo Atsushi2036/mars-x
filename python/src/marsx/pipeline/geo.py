@@ -79,3 +79,13 @@ class LocalProjection:
 
     def inverse(self, x, y):
         return self._inv.transform(x, y)
+
+
+def sample_bilinear(arr: np.ndarray, grid: Grid, x, y):
+    """Bilinear sample of ``arr`` at world coordinates (pixel centres hold the values)."""
+    from scipy.ndimage import map_coordinates
+
+    col, row = grid.world_to_pixel(x, y)
+    pts = np.vstack([np.atleast_1d(row) - 0.5, np.atleast_1d(col) - 0.5])
+    out = map_coordinates(arr, pts, order=1, mode="nearest")
+    return float(out[0]) if np.ndim(x) == 0 else out

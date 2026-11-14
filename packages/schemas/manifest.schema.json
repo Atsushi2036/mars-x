@@ -83,7 +83,8 @@
             "uint16",
             "float32",
             "image/webp",
-            "image/png"
+            "image/png",
+            "application/geo+json"
           ],
           "title": "Dtype",
           "type": "string"
