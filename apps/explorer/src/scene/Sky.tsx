@@ -1,10 +1,12 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import { BackSide, Color, FogExp2, Mesh, ShaderMaterial, Vector3 } from 'three'
+import { terrainUniforms } from './terrain-material'
 import { useThree } from '@react-three/fiber'
 import { sunDirection, useApp } from '@/store/app'
 
 const HORIZON = new Color(0.78, 0.5, 0.34)
+const HAZE_DULL = new Color(0.5, 0.36, 0.28)
 const ZENITH = new Color(0.3, 0.2, 0.19)
 
 /** Procedural Mars sky: butterscotch dust near the horizon, a faint blue glow around the sun, dark at night. */
@@ -42,7 +44,7 @@ void main(){
   )
 
   useFrame(({ camera }) => {
-    const { sun } = useApp.getState()
+    const { sun, haze } = useApp.getState()
     const d = sunDirection(sun.azimuthDeg, sun.elevationDeg)
     const day = Math.min(1, Math.max(0.06, (sun.elevationDeg + 4) / 14))
     mat.uniforms.uSun!.value.set(d[0], d[1], d[2])
@@ -50,7 +52,10 @@ void main(){
     if (mesh.current) mesh.current.position.copy(camera.position)
     if (!scene.fog) scene.fog = new FogExp2(HORIZON.clone(), 0.00032)
     const fog = scene.fog as FogExp2
-    fog.color.copy(HORIZON).multiplyScalar(day * 0.92)
+    // dust optical depth: denser, duller haze as tau grows (0.5 is the nominal Jezero value)
+    fog.density = 0.00012 + 0.00042 * haze
+    fog.color.copy(HORIZON).lerp(HAZE_DULL, Math.min(1, haze / 6)).multiplyScalar(day * 0.92)
+    terrainUniforms.uFadeColor.value.copy(HORIZON).multiplyScalar(day)
     scene.background = null
   })
 

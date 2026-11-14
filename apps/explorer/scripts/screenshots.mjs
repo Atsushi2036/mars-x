@@ -26,7 +26,8 @@ const VIEWPORTS = {
 
 /** each scenario: a name and a function that drives the page after it is ready */
 const SCENARIOS = {
-  loading: null, // handled separately
+  loading: null, // handled separately (captured while data is still downloading)
+  webgl_error: null, // handled separately (WebGL2 disabled)
   explore: async (page) => {
     await page.getByRole('button', { name: 'Explore' }).first().click().catch(() => {})
   },
@@ -44,6 +45,16 @@ const SCENARIOS = {
   },
   chase: async (page) => {
     await page.keyboard.press('Digit3')
+    await page.waitForTimeout(1500)
+  },
+  mission_route: async (page, vp) => {
+    await page.locator(vp === 'mobile' ? 'nav >> text=Mission' : 'button[aria-label="Mission"]').first().click()
+    const pts = vp === 'mobile' ? [[110, 440], [290, 340]] : [[420, 640], [840, 470]]
+    for (const [x, y] of pts) {
+      await page.mouse.click(x, y)
+      await page.waitForTimeout(500)
+    }
+    await page.getByText(/Nodes expanded|No route for this profile|Planner error/).first().waitFor({ timeout: 40000 }).catch(() => console.log('  (route result did not appear in 40 s)'))
     await page.waitForTimeout(1500)
   },
   mission: async (page, vp) => {
@@ -82,9 +93,20 @@ for (const [vpName, vp] of Object.entries(VIEWPORTS)) {
       page.on('response', (r) => {
         if (r.status() >= 400) errors.push(`[http ${r.status()}] ${r.url()}`)
       })
-      await page.goto(`${URL_BASE}/?data=${DATA}`, { waitUntil: 'domcontentloaded' })
+      if (name !== 'webgl_error') await page.goto(`${URL_BASE}/?data=${DATA}`, { waitUntil: 'domcontentloaded' })
       const file = path.join(out, `${name}__${vpName}__${theme}.png`)
-      if (name === 'loading') {
+      if (name === 'webgl_error') {
+        await page.addInitScript(() => {
+          const orig = HTMLCanvasElement.prototype.getContext
+          HTMLCanvasElement.prototype.getContext = function (type, ...a) {
+            return type === 'webgl2' || type === 'webgl' ? null : orig.call(this, type, ...a)
+          }
+        })
+        await page.goto(`${URL_BASE}/?data=${DATA}`, { waitUntil: 'domcontentloaded' })
+        await page.waitForTimeout(800)
+        await page.screenshot({ path: file })
+        report.push({ name, vp: vpName, theme, errors: errors.filter((e) => !e.includes('webgl')) })
+      } else if (name === 'loading') {
         await page.waitForTimeout(250)
         await page.screenshot({ path: file })
       } else {

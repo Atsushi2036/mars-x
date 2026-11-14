@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Inspector } from './Inspector'
 import { Joystick } from './Joystick'
+import { Onboarding } from './Onboarding'
 import { ModeRail } from './ModeRail'
 import { TelemetryBar } from './TelemetryBar'
 import { Topbar } from './Topbar'
@@ -22,6 +23,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <main id="scene" className="relative min-w-0 flex-1" aria-label="Terrain view">
         {children}
         <Topbar />
+        <Onboarding />
         <Inspector />
         <Joystick />
         <TelemetryBar />

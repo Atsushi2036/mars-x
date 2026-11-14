@@ -5,16 +5,18 @@ import type { Dataset } from '@/core/data/loader'
 import { LAYER_IDS, terrainUniforms } from './terrain-material'
 import { ChunkManager } from './chunk-manager'
 import { CameraRig } from './CameraRig'
+import { MissionLayer } from './MissionLayer'
 import { Rover } from './Rover'
 import { Sky } from './Sky'
 import { Sun } from './Sun'
 import { useApp } from '@/store/app'
+import { disposeMissionPlanner } from '@/store/mission'
 import { cameraRig, useCamera } from '@/store/camera'
 import { roverLive } from '@/store/rover'
 
 declare global {
   interface Window {
-    __marsx?: { ready: boolean; fps: number; frameCount: number; chunks: number; triangles: number; mode: string }
+    __marsx?: { ready: boolean; fps: number; frameCount: number; chunks: number; triangles: number; mode: string; drawCalls: number; renderedTriangles: number; geometries: number; textures: number }
   }
 }
 
@@ -65,10 +67,12 @@ function LayerSync() {
 /** Telemetry (4 Hz) and the Playwright hook window.__marsx. */
 function Probes({ ds }: { ds: Dataset }) {
   const hf = ds.heightfield
+  const gl = useThree((s) => s.gl)
   useEffect(() => {
-    window.__marsx = { ready: false, fps: 0, frameCount: 0, chunks: 0, triangles: 0, mode: 'orbit' }
+    window.__marsx = { ready: false, fps: 0, frameCount: 0, chunks: 0, triangles: 0, mode: 'orbit', drawCalls: 0, renderedTriangles: 0, geometries: 0, textures: 0 }
     return () => {
       delete window.__marsx
+      disposeMissionPlanner()
     }
   }, [])
   const acc = useMemo(() => ({ t: 0, frames: 0, ready: false }), [])
@@ -107,6 +111,11 @@ function Probes({ ds }: { ds: Dataset }) {
     const s = useApp.getState()
     if (w) {
       w.fps = fps
+      // renderer.info of the last frame: lets Playwright compare draw calls / triangles between builds
+      w.drawCalls = gl.info.render.calls
+      w.renderedTriangles = gl.info.render.triangles
+      w.geometries = gl.info.memory.geometries
+      w.textures = gl.info.memory.textures
       w.mode = mode
       if (!acc.ready && s.progress.mesh >= 1 && s.progress.ortho >= 1) {
         acc.ready = true
@@ -150,6 +159,7 @@ export default function Scene({ dataset }: { dataset: Dataset }) {
       <LayerSync />
       <Terrain ds={dataset} />
       <Rover hf={dataset.heightfield} />
+      <MissionLayer ds={dataset} />
       <CameraRig hf={dataset.heightfield} />
       <Probes ds={dataset} />
     </Canvas>

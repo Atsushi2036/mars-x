@@ -9,6 +9,8 @@
 import type { Heightfield } from './heightfield'
 
 export const CHUNK_PX = 256
+/** how far (m) the outer border of the raster drops */
+export const OUTER_SKIRT_DEPTH = 500
 
 export interface ChunkLayout {
   chunksX: number
@@ -72,7 +74,9 @@ export function buildChunkMesh(hf: Heightfield, cx: number, cy: number, lod: num
   const p11 = hf.pixelToWorld(c1, r1, true)
   const spanX = p11.x - p00.x || 1
   const spanZ = p11.z - p00.z || 1
-  const nStep = stride * hf.res
+  const nStep = stride * hf.res // spacing of this LOD (skirt depth)
+  // normals always use the 1 px stencil: identical at a vertex shared by two LODs, so no lighting seam at chunk borders
+  const normalStep = hf.res
 
   let minY = Infinity
   let maxY = -Infinity
@@ -84,7 +88,7 @@ export function buildChunkMesh(hf: Heightfield, cx: number, cy: number, lod: num
       positions[v * 3] = w.x
       positions[v * 3 + 1] = y
       positions[v * 3 + 2] = w.z
-      const n = hf.normalAt(w.x, w.z, nStep)
+      const n = hf.normalAt(w.x, w.z, normalStep)
       normals[v * 3] = n.x
       normals[v * 3 + 1] = n.y
       normals[v * 3 + 2] = n.z
@@ -121,11 +125,17 @@ export function buildChunkMesh(hf: Heightfield, cx: number, cy: number, lod: num
   for (let i = nc - 1; i > 0; i--) ring.push((nr - 1) * nc + i)
   for (let j = nr - 1; j > 0; j--) ring.push(j * nc)
   const skirtDepth = Math.max(3, 3 * nStep)
+  const onOuterEdge = (v: number) => {
+    const col = cols[v % nc]!
+    const row = rows[Math.floor(v / nc)]!
+    return col === 0 || row === 0 || col === hf.width - 1 || row === hf.height - 1
+  }
   for (let s = 0; s < ring.length; s++) {
     const src = ring[s]!
     const dst = gridCount + s
     positions[dst * 3] = positions[src * 3]!
-    positions[dst * 3 + 1] = positions[src * 3 + 1]! - skirtDepth
+    // the outer border of the whole raster drops far down (hidden by haze) so the window never looks like a floating slab
+    positions[dst * 3 + 1] = positions[src * 3 + 1]! - (onOuterEdge(src) ? OUTER_SKIRT_DEPTH : skirtDepth)
     positions[dst * 3 + 2] = positions[src * 3 + 2]!
     normals[dst * 3] = normals[src * 3]!
     normals[dst * 3 + 1] = normals[src * 3 + 1]!

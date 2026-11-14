@@ -15,7 +15,7 @@ import type { Dataset } from '@/core/data/loader'
 import { chunkLayout, chunkRange, CHUNK_PX, type ChunkLayout } from '@/core/terrain/chunk-mesh'
 import { OrthoPyramid, orthoSpec } from '@/core/terrain/ortho'
 import { createTerrainWorker, type TerrainWorker } from '@/core/terrain/worker-client'
-import { createTerrainMaterial } from './terrain-material'
+import { createTerrainMaterial, terrainUniforms } from './terrain-material'
 
 /** Distance (m, to the chunk's bounding box) below which a chunk uses LOD 0, 1, 2; beyond the last it uses LOD 3. */
 const LOD_DISTANCES = [260, 620, 1500]
@@ -73,6 +73,7 @@ export class ChunkManager {
     this.group.name = 'terrain'
 
     const ext = hf.extent
+    terrainUniforms.uExtent.value.set(ext.xMin, ext.zMin, ext.xMax, ext.zMax)
     const extW = ext.xMax - ext.xMin
     const extH = ext.zMax - ext.zMin
     for (let cy = 0; cy < this.layout.chunksY; cy++) {

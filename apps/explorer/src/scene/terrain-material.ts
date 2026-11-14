@@ -1,4 +1,4 @@
-import { MeshStandardMaterial, type Texture, type WebGLProgramParametersWithUniforms } from 'three'
+import { Color, MeshStandardMaterial, Vector4, type Texture, type WebGLProgramParametersWithUniforms } from 'three'
 
 /**
  * Terrain material: ONE shader program shared by every chunk (identical customProgramCacheKey).
@@ -14,6 +14,11 @@ export const terrainUniforms = {
   uLayer: { value: 0 },
   uLayerOpacity: { value: 0.7 },
   uSlopeMax: { value: 30 },
+  /** raster extent in world metres: xMin, zMin, xMax, zMax (set when the dataset loads) */
+  uExtent: { value: new Vector4(-1e6, -1e6, 1e6, 1e6) },
+  /** colour the terrain dissolves into at the border of the window (matches the sky at the horizon) */
+  uFadeColor: { value: new Color(0.78, 0.5, 0.34) },
+  uFadeWidth: { value: 260 },
 }
 
 const PROGRAM_KEY = 'marsx-terrain-v1'
@@ -25,15 +30,22 @@ export function createTerrainMaterial(map: Texture): MeshStandardMaterial {
     shader.uniforms.uLayer = terrainUniforms.uLayer
     shader.uniforms.uLayerOpacity = terrainUniforms.uLayerOpacity
     shader.uniforms.uSlopeMax = terrainUniforms.uSlopeMax
+    shader.uniforms.uExtent = terrainUniforms.uExtent
+    shader.uniforms.uFadeColor = terrainUniforms.uFadeColor
+    shader.uniforms.uFadeWidth = terrainUniforms.uFadeWidth
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vMarsN;\nvarying float vMarsY;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvMarsN = normal;\nvMarsY = position.y;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vMarsN;\nvarying float vMarsY;\nvarying vec2 vMarsXZ;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvMarsN = normal;\nvMarsY = position.y;\nvMarsXZ = position.xz;')
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
         `#include <common>
 varying vec3 vMarsN;
 varying float vMarsY;
+varying vec2 vMarsXZ;
+uniform vec4 uExtent;
+uniform vec3 uFadeColor;
+uniform float uFadeWidth;
 uniform float uLayer;
 uniform float uLayerOpacity;
 uniform float uSlopeMax;
@@ -66,15 +78,32 @@ vec3 viridisLike(float t) {
 }`,
       )
       .replace(
+        '#include <tonemapping_fragment>',
+        `{
+  // relative lighting (0.35 shadow .. 1.5 lit) keeps relief readable under the overlay
+  float marsLit = clamp(dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114)) / max(dot(marsAlbedo, vec3(0.299, 0.587, 0.114)), 0.02), 0.4, 1.3);
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, marsLayerColor * marsLit * 0.85, marsLayerMix);
+}
+{
+  float edgeD = min(min(vMarsXZ.x - uExtent.x, uExtent.z - vMarsXZ.x), min(vMarsXZ.y - uExtent.y, uExtent.w - vMarsXZ.y));
+  float edgeK = 1.0 - smoothstep(0.0, uFadeWidth, edgeD);
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, uFadeColor, edgeK * edgeK);
+}
+#include <tonemapping_fragment>`,
+      )
+      .replace(
         '#include <map_fragment>',
         `
   float marsL = texture2D( map, vMapUv ).r;
   vec3 marsAlbedo = marsTint(marsL);
   diffuseColor.rgb = marsAlbedo;
+  // overlay layers are applied AFTER lighting (see tonemapping chunk) so their colours are not tinted by the warm sun
+  vec3 marsLayerColor = vec3(0.0);
+  float marsLayerMix = 0.0;
   if (uLayer > 0.5 && uLayer < 1.5) {
     float slopeDeg = degrees(acos(clamp(normalize(vMarsN).y, -1.0, 1.0)));
-    vec3 lc = viridisLike(slopeDeg / uSlopeMax);
-    diffuseColor.rgb = mix(diffuseColor.rgb, lc, uLayerOpacity);
+    marsLayerColor = viridisLike(slopeDeg / uSlopeMax);
+    marsLayerMix = uLayerOpacity;
   }`,
       )
   }

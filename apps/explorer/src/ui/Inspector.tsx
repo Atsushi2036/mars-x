@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useApp } from '@/store/app'
@@ -6,7 +7,8 @@ import { MODES } from './modes'
 import { DataPanel } from './panels/DataPanel'
 import { ExplorePanel } from './panels/ExplorePanel'
 import { LayersPanel } from './panels/LayersPanel'
-import { LabPanel, MissionPanel } from './panels/EmptyPanels'
+import { LabPanel } from './panels/EmptyPanels'
+import { MissionPanel } from './panels/MissionPanel'
 
 function PanelBody() {
   const mode = useApp((s) => s.mode)
@@ -42,9 +44,42 @@ function Header() {
   )
 }
 
-/** Desktop: floating card docked on the right. Mobile: non-modal bottom sheet above the nav and telemetry. */
+/** Drag/tap handle of the mobile sheet: swipe up expands, swipe down collapses (then closes), tap toggles. */
+function SheetHandle() {
+  const expanded = useApp((s) => s.sheetExpanded)
+  const setExpanded = useApp((s) => s.setSheetExpanded)
+  const setOpen = useApp((s) => s.setInspectorOpen)
+  const y0 = useRef<number | null>(null)
+  return (
+    <button
+      type="button"
+      aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
+      aria-expanded={expanded}
+      className="mx-auto flex h-7 w-24 shrink-0 touch-none items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      onPointerDown={(e) => {
+        y0.current = e.clientY
+        e.currentTarget.setPointerCapture(e.pointerId)
+      }}
+      onPointerUp={(e) => {
+        const d = y0.current === null ? 0 : e.clientY - y0.current
+        y0.current = null
+        if (d < -24) setExpanded(true)
+        else if (d > 24) {
+          if (expanded) setExpanded(false)
+          else setOpen(false)
+        }
+        else setExpanded(!expanded)
+      }}
+    >
+      <span className="h-1 w-9 rounded-full bg-border" aria-hidden="true" />
+    </button>
+  )
+}
+
+/** Desktop: floating card docked on the right. Mobile: non-modal bottom sheet that starts as a peek. */
 export function Inspector() {
   const open = useApp((s) => s.inspectorOpen)
+  const expanded = useApp((s) => s.sheetExpanded)
   if (!open) return null
   return (
     <>
@@ -59,11 +94,11 @@ export function Inspector() {
       </aside>
       <aside
         aria-label="Inspector"
-        className="pointer-events-auto fixed inset-x-0 bottom-[6.25rem] z-20 flex max-h-[52dvh] flex-col overflow-hidden rounded-t-2xl border border-b-0 border-border bg-card/95 text-card-foreground shadow-lg backdrop-blur-md md:hidden"
+        className={`pointer-events-auto fixed inset-x-0 bottom-[6.25rem] z-20 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 border-border bg-card/95 text-card-foreground shadow-lg backdrop-blur-md transition-[height] duration-200 md:hidden ${expanded ? 'h-[52dvh]' : 'h-[14.5rem]'}`}
       >
-        <div className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-border" aria-hidden="true" />
+        <SheetHandle />
         <Header />
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className={`min-h-0 flex-1 overscroll-contain ${expanded ? 'overflow-y-auto' : 'overflow-hidden'}`}>
           <PanelBody />
         </div>
       </aside>

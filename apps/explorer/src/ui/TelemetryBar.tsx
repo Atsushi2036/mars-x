@@ -30,6 +30,13 @@ export function TelemetryBar() {
       <Cell label="ELEV" value={ready ? fmtElevation(t.elevation) : dash} className="hidden min-[420px]:flex" />
       <Cell label="SLOPE" value={ready ? fmtDeg(t.slopeDeg) : dash} className="hidden min-[520px]:flex" />
       <div className="ml-auto flex items-baseline gap-4">
+        <button
+          type="button"
+          onClick={() => useApp.getState().setMode('data')}
+          className="hidden whitespace-nowrap font-sans text-[11px] text-muted-foreground underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring lg:block"
+        >
+          Sources. Not affiliated with NASA, JPL or Caltech
+        </button>
         <Cell label="CAM" value={MODE_LABEL[cam]} className="hidden md:flex" />
         <Cell label="FPS" value={ready ? t.fps.toFixed(0) : dash} />
       </div>

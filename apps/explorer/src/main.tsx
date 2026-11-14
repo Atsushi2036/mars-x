@@ -3,7 +3,7 @@ import './index.css'
 import { applyTheme, useApp } from '@/store/app'
 import App from './App'
 
-// No StrictMode on purpose: the terrain worker takes ownership (transfer) of the elevation buffer once.
+// No StrictMode on purpose: R3F + workers + GPU resources are created once per mount.
 // @react-three/fiber 9.x still instantiates THREE.Clock, which three 0.187 flags as deprecated (harmless, upstream).
 const warn = console.warn.bind(console)
 console.warn = (...a: unknown[]) => {

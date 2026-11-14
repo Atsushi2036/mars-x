@@ -1,4 +1,4 @@
-import { Moon, Sun } from 'lucide-react'
+import { CircleHelp, Moon, Sun } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -10,6 +10,7 @@ export function Topbar() {
   const mode = useApp((s) => s.mode)
   const theme = useApp((s) => s.theme)
   const setTheme = useApp((s) => s.setTheme)
+  const setOnboardingOpen = useApp((s) => s.setOnboardingOpen)
   const ds = useApp((s) => s.dataset)
   const label = MODES.find((m) => m.id === mode)?.label ?? ''
   const next = theme === 'dark' ? 'light' : 'dark'
@@ -34,6 +35,14 @@ export function Topbar() {
             <span className="sm:hidden">Synthetic</span>
           </Badge>
         )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label="Show tips" onClick={() => setOnboardingOpen(true)} className="size-9 md:size-8">
+              <CircleHelp />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Tips</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

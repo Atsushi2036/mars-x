@@ -1,4 +1,4 @@
-import { FlaskConical, Route, type LucideIcon } from 'lucide-react'
+import { FlaskConical, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 function Empty({ icon: Icon, title, body, cta, why }: { icon: LucideIcon; title: string; body: string; cta: string; why: string }) {
@@ -18,19 +18,6 @@ function Empty({ icon: Icon, title, body, cta, why }: { icon: LucideIcon; title:
         {why}
       </p>
     </div>
-  )
-}
-
-/** Slot for the route planner (owned by the navigation slice). */
-export function MissionPanel() {
-  return (
-    <Empty
-      icon={Route}
-      title="No route yet"
-      body="Pick an origin and a destination on the terrain and plan a route that respects slope limits."
-      cta="Plan route"
-      why="Disabled: route planning arrives in the next slice."
-    />
   )
 }
 

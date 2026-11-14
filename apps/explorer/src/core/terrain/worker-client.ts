@@ -7,14 +7,15 @@ export interface TerrainWorker {
   dispose: () => void
 }
 
-/** Starts the terrain worker and hands it the elevation raster (ownership of the buffer moves to the worker). */
+/** Starts the terrain worker and hands it a COPY of the elevation raster (8 MB for 2048^2), so a remount can never meet a detached buffer. */
 export async function createTerrainWorker(ds: Dataset): Promise<TerrainWorker> {
   const worker = new Worker(new URL('./terrain.worker.ts', import.meta.url), { type: 'module' })
   const api = Comlink.wrap<TerrainWorkerApi>(worker)
   const e = ds.elevationLayer.encoding
   const hf = ds.heightfield
+  const copy = ds.rawU16.slice()
   await api.init(
-    Comlink.transfer(ds.rawU16, [ds.rawU16.buffer]),
+    Comlink.transfer(copy, [copy.buffer]),
     { scale: e.scale ?? 1, offset: e.offset ?? 0, nodata: e.nodata ?? 65535 },
     {
       width: hf.width,
