@@ -109,3 +109,57 @@ def seal(passed: Mapping[str, bool], suite_version: str) -> str | None:
 def to_contract(passed: Mapping[str, bool], thresholds_version: str) -> Scorecard:
     return Scorecard(thresholds_version=thresholds_version, passed=dict(passed))
 
+
+
+def build_report(runs: Sequence, verifications: Sequence, suite, suite_sha256: str) -> dict[str, object]:
+    """Scorecard document (PO §1.4): header, verdict + seal, metrics per level/family, failures, limits.
+
+    Levels are granted only from re-simulated episodes of verified runs.
+    """
+    from marsx.bench.verify import NOT_VERIFIABLE, VERIFIED, label
+
+    all_ok = bool(runs) and all(v.status == VERIFIED for v in verifications)
+    first = runs[0] if runs else None
+    by_level = {r.suite.level: (r, v) for r, v in zip(runs, verifications)}
+    levels, passed = [], {}
+    for lv in LEVELS:
+        if lv not in by_level:
+            verdict = LevelVerdict(lv, False, ["not run"])
+        else:
+            run, ver = by_level[lv]
+            eps = ver.episodes if ver.status == VERIFIED else run.episodes
+            verdict = evaluate_level(lv, eps, suite.pass_criteria, verified=ver.status == VERIFIED)
+        passed[lv] = verdict.passed
+        levels.append(verdict.to_dict())
+    version = next((c.version for c in suite.pass_criteria), "v0.1")
+    return {
+        "schemaVersion": "scorecard/1",
+        "program": PROGRAM,
+        "header": {
+            "model": first.policy.name if first else None,
+            "modelSha256": first.policy.sha256 if first else None,
+            "via": first.policy.kind if first else None,
+            "suite": {"id": suite.id, "version": suite.version, "sha256": suite_sha256},
+            "marsx": {"version": first.producer.marsx_version, "gitSha": first.producer.git_sha} if first else None,
+            "date": first.created_utc if first else None,
+            "status": label(VERIFIED if all_ok else NOT_VERIFIABLE),
+        },
+        "verdict": {
+            "precheck": {"name": "Integration check", "passed": all_ok,
+                         "reasons": [f"{r.suite.level}: {x}" for r, v in zip(runs, verifications) for x in v.reasons]},
+            "levels": levels,
+            "seal": seal(passed, version) if all_ok else None,
+            "thresholdsVersion": version,
+        },
+        "failureTaxonomy": {r.suite.level: m.failure_taxonomy(r.episodes) for r in runs},
+        "alertCompliance": {r.suite.level: m.alert_compliance(r.episodes) for r in runs},
+        "conditions": {r.suite.level: r.conditions.model_dump(by_alias=True, exclude_none=True) for r in runs},
+        "reproducibility": {
+            "rootSeed": suite.root_seed,
+            "datasetSha256": suite.dataset_sha256,
+            "runIds": {r.suite.level: r.run_id for r in runs},
+            "command": "marsx evaluate --policy <model.onnx> --suite bench/jezero-v1/suite.json --level <L1|L2|L3>",
+        },
+        "notCovered": list(NOT_COVERED),
+        "disclaimer": DISCLAIMER,
+    }
