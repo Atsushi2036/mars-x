@@ -248,7 +248,9 @@ export class EnvLite {
     const wait = action === WAIT
     const tr = this.row + mr
     const tc = this.col + mc
-    const blocked = !wait && !Number.isFinite(this.costAt(tr, tc))
+    // no corner cutting, like marsx.nav (python env since 2c8b04c)
+    const corner = mr !== 0 && mc !== 0 && (!Number.isFinite(this.costAt(this.row + mr, this.col)) || !Number.isFinite(this.costAt(this.row, this.col + mc)))
+    const blocked = !wait && (!Number.isFinite(this.costAt(tr, tc)) || corner)
     const rock = !wait && !blocked && this.rockAt(tr, tc)
     const moved = !wait && !blocked && !rock
     const nr = moved ? tr : this.row
