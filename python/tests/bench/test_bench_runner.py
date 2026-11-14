@@ -103,3 +103,21 @@ def test_oracle_energy_comes_from_replaying_the_oracle_in_the_env(small_suite, m
         assert e.oracle.energy_wh == pytest.approx(0.5 * s.oracle_path_m, abs=1e-6)
     astar = R.evaluate(small_suite, "L1", P.AStarPolicy(), make_env)
     assert astar.metrics.energy_ratio == pytest.approx(1.0)
+
+
+def test_astar_replan_avoids_rocks_revealed_by_the_sensor(small_suite, grid):
+    from conftest import FakeNavBatch
+
+    specs = S.level_episodes(small_suite, "L1")
+    rocks = np.zeros(grid.shape, bool)
+    for spec in specs:
+        path = P.astar_path(grid, spec.start, spec.goal)
+        if len(path) > 3:
+            rocks[tuple(path[len(path) // 2])] = True
+    for spec in specs:  # never block start or goal
+        rocks[tuple(spec.start)] = rocks[tuple(spec.goal)] = False
+    factory = lambda sc, n: FakeNavBatch(grid, n, rocks=rocks)
+    blind = R.run_episodes(specs, P.AStarPolicy(), factory, oracle_energy=False)
+    replan = R.run_episodes(specs, P.AStarReplanPolicy(), factory, oracle_energy=False)
+    assert any(r.outcome == "collision" for r in blind)
+    assert all(r.outcome == "success" for r in replan)

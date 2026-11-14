@@ -75,7 +75,7 @@ def _run_batch(specs: Sequence[EpisodeSpec], scenario: Scenario, policy: Policy,
     for _ in range(scenario.max_steps + _STEP_MARGIN):
         if done.all():
             break
-        a = np.asarray(policy.act(obs), dtype=np.int64).reshape(n)
+        a = np.asarray(policy.act(obs, info), dtype=np.int64).reshape(n)
         a = np.where((a >= 0) & (a < obs_spec.N_ACTIONS), a, obs_spec.WAIT)
         a[done] = obs_spec.WAIT
         active = np.flatnonzero(~done)

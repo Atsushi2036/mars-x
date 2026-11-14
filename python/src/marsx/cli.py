@@ -26,7 +26,11 @@ from marsx.bench import suite as S
 from marsx.bench import verify as V
 from marsx.contracts.run import MAX_BYTES, Run
 
-BASELINES = {"baseline:astar": ("baseline/astar", P.AStarPolicy), "baseline:random": ("baseline/random", P.RandomPolicy)}
+BASELINES = {
+    "baseline:astar": ("baseline/astar", P.AStarPolicy),
+    "baseline:astar-replan": ("baseline/astar-replan", P.AStarReplanPolicy),
+    "baseline:random": ("baseline/random", P.RandomPolicy),
+}
 
 
 def _first_existing(*candidates: str | os.PathLike | None) -> Path | None:
@@ -114,7 +118,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="marsx", description="MARS-X First Filter (simulation) benchmark")
     sub = ap.add_subparsers(dest="cmd", required=True)
     ev = sub.add_parser("evaluate", help="run a policy on one suite level and write run.json")
-    ev.add_argument("--policy", required=True, help="model.onnx | baseline:astar | baseline:random")
+    ev.add_argument("--policy", required=True, help="model.onnx | baseline:astar | baseline:astar-replan | baseline:random")
     ev.add_argument("--level", required=True, choices=list(sc.LEVELS))
     ev.add_argument("--suite", default=_default_suite())
     ev.add_argument("--data", default=None, help="processed dataset dir (default: $MARSX_DATA)")

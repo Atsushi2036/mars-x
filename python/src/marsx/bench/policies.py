@@ -1,7 +1,8 @@
 """Policies the benchmark can run: ONNX (policy/1), Python callables, baselines and action replays.
 
-Protocol: ``begin(specs, env)`` is called once per batch (env i plays specs[i]); ``act(obs)`` gets the
-obs/1 batch float32[N, 505] and returns act/1 indices int64[N]. Finished envs' actions are ignored.
+Protocol: ``begin(specs, env)`` is called once per batch (env i plays specs[i]); ``act(obs, info)`` gets the
+obs/1 batch float32[N, 505] (and the env info arrays, e.g. ``cell`` = the rover's own localisation) and
+returns act/1 indices int64[N]. Finished envs' actions are ignored.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from marsx.nav import NavStatus, astar, path_to_actions
 
 class Policy(Protocol):
     def begin(self, specs: Sequence[EpisodeSpec], env: Any) -> None: ...
-    def act(self, obs: np.ndarray) -> np.ndarray: ...
+    def act(self, obs: np.ndarray, info: Mapping[str, Any] | None = None) -> np.ndarray: ...
 
 
 class _SequencePolicy:
@@ -35,7 +36,7 @@ class _SequencePolicy:
         self._seqs = seqs
         self._t = np.zeros(len(seqs), np.int64)
 
-    def act(self, obs: np.ndarray) -> np.ndarray:
+    def act(self, obs: np.ndarray, info: Mapping[str, Any] | None = None) -> np.ndarray:
         out = np.full(len(self._seqs), obs_spec.WAIT, np.int64)
         for i, s in enumerate(self._seqs):
             if self._t[i] < len(s):
@@ -74,6 +75,64 @@ class AStarPolicy(_SequencePolicy):
         self._set(seqs)
 
 
+_STEP_TO_ACTION = {(a.drow, a.dcol): a.index for a in obs_spec.ACTIONS}
+
+
+class AStarReplanPolicy:
+    """Classical autonomy reference for L3: A* on the orbital (known) map, re-planned whenever the onboard
+    sensor reveals a rock on the remaining path (rocks are read from the obs/1 ``revealedRocks`` channel).
+    Not machine learning.
+    """
+
+    name = "baseline/astar-replan"
+
+    def begin(self, specs: Sequence[EpisodeSpec], env: Any) -> None:
+        self.base = np.asarray(getattr(env, "engine", env).cost, dtype=np.float32)
+        self.goals = [tuple(int(x) for x in s.goal) for s in specs]
+        self.blocked: list[set[tuple[int, int]]] = [set() for _ in specs]
+        self.paths: list[list[tuple[int, int]]] = [[] for _ in specs]
+        k = obs_spec.PATCH_K
+        self._rock_slice = slice(3 * k * k, 4 * k * k)
+        self._k = k
+
+    def _plan(self, i: int, cur: tuple[int, int]) -> None:
+        cost = self.base
+        if self.blocked[i]:
+            cost = self.base.copy()
+            rr, cc = zip(*self.blocked[i])
+            cost[list(rr), list(cc)] = np.inf
+        p = astar_path(cost, cur, self.goals[i])
+        self.paths[i] = [tuple(int(x) for x in q) for q in p]
+
+    def act(self, obs: np.ndarray, info: Mapping[str, Any] | None = None) -> np.ndarray:
+        if info is None or "cell" not in info:
+            raise ValueError("AStarReplanPolicy needs info['cell'] (rover localisation)")
+        cells = np.asarray(info["cell"])
+        k, c = self._k, self._k // 2
+        out = np.full(len(self.goals), obs_spec.WAIT, np.int64)
+        h, w = self.base.shape
+        for i in range(len(self.goals)):
+            cur = (int(cells[i, 0]), int(cells[i, 1]))
+            if cur == self.goals[i]:
+                continue
+            seen = np.argwhere(obs[i, self._rock_slice].reshape(k, k) > 0.5)
+            new_rocks = {(cur[0] + int(dr) - c, cur[1] + int(dc) - c) for dr, dc in seen}
+            new_rocks = {q for q in new_rocks if 0 <= q[0] < h and 0 <= q[1] < w} - self.blocked[i]
+            self.blocked[i] |= new_rocks
+            path = self.paths[i]
+            if cur in path:
+                path = path[path.index(cur):]
+            else:
+                path = []
+            if len(path) < 2 or any(q in self.blocked[i] for q in path[1:]):
+                self._plan(i, cur)
+                path = self.paths[i]
+            self.paths[i] = path
+            if len(path) >= 2:
+                out[i] = _STEP_TO_ACTION.get((path[1][0] - cur[0], path[1][1] - cur[1]), obs_spec.WAIT)
+        return out
+
+
 class RandomPolicy:
     """Uniform random actions (lower bound)."""
 
@@ -85,7 +144,7 @@ class RandomPolicy:
     def begin(self, specs: Sequence[EpisodeSpec], env: Any) -> None:
         self.rng = np.random.default_rng(np.random.SeedSequence([self.seed, *(s.seed % 2**32 for s in specs[:1])]))
 
-    def act(self, obs: np.ndarray) -> np.ndarray:
+    def act(self, obs: np.ndarray, info: Mapping[str, Any] | None = None) -> np.ndarray:
         return self.rng.integers(0, obs_spec.N_ACTIONS, size=obs.shape[0]).astype(np.int64)
 
 
@@ -98,7 +157,7 @@ class CallablePolicy:
     def begin(self, specs: Sequence[EpisodeSpec], env: Any) -> None:
         pass
 
-    def act(self, obs: np.ndarray) -> np.ndarray:
+    def act(self, obs: np.ndarray, info: Mapping[str, Any] | None = None) -> np.ndarray:
         return np.asarray(self.fn(obs), dtype=np.int64).reshape(obs.shape[0])
 
 
@@ -144,6 +203,6 @@ class OnnxPolicy:
     def begin(self, specs: Sequence[EpisodeSpec], env: Any) -> None:
         pass
 
-    def act(self, obs: np.ndarray) -> np.ndarray:
+    def act(self, obs: np.ndarray, info: Mapping[str, Any] | None = None) -> np.ndarray:
         (logits,) = self.session.run([policy_spec.OUTPUT_NAME], {policy_spec.INPUT_NAME: obs.astype(np.float32)})
         return np.argmax(logits, axis=1).astype(np.int64)

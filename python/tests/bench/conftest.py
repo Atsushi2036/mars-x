@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from marsx.contracts.obs import ACTIONS, OBS_DIM, WAIT
+from marsx.contracts.obs import ACTIONS, OBS_DIM, PATCH_K, WAIT
 
 OUTCOMES = ("running", "success", "collision", "battery", "stuck", "spe_violation", "timeout")
 _D = np.array([(a.drow, a.dcol) for a in ACTIONS], dtype=np.int64)
@@ -31,8 +31,18 @@ class FakeNavBatch:
         self.engine = self  # JezeroVecEnv exposes the NumPy engine (cost map) as .engine
 
     def _obs(self):
+        """Only the revealed-rocks channel (sensor radius 4 cells) is filled, like obs/1 channel 3."""
+        k, c = PATCH_K, PATCH_K // 2
         o = np.zeros((self.num_envs, OBS_DIM), np.float32)
-        o[:, 0:2] = (self.goal - self.rc) / 64.0
+        h, w = self.cost.shape
+        for i, (r0, c0) in enumerate(self.rc):
+            patch = np.zeros((k, k), np.float32)
+            for dr in range(-c, c + 1):
+                for dc in range(-c, c + 1):
+                    r, q = r0 + dr, c0 + dc
+                    if 0 <= r < h and 0 <= q < w and np.hypot(dr, dc) <= 4 and self.rocks[r, q]:
+                        patch[dr + c, dc + c] = 1.0
+            o[i, 3 * k * k:4 * k * k] = patch.ravel()
         return o
 
     def reset(self, *, seed=None, options=None):
