@@ -8,7 +8,8 @@
  *  - opset_import domains only ai.onnx (17..21) and ai.onnx.ml (<= 4); node domains likewise
  *  - no external_data / data_location=EXTERNAL initializers, no sparse initializers, no local functions
  *  - no Loop / Scan / If (or any node attribute holding a subgraph)
- *  - Expand / Tile / ConstantOfShape only with a statically known shape input, bounded in size
+ *  - Expand / Tile / ConstantOfShape / Range / Pad / Resize only with statically known, bounded arguments
+ *  - tensor attributes (t, tensors) never use external data (e.g. Constant); sparse tensor attributes refused
  *  - graph I/O: single float32 input `obs` [batch, 505]; output `logits` float32 [batch, 9]
  *    (or `action` int64 [batch])
  *  - metadata marsx.contract / marsx.obs_spec, when present, must be policy/1 and obs/1
@@ -18,6 +19,7 @@ import { OBS_DIM, N_ACTIONS, OBS_SPEC, POLICY_CONTRACT } from '../contracts'
 export const MAX_MODEL_BYTES = 20 * 1024 * 1024
 export const MAX_NODES = 2000
 export const MAX_STATIC_ELEMENTS = 1 << 20
+export const MAX_RESIZE_SCALE = 64
 const MAX_TENSOR_ELEMENTS = 1 << 24
 const MIN_OPSET = 17
 const MAX_OPSET = 21
@@ -98,11 +100,14 @@ interface Tensor {
   external: boolean
   /** decoded values (int64 tensors only, bounded) */
   ints: number[] | null
+  /** decoded values (small float32 tensors only, e.g. Resize scales) */
+  floats: number[] | null
 }
 
 function parseTensor(b: Uint8Array): Tensor {
   const r = sub(b)
-  const t: Tensor = { name: '', dtype: 0, dims: [], external: false, ints: null }
+  const t: Tensor = { name: '', dtype: 0, dims: [], external: false, ints: null, floats: null }
+  const f32: number[] = []
   let raw: Uint8Array | null = null
   const i64: number[] = []
   while (!r.eof) {
@@ -116,6 +121,12 @@ function parseTensor(b: Uint8Array): Tensor {
     else if (f === 7 && w === 2) {
       const p = sub(r.bytes())
       while (!p.eof && i64.length <= MAX_TENSOR_ELEMENTS) i64.push(p.varint())
+    } else if (f === 4 && w === 2) {
+      const p = r.bytes()
+      if (p.length % 4 === 0 && p.length <= 4 * 64) {
+        const dv = new DataView(p.buffer, p.byteOffset, p.byteLength)
+        for (let i = 0; i < p.length / 4; i++) f32.push(dv.getFloat32(4 * i, true))
+      }
     } else if (f === 8 && w === 2) t.name = str(r.bytes())
     else if (f === 9 && w === 2) raw = r.bytes()
     else if (f === 13 && w === 2) {
@@ -130,6 +141,11 @@ function parseTensor(b: Uint8Array): Tensor {
       const dv = new DataView(raw.buffer, raw.byteOffset, raw.byteLength)
       t.ints = Array.from({ length: raw.length / 8 }, (_, i) => Number(dv.getBigInt64(8 * i, true)))
     } else if (!raw && i64.length) t.ints = i64
+  } else if (t.dtype === DT_FLOAT) {
+    if (raw && raw.length % 4 === 0 && raw.length <= 4 * 64) {
+      const dv = new DataView(raw.buffer, raw.byteOffset, raw.byteLength)
+      t.floats = Array.from({ length: raw.length / 4 }, (_, i) => dv.getFloat32(4 * i, true))
+    } else if (!raw && f32.length) t.floats = f32
   }
   return t
 }
@@ -140,12 +156,14 @@ interface Node {
   inputs: string[]
   outputs: string[]
   hasSubgraph: boolean
+  hasSparseAttr: boolean
+  externalAttr: boolean
   constant: Tensor | null
 }
 
 function parseNode(b: Uint8Array): Node {
   const r = sub(b)
-  const n: Node = { op: '', domain: '', inputs: [], outputs: [], hasSubgraph: false, constant: null }
+  const n: Node = { op: '', domain: '', inputs: [], outputs: [], hasSubgraph: false, hasSparseAttr: false, externalAttr: false, constant: null }
   while (!r.eof) {
     const [f, w] = r.tag()
     if (f === 1 && w === 2) n.inputs.push(str(r.bytes()))
@@ -159,13 +177,17 @@ function parseNode(b: Uint8Array): Node {
       while (!a.eof) {
         const [af, aw] = a.tag()
         if (af === 1 && aw === 2) name = str(a.bytes())
-        else if (af === 5 && aw === 2) tensor = a.bytes()
-        else if ((af === 6 || af === 11) && aw === 2) {
+        else if (af === 5 && aw === 2) {
+          tensor = a.bytes()
+          if (parseTensor(tensor).external) n.externalAttr = true
+        } else if (af === 10 && aw === 2) {
+          if (parseTensor(a.bytes()).external) n.externalAttr = true // repeated `tensors`
+        } else if ((af === 6 || af === 11) && aw === 2) {
           a.bytes()
           n.hasSubgraph = true
-        } else if (af === 22 && aw === 2) {
+        } else if ((af === 22 || af === 23) && aw === 2) {
           a.bytes()
-          n.hasSubgraph = true // sparse tensor attribute: refuse
+          n.hasSparseAttr = true // sparse_tensor / sparse_tensors attributes: refuse
         } else a.skip(aw)
       }
       if (name === 'value' && tensor) n.constant = parseTensor(tensor)
@@ -314,8 +336,20 @@ export function validateOnnx(bytes: Uint8Array): OnnxValidation {
     }
 
     const known = new Map<string, number[]>() // statically known int64 vectors
-    for (const [name, t] of inits) if (t.ints) known.set(name, t.ints)
-    for (const n of nodes) if (n.op === 'Constant' && n.constant?.ints && n.outputs[0]) known.set(n.outputs[0], n.constant.ints)
+    const knownF = new Map<string, number[]>() // statically known small float32 vectors
+    for (const [name, t] of inits) {
+      if (t.ints) known.set(name, t.ints)
+      if (t.floats) knownF.set(name, t.floats)
+    }
+    for (const n of nodes) {
+      if (n.op !== 'Constant' || !n.outputs[0]) continue
+      if (n.constant?.ints) known.set(n.outputs[0], n.constant.ints)
+      if (n.constant?.floats) knownF.set(n.outputs[0], n.constant.floats)
+    }
+    const scalar = (name: string | undefined) => {
+      const v = name ? (known.get(name) ?? knownF.get(name)) : undefined
+      return v && v.length === 1 ? v[0]! : undefined
+    }
 
     const ops = new Set<string>()
     for (const n of nodes) {
@@ -323,6 +357,27 @@ export function validateOnnx(bytes: Uint8Array): OnnxValidation {
       if (n.domain !== '' && n.domain !== 'ai.onnx' && n.domain !== 'ai.onnx.ml') bad(`node "${n.op}" uses domain "${n.domain.slice(0, 64)}"`)
       if (BANNED_OPS.has(n.op)) bad(`operator ${n.op} is not allowed`)
       if (n.hasSubgraph) bad(`operator ${n.op} carries a subgraph`)
+      if (n.hasSparseAttr) bad(`operator ${n.op} carries a sparse tensor attribute`)
+      if (n.externalAttr) bad(`operator ${n.op} has a tensor attribute with external data`)
+      if (n.op === 'Range') {
+        const [a, l, d] = [scalar(n.inputs[0]), scalar(n.inputs[1]), scalar(n.inputs[2])]
+        if (a === undefined || l === undefined || d === undefined) bad('Range needs static start, limit and delta')
+        else if (d === 0 || !Number.isFinite((l - a) / d) || (l - a) / d > MAX_STATIC_ELEMENTS) bad('Range output is unbounded')
+      }
+      if (n.op === 'Pad') {
+        const pads = n.inputs[1] ? known.get(n.inputs[1]) : undefined
+        if (!pads) bad('Pad needs static pads')
+        else if (pads.reduce((acc, v) => acc + Math.abs(v), 0) > MAX_STATIC_ELEMENTS) bad('Pad amounts exceed the bound')
+      }
+      if (n.op === 'Resize') {
+        const sizes = n.inputs[3] ? known.get(n.inputs[3]) : undefined
+        const scales = n.inputs[2] ? knownF.get(n.inputs[2]) : undefined
+        if (sizes) {
+          if (sizes.some((v) => v < 0) || product(sizes) > MAX_STATIC_ELEMENTS) bad('Resize sizes exceed the bound')
+        } else if (scales) {
+          if (scales.some((v) => !Number.isFinite(v) || v < 0 || v > MAX_RESIZE_SCALE)) bad('Resize scales exceed the bound')
+        } else bad('Resize needs static sizes or scales')
+      }
       if (BOUNDED_OPS.has(n.op)) {
         const shapeInput = n.op === 'ConstantOfShape' ? n.inputs[0] : n.inputs[1]
         const vals = shapeInput ? known.get(shapeInput) : undefined
