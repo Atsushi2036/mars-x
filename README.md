@@ -33,7 +33,7 @@ Dev server: `pnpm --filter ./apps/explorer dev` (port 5173). Deployment details:
 
 ## Data sources and attribution
 
-- Terrain (DEM) and orthoimage: USGS Astrogeology, Mars Sample Return HiRISE mosaics for terrain relative navigation
+- Terrain (DEM) and orthoimage: USGS Astrogeology, Mars 2020 Terrain Relative Navigation HiRISE mosaics
   USGS Astrogeology Mars 2020 TRN HiRISE mosaics: DTM doi:10.5066/P9REJ9JN, orthomosaic doi:10.5066/P9QJDP48, public domain (CC0). HiRISE imagery: NASA/JPL/University of Arizona.
 - Perseverance traverse and waypoints: NASA/JPL-Caltech (Mars 2020 MMGIS).
 - Mineral layer (CRISM-based, machine-learning product): Saranathan and Parente (2021), Zenodo 5575824, CC BY 4.0;
@@ -46,6 +46,8 @@ Dev server: `pnpm --filter ./apps/explorer dev` (port 5173). Deployment details:
 Not affiliated with or endorsed by NASA, JPL or Caltech. No NASA/JPL logos are used.
 
 ## Use of AI (SI) tools
+
+Full declaration for the NASA Space Apps submission: [docs/submission/ai-use.md](docs/submission/ai-use.md).
 
 In line with the NASA Space Apps rules on Artificial Intelligence, we declare that the source code, tests, CI configuration
 and documentation of this repository were written with the assistance of Claude Code (Anthropic) under the direction of the
