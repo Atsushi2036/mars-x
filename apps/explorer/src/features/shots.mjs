@@ -5,7 +5,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { chromium } from 'playwright'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -63,8 +63,11 @@ const browser = await chromium.launch({
   args: ['--use-angle=swiftshader', '--use-gl=angle', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'],
 })
 const report = []
-const extra = (await import(path.join(here, 'shots.scenarios.mjs')).catch(() => ({ SCENARIOS: {} }))).SCENARIOS
-const ALL = { ...SCENARIOS, ...extra }
+// every sibling file shots.<area>.mjs may export SCENARIOS (name -> async (page, vp, theme, helpers))
+const ALL = { ...SCENARIOS }
+for (const f of fs.readdirSync(here).filter((n) => /^shots\..+\.mjs$/.test(n))) {
+  Object.assign(ALL, (await import(pathToFileURL(path.join(here, f)).href)).SCENARIOS ?? {})
+}
 for (const [name, drive] of Object.entries(ALL)) {
   if (ONLY.length && !ONLY.includes(name)) continue
   for (const vpName of VPS) {
@@ -87,7 +90,7 @@ for (const [name, drive] of Object.entries(ALL)) {
         await page.waitForTimeout(500)
         // dismiss onboarding if it is open
         await page.getByRole('button', { name: /skip|got it|close/i }).first().click({ timeout: 1000 }).catch(() => {})
-        await drive(page, vpName, theme)
+        await drive(page, vpName, theme, { openMode, scrollInspector, errors, out })
         await page.waitForTimeout(700)
         const file = path.join(out, `${name}__${vpName}__${theme}.png`)
         await page.screenshot({ path: file })

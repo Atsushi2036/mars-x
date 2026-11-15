@@ -47,6 +47,13 @@ describe('current conditions', () => {
     expect(row(rows, 'sun').provenance).toBe('modeled')
     expect(row(rows, 'owlt').value).toBe('12.4 min')
   })
+  it('a published sol without wind says so instead of claiming nothing was published', () => {
+    const meda = medaSummarySchema.parse({ sol: 315, daily: { temperatureMinK: 200, temperatureMaxK: 260, pressureMinPa: 590, pressureMaxPa: 645, windMeanMs: null, windMaxMs: null } })
+    const w = row(buildConditionRows(base({ meda, sol: 315 })), 'wind')
+    expect(w.value).toBe(NO_DATA)
+    expect(w.note).toBe('MEDA has no valid wind speed for sol 315.')
+    expect(row(buildConditionRows(base({ meda, sol: 315 })), 'temperature').provenance).toBe('measured')
+  })
   it('flags solar conjunction', () => {
     const r = row(buildConditionRows(base({ link: { owltS: 1200, linkAvailable: false } })), 'owlt')
     expect(r.note).toContain('conjunction')

@@ -74,20 +74,21 @@ export function buildConditionRows(i: ConditionInput): ConditionRow[] {
   const noMeda = i.sol === null ? 'This scenario has no atmosphere model.' : `No MEDA summary published for sol ${i.sol}.`
 
   const d = i.meda?.daily
+  const missing = (what: string) => (i.meda ? `MEDA has no valid ${what} for sol ${i.meda.sol}.` : noMeda)
   rows.push(
     d && d.temperatureMinK !== null && d.temperatureMaxK !== null
       ? { key: 'temperature', label: 'Air temperature', value: fmtTempRange(d.temperatureMinK, d.temperatureMaxK), provenance: 'measured', note: `Sol ${i.meda!.sol} min to max. ${medaNote}` }
-      : noData('temperature', 'Air temperature', noMeda),
+      : noData('temperature', 'Air temperature', missing('temperature')),
   )
   rows.push(
     d && d.pressureMinPa !== null && d.pressureMaxPa !== null
       ? { key: 'pressure', label: 'Pressure', value: fmtPressureRange(d.pressureMinPa, d.pressureMaxPa), provenance: 'measured', note: `Sol ${i.meda!.sol} min to max. ${medaNote}` }
-      : noData('pressure', 'Pressure', noMeda),
+      : noData('pressure', 'Pressure', missing('pressure')),
   )
   rows.push(
     d && d.windMeanMs !== null
       ? { key: 'wind', label: 'Wind', value: `${fmtNum(d.windMeanMs, 1)} m/s mean${d.windMaxMs !== null ? `, ${fmtNum(d.windMaxMs, 1)} max` : ''}`, provenance: 'measured', note: `Horizontal wind speed, sol ${i.meda!.sol}. ${medaNote}` }
-      : noData('wind', 'Wind', noMeda),
+      : noData('wind', 'Wind', missing('wind speed')),
   )
 
   // tau: user override > published value for the sol > scenario default; never silently invented

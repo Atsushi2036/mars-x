@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { astar, QLearner } from '@/intelligence'
 import { buildQProblem, cellCost, DEFAULT_WEIGHTS } from './problem'
+import { honestSummary, REFERENCE_OFFICIAL } from './reference'
 import { compareVerdict, niceTicks, summarizeCurve } from './curve'
 
 const flat = (n: number, v = 0) => new Float32Array(n * n).fill(v)
@@ -80,5 +81,19 @@ describe('curve helpers', () => {
     expect(compareVerdict({ reached: false, ratio: null })).toContain('does not reach')
     expect(compareVerdict({ reached: true, ratio: 1 })).toContain('Matches')
     expect(compareVerdict({ reached: true, ratio: 1.125 })).toBe('12.5% costlier than the A* optimum.')
+  })
+})
+
+describe('reference policy honesty', () => {
+  it('always puts the official result next to the in-distribution number and says it does not pass', () => {
+    const h = honestSummary({ metrics: { successTest: 0.965, successTestCi95Low: 0.9295, testEpisodes: 200 } })
+    expect(h.inDistribution).toContain('96.5%')
+    expect(h.inDistribution).toContain('training distribution')
+    expect(h.official).toContain('58.7%')
+    expect(h.verdict).toBe('Does not pass L1: it needs at least 80%.')
+    expect(REFERENCE_OFFICIAL.success).toBeLessThan(REFERENCE_OFFICIAL.threshold)
+  })
+  it('says No data when the card carries no metric', () => {
+    expect(honestSummary({ metrics: {} }).inDistribution).toBe('No data')
   })
 })

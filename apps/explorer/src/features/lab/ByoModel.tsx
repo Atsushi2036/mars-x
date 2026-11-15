@@ -7,6 +7,7 @@ import { useByo } from '../shared/byo-store'
 import { DropZone } from '../shared/DropZone'
 import { short } from '../shared/fmt'
 import { RunCard } from '../replay/RunCard'
+import { ReferencePolicy } from './ReferencePolicy'
 import { explainPolicyError, explainRunError, type Explained } from './errors'
 
 function ErrorBox({ e, onDismiss }: { e: Explained; onDismiss: () => void }) {
@@ -103,6 +104,7 @@ function RunSection() {
 export function ByoModel() {
   return (
     <div>
+      <ReferencePolicy />
       <PolicySection />
       <RunSection />
     </div>
