@@ -38,6 +38,8 @@ export interface Headline {
 }
 
 const r = (v: number, d: number) => fmtNum(v, d)
+/** Truncates instead of rounding, so r = 0.9999991 reads 0.99999 and never rounds up to a perfect 1. */
+const trunc = (v: number, d: number) => (Math.floor(v * 10 ** d) / 10 ** d).toFixed(d)
 
 /** The three headline checks. Every figure is read from the report; nothing is typed in by hand. */
 export function headlines(rep: ValidationReport): Headline[] {
@@ -49,14 +51,14 @@ export function headlines(rep: ValidationReport): Headline[] {
     {
       id: 'height',
       title: 'Terrain height vs the rover',
-      big: `r = ${h.pearson.toFixed(5)}`,
+      big: `r = ${trunc(h.pearson, 5)}`,
       bigLabel: `DEM height against Perseverance's own elevation at ${h.n} waypoints`,
       lines: [
-        ['Mean absolute error', `${r(h.mae * 100, 1)} cm`],
+        ['Mean abs. error', `${r(h.mae * 100, 1)} cm`],
         ['Bias', `${r(h.bias * 100, 1)} cm`],
         ['RMSE', `${r(h.rmse * 100, 1)} cm`],
       ],
-      caveat: 'Both come from the same orbital elevation model family, so this checks georeferencing and datum, not the terrain itself.',
+      caveat: 'The rover's published elevations may themselves be tied to orbital maps, so read this as a georeferencing and datum check more than an independent test of the terrain.',
     },
     {
       id: 'slope',
@@ -64,7 +66,7 @@ export function headlines(rep: ValidationReport): Headline[] {
       big: `r = ${r(s.pearson, 2)}`,
       bigLabel: `DEM slope against the rover's measured tilt at ${s.n} waypoints (${r(ss.pearson, 2)} with the DEM smoothed to the rover's 1.5 m scale)`,
       lines: [
-        ['Mean absolute error', `${r(s.mae, 1)}° (${r(ss.mae, 1)}° smoothed)`],
+        ['Mean abs. error', `${r(s.mae, 1)}° (${r(ss.mae, 1)}° smoothed)`],
         ['Bias', `${r(s.bias, 1)}°`],
         ['RMSE', `${r(s.rmse, 1)}°`],
       ],

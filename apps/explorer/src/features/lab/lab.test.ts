@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { astar, QLearner } from '@/intelligence'
 import { buildQProblem, cellCost, DEFAULT_WEIGHTS } from './problem'
 import { honestSummary, REFERENCE_OFFICIAL } from './reference'
-import { compareVerdict, niceTicks, summarizeCurve } from './curve'
+import { chartRange, compareVerdict, niceTicks, summarizeCurve } from './curve'
 
 const flat = (n: number, v = 0) => new Float32Array(n * n).fill(v)
 
@@ -75,6 +75,13 @@ describe('curve helpers', () => {
     expect(t.lo).toBeLessThanOrEqual(-93)
     expect(t.hi).toBeGreaterThanOrEqual(12)
     expect(t.ticks.every((v) => Number.isInteger(v) || Math.abs(v * 2 - Math.round(v * 2)) < 1e-9)).toBe(true)
+  })
+  it('does not let the first terrible episodes flatten the curve, and says it clipped', () => {
+    const p = [{ episode: 1, raw: -2000, smooth: -2000, success: 0 }, ...Array.from({ length: 99 }, (_, i) => ({ episode: i + 2, raw: -5 + i / 50, smooth: -5 + i / 50, success: 1 }))]
+    const r = chartRange(p)
+    expect(r.clipped).toBe(true)
+    expect(r.min).toBeGreaterThan(-100)
+    expect(chartRange(p.slice(1)).clipped).toBe(false)
   })
   it('words the comparison without overclaiming', () => {
     expect(compareVerdict(null)).toContain('Not evaluated')

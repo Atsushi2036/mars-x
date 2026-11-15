@@ -66,8 +66,8 @@ describe('validation headlines', () => {
   })
   const h = headlines(rep)
   it('reads the three headline numbers from the report', () => {
-    expect(h[0]!.big).toBe('r = 1.00000')
-    expect(h[0]!.lines[0]).toEqual(['Mean absolute error', '2.7 cm'])
+    expect(h[0]!.big).toBe('r = 0.99999')
+    expect(h[0]!.lines[0]).toEqual(['Mean abs. error', '2.7 cm'])
     expect(h[1]!.big).toBe('r = 0.84')
     expect(h[1]!.bigLabel).toContain('0.91')
     expect(h[1]!.lines[0]![1]).toBe('1.9° (1.4° smoothed)')

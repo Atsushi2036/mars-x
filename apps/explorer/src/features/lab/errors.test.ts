@@ -10,6 +10,9 @@ describe('policy errors in plain language', () => {
     expect(e.problems[0]).toContain('unbounded')
     expect(e.fix).toContain('[batch, 505]')
   })
+  it('says a non-ONNX file is not an ONNX model', () => {
+    expect(explainPolicyError('Model rejected: unsupported wire type 4').problems[0]).toContain('not an ONNX file')
+  })
   it('handles size, empty and timeout', () => {
     expect(explainPolicyError('The model is larger than 20 MB').headline).toContain('too large')
     expect(explainPolicyError('The model file is empty').headline).toContain('empty')

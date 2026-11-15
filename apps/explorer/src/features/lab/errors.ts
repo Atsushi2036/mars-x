@@ -24,6 +24,7 @@ export function explainPolicyError(message: string): Explained {
 }
 
 function plainProblem(p: string): string {
+  if (/wire type|malformed|truncated|overruns|no graph|multiple graphs/i.test(p)) return 'The file could not be read as an ONNX model. It may be damaged or not an ONNX file.'
   const op = /^operator (\w+) is not allowed/.exec(p)
   if (op) return `The operator ${op[1]} is not allowed (loops, scans and conditionals can run unbounded).`
   if (/external data/.test(p)) return `${p}. Weights must be stored inside the file.`

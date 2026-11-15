@@ -57,3 +57,20 @@ export function compareVerdict(ev: { reached: boolean; ratio: number | null } | 
   if (ev.ratio <= 1.0001) return 'Matches the A* optimum.'
   return `${((ev.ratio - 1) * 100).toFixed(1)}% costlier than the A* optimum.`
 }
+
+/**
+ * Value range to draw. Early episodes of a learner are far worse than later ones and would flatten the whole
+ * curve, so the lower bound is the 5th percentile of the moving average; `clipped` tells the UI to say so.
+ */
+export function chartRange(points: readonly ChartPoint[]): { min: number; max: number; clipped: boolean } {
+  if (points.length === 0) return { min: 0, max: 1, clipped: false }
+  const sm = points.map((p) => p.smooth).sort((a, b) => a - b)
+  const all = points.flatMap((p) => [p.raw, p.smooth])
+  const trueMin = Math.min(...all)
+  const max = Math.max(...all)
+  const p5 = sm[Math.floor(0.05 * (sm.length - 1))]!
+  const span = Math.max(1e-9, max - p5)
+  const min = p5 - span * 0.15
+  const clipped = trueMin < min
+  return { min: clipped ? min : trueMin, max, clipped }
+}

@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from 'react'
 import { fmtNum } from '../shared/fmt'
-import { niceTicks, type ChartPoint } from './curve'
+import { chartRange, niceTicks, type ChartPoint } from './curve'
 
 const W = 320
 const H = 168
@@ -15,15 +15,15 @@ export function RewardChart({ points }: { points: ChartPoint[] }) {
   const titleId = useId()
   const geo = useMemo(() => {
     if (points.length === 0) return null
-    const ys = points.flatMap((p) => [p.raw, p.smooth])
-    const { lo, hi, ticks } = niceTicks(Math.min(...ys), Math.max(...ys))
+    const range = chartRange(points)
+    const { lo, hi, ticks } = niceTicks(range.min, range.max)
     const x0 = points[0]!.episode
     const x1 = points[points.length - 1]!.episode
     const sx = (e: number) => M.l + (x1 === x0 ? 0.5 : (e - x0) / (x1 - x0)) * (W - M.l - M.r)
-    const sy = (v: number) => H - M.b - ((v - lo) / (hi - lo || 1)) * (H - M.t - M.b)
+    const sy = (v: number) => H - M.b - (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo || 1) * (H - M.t - M.b)
     const path = (k: 'raw' | 'smooth') => points.map((p, i) => `${i ? 'L' : 'M'}${sx(p.episode).toFixed(1)} ${sy(p[k]).toFixed(1)}`).join('')
     const xt = niceTicks(x0, x1, 3).ticks.filter((t) => t >= x0 && t <= x1)
-    return { ticks, sx, sy, raw: path('raw'), smooth: path('smooth'), xt, x0, x1 }
+    return { clipped: range.clipped, ticks, sx, sy, raw: path('raw'), smooth: path('smooth'), xt, x0, x1 }
   }, [points])
 
   if (!geo) {
@@ -105,7 +105,7 @@ export function RewardChart({ points }: { points: ChartPoint[] }) {
             <span className="h-px w-4 bg-chart-1/40" aria-hidden="true" /> Per episode
           </span>
         </span>
-        <span>Episodes →</span>
+        <span>{geo.clipped ? 'Early low values are clipped. Episodes →' : 'Episodes →'}</span>
       </figcaption>
       <details className="text-[11px] text-muted-foreground">
         <summary className="cursor-pointer rounded outline-none focus-visible:ring-2 focus-visible:ring-ring">Data table</summary>

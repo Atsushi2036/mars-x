@@ -33,6 +33,13 @@ export const SCENARIOS = {
     await page.waitForTimeout(9000)
     await h.scrollInspector(page, vp, 'Reward per episode')
   },
+  lab_trained_map: async (page, vp, _t, h) => {
+    await openLab(page, vp, h)
+    await page.waitForSelector('canvas[aria-label^="Learning grid"]', { timeout: 60000 })
+    await page.getByRole('button', { name: /^Train$/ }).first().click()
+    await page.waitForTimeout(9000)
+    await h.scrollInspector(page, vp, 'Q-learning, live')
+  },
   lab_compare: async (page, vp, _t, h) => {
     await openLab(page, vp, h)
     await page.waitForSelector('canvas[aria-label^="Learning grid"]', { timeout: 60000 })
@@ -83,7 +90,7 @@ Object.assign(SCENARIOS, {
   },
   sources_validation: async (page, vp, _t, h) => {
     await h.openMode(page, vp, 'Data & Sources', 'Data')
-    await page.getByText('r = 1.00000').first().waitFor({ timeout: 30000 })
+    await page.getByText('r = 0.99999').first().waitFor({ timeout: 30000 })
     await h.scrollInspector(page, vp, 'Validation')
   },
   sources_credits: async (page, vp, _t, h) => {

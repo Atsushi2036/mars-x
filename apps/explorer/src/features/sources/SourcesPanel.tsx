@@ -49,8 +49,10 @@ function LayerSource({ s }: { s: SourceGroup }) {
         <Row label="License" value={s.license} />
         <Row label="DOI" value={doi ? <Ext href={doi}>{s.doi}</Ext> : 'None'} />
         <Row label="Resolution" value={fmtRes(s.resM)} />
-        <Row label="Used for" value={s.layers.join(', ')} />
       </dl>
+      <p className="text-[11px] leading-4 text-muted-foreground">
+        Used for: <span className="font-mono">{s.layers.join(', ')}</span>
+      </p>
       {url && (
         <p className="pt-0.5">
           <Ext href={url}>Source</Ext>
