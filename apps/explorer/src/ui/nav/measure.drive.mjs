@@ -5,6 +5,7 @@
 import { chromium } from 'playwright'
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > -1 ? process.argv[i + 1] : d }
 const base = arg('url', 'http://localhost:5193')
+const PROFILE = arg('profile', 'rover-rtg')
 const MODES = arg('modes', 'guided,free').split(',')
 const MODELS = arg('models', 'ppo-reference,my-first-model').split(',')
 const ROUTES = [
@@ -25,13 +26,13 @@ console.log('model | mode | route | outcome | reached/total | steps | m driven v
 for (const model of MODELS) for (const mode of MODES) {
   let ok = 0
   for (const [name, a, b] of ROUTES) {
-    const res = await page.evaluate(async ([a, b, model, mode]) => {
+    const res = await page.evaluate(async ([a, b, model, mode, PROFILE]) => {
       const A = window.__marsx.agent
       const m = window.__marsx.mission
       A.playback.getState().exit()
-      m.setMissionProfile('rover-rtg')
+      m.setMissionProfile(PROFILE)
       await m.setMissionEndpoints({ x: a[0], z: a[1] }, { x: b[0], z: b[1] })
-      for (let k = 0; k < 240; k++) { if (m.state().outcomes['rover-rtg']?.status === 'ok') break; await new Promise((r) => setTimeout(r, 250)) }
+      for (let k = 0; k < 240; k++) { if (m.state().outcomes[PROFILE]?.status === 'ok') break; await new Promise((r) => setTimeout(r, 250)) }
       A.driver.setState({ kind: 'catalog:' + model, mode, notice: null, summary: null, phase: 'idle' })
       const { startJourney } = await import('/src/store/watch.ts')
       startJourney()
@@ -40,7 +41,7 @@ for (const model of MODELS) for (const mode of MODES) {
       const n = A.driver.getState().notice
       A.playback.getState().exit()
       return { s, n }
-    }, [a, b, model, mode])
+    }, [a, b, model, mode, PROFILE])
     const s = res.s
     if (s?.outcome === 'success') ok++
     console.log(`${model} | ${mode} | ${name} | ${s?.outcome ?? 'none (' + res.n + ')'} | ${s?.reached}/${s?.total} | ${s?.steps} | ${s ? Math.round(s.pathM) + ' vs ' + Math.round(s.astarM) : '-'}`)

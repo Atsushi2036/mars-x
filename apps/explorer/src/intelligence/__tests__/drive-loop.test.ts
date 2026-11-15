@@ -14,13 +14,13 @@ const flat = (): Terrain => ({ rows: N, cols: N, resM: 2, slope: new Float32Arra
 const cfg = () => ({ ...configFor('jezero-v1/l1/rtg-geometry')!, maxSteps: 120 })
 
 /** greedy toward the goal using the goal-direction features of obs/1 (indices 486, 487) */
-const greedy = async (obs: Float32Array): Promise<number> => {
+const greedy = async (obs: Float32Array, exclude: ReadonlySet<number> = new Set()): Promise<number> => {
   const dr = obs[486]!
   const dc = obs[487]!
   let best = 8
   let score = -Infinity
   ACTIONS.forEach(([, r, c], i) => {
-    if (i === 8) return
+    if (i === 8 || exclude.has(i)) return
     const s = r * dr + c * dc
     if (s > score) {
       score = s
@@ -140,5 +140,31 @@ describe('guided drive and stuck detection', () => {
     const r = await runDrive({ env: new EnvLite(flat(), { ...cfg(), maxSteps: 300 }), start: [2, 2], goals: [[18, 15]], infer: async () => 8, track: t })
     expect(r.outcome).toBe('stuck')
     expect(r.steps).toBeLessThan(80)
+  })
+})
+
+describe('cells blocked in the simulation but planned by A*', () => {
+  const blockedAt = (cells: [number, number][]): Terrain => {
+    const t = flat()
+    for (const [r, c] of cells) t.step[r * N + c] = 5 // far above the 0.525 m step limit
+    return t
+  }
+  it('a start, a sub-goal and a goal on blocked cells are moved to the nearest free cell, so the drive still arrives', async () => {
+    const { nearestFree } = await import('../drive/drive-loop')
+    const terrain = blockedAt([[2, 2], [10, 4], [18, 15]])
+    const env = new EnvLite(terrain, { ...cfg(), maxSteps: 300 })
+    expect(nearestFree(env.cost, [10, 4])).not.toEqual([10, 4])
+    const track = new LiveTrack(400)
+    const r = await runDrive({ env, start: [2, 2], goals: [[10, 4], [18, 15]], infer: greedy, track })
+    expect(r.outcome).toBe('success')
+    expect(r.reached).toBe(2)
+  })
+  it('nearestFree returns the cell itself when free and null when nothing is free nearby', async () => {
+    const { nearestFree } = await import('../drive/drive-loop')
+    const cost = new Float32Array(100).fill(Infinity)
+    expect(nearestFree(cost, [5, 5])).toBeNull()
+    cost[5 * 10 + 5] = 1
+    expect(nearestFree(cost, [5, 5])).toEqual([5, 5])
+    expect(nearestFree(cost, [5, 7])).toEqual([5, 5])
   })
 })

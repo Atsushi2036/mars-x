@@ -40,6 +40,21 @@ export function stopAiDrive(): void {
   active = null
 }
 
+/**
+ * The policy's best action, skipping the ones just refused in this cell (a blocked move changes nothing, so an argmax policy would
+ * repeat it forever: the 0 m drive). Falls back to the next best logit, or to the first free direction if the model emits no logits.
+ */
+export function pickAction(best: number, logits: Float32Array | null, exclude: ReadonlySet<number>): number {
+  if (!exclude.has(best)) return best
+  if (logits) {
+    let pick = -1
+    for (let i = 0; i < 9; i++) if (!exclude.has(i) && (pick < 0 || logits[i]! > logits[pick]!)) pick = i
+    if (pick >= 0) return pick
+  }
+  for (let i = 0; i < 9; i++) if (!exclude.has(i)) return i
+  return 8
+}
+
 /** Marker list the playback bar shows for a (possibly still growing) drive. */
 export function liveEvents(track: LiveTrack, summary: DriveSummary | null, cum: ArrayLike<number>, speed: number): PlaybackEvent[] {
   const at = (i: number) => (cum[Math.min(i, track.count - 1)] ?? 0) / speed
@@ -189,7 +204,10 @@ export async function startAiWatch(kind: AiDriverKind): Promise<boolean> {
     goals,
     track,
     signal: ctl.signal,
-    infer: async (obs) => (await client.infer(obs, 1)).actions[0]!,
+    infer: async (obs, exclude) => {
+      const r = await client.infer(obs, 1)
+      return pickAction(r.actions[0]!, r.logits, exclude)
+    },
   }).then((res: DriveResult) => {
     if (ctl.signal.aborted && res.outcome === 'aborted') return
     const summary: DriveSummary = { kind, outcome: res.outcome, steps: res.steps, pathM: res.pathM, astarM, mode, reached: res.reached, total: res.total, blockedAttempts: res.blockedAttempts, ...(res.error ? { error: res.error } : {}) }

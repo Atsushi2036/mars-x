@@ -143,3 +143,14 @@ describe('AI drive in Watch', () => {
     expect(terminated).toBeGreaterThan(0)
   })
 })
+
+describe('pickAction', () => {
+  it('keeps the best action unless it was just refused, then the next best logit, never a refused one', async () => {
+    const { pickAction } = await import('./drive-watch')
+    const logits = Float32Array.of(0.1, 0.9, 0.5, 0.2, 0.3, 0.0, 0.0, 0.0, 0.4)
+    expect(pickAction(1, logits, new Set())).toBe(1)
+    expect(pickAction(1, logits, new Set([1]))).toBe(2)
+    expect(pickAction(1, logits, new Set([1, 2]))).toBe(8)
+    expect(pickAction(1, null, new Set([1]))).toBe(0)
+  })
+})

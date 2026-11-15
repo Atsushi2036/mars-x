@@ -7,6 +7,7 @@ import type { Heightfield } from '@/core/terrain/heightfield'
 import { agentLive, cameraRig, flyTo, FPV, resetNorth, useCamera, zoomBy, type FlyRequest } from '@/store/camera'
 import { azimuthOf, clampDistance, clampPitch, clampToTile, DIST_MAX, easeInOut, lerpAngle, orbitPosition, panStep, smoothDamp } from '@/store/camera-math'
 import { useMission } from '@/store/mission'
+import { usePlayback } from '@/store/playback'
 import { useApp } from '@/store/app'
 import { roverLive } from '@/store/rover'
 
@@ -462,7 +463,9 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
       camera.position.z = smoothDamp(camera.position.z, tz, chaseVel.current.z, CHASE_SMOOTH_S, dt)
       const floor = hf.sampleHeight(camera.position.x, camera.position.z) + 1.5
       if (camera.position.y < floor) camera.position.y = floor
-      camera.lookAt(agent.x, rg + (astro ? 1.3 : 1.0), agent.z)
+      // while watching, the playback bar covers the lower part of the view: aim a little below the agent so it rides in the upper, free part
+      const aimDown = usePlayback.getState().source ? back * 0.4 : 0
+      camera.lookAt(agent.x, rg + (astro ? 1.3 : 1.0) - aimDown, agent.z)
       cameraRig.focus.x = agent.x
       cameraRig.focus.y = rg
       cameraRig.focus.z = agent.z

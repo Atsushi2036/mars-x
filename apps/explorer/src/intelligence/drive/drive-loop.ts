@@ -51,8 +51,11 @@ export interface DriveOptions {
   start: Cell
   /** ordered sub-goals; the last one is the real goal. A single entry = free mode. */
   goals: readonly Cell[]
-  /** obs/1 in, act/1 index out */
-  infer: (obs: Float32Array) => Promise<number>
+  /**
+   * obs/1 in, act/1 index out. `exclude` holds the actions that were just refused in THIS state (a blocked move changes nothing, so a
+   * deterministic policy would repeat it forever): the caller must pick its best action outside the set.
+   */
+  infer: (obs: Float32Array, exclude: ReadonlySet<number>) => Promise<number>
   track: LiveTrack
   signal?: AbortSignal
   /** called after every step (throttle in the caller) */
@@ -82,9 +85,40 @@ export function subGoals(path: readonly Cell[], spacingCells: number): Cell[] {
   return out
 }
 
+/**
+ * The planner and the simulation can disagree about a single cell (the plan grid says passable, env-lite blocks it for a step height
+ * or a nodata neighbour). A policy can never stand on a blocked cell, so a start, sub-goal or goal on one is moved to the nearest free
+ * cell (rings of up to `maxRing` cells); null if there is none.
+ */
+export function nearestFree(cost: ArrayLike<number>, cell: Cell, maxRing = 4): Cell | null {
+  const n = Math.round(Math.sqrt(cost.length))
+  const free = (r: number, c: number) => r >= 0 && c >= 0 && r < n && c < n && Number.isFinite(cost[r * n + c]!)
+  if (free(cell[0], cell[1])) return cell
+  for (let ring = 1; ring <= maxRing; ring++) {
+    let best: Cell | null = null
+    let bestD = Infinity
+    for (let dr = -ring; dr <= ring; dr++)
+      for (let dc = -ring; dc <= ring; dc++) {
+        if (Math.max(Math.abs(dr), Math.abs(dc)) !== ring) continue
+        const r = cell[0] + dr
+        const c = cell[1] + dc
+        if (free(r, c) && Math.hypot(dr, dc) < bestD) {
+          best = [r, c]
+          bestD = Math.hypot(dr, dc)
+        }
+      }
+    if (best) return best
+  }
+  return null
+}
+
 export async function runDrive(o: DriveOptions): Promise<DriveResult> {
   const { env, track } = o
+  // start and goals on cells the simulation blocks are moved to the nearest free cell (see nearestFree)
+  const start: Cell = nearestFree(env.cost, o.start) ?? o.start
+  const goalsFree: Cell[] = o.goals.map((g) => nearestFree(env.cost, g) ?? g)
   track.push(o.start[0], o.start[1])
+  if (start !== o.start) track.push(start[0], start[1])
   let blocked = 0
   let steps = 0
   let pathM = 0
@@ -95,18 +129,20 @@ export async function runDrive(o: DriveOptions): Promise<DriveResult> {
     return { outcome, steps, pathM, blockedAttempts: blocked, reached, total: o.goals.length, ...(error ? { error } : {}) }
   }
   const cap = Math.min(MAX_DRIVE_STEPS, env.cfg.maxSteps)
-  let cur: Cell = o.start
-  for (const goal of o.goals) {
+  let cur: Cell = start
+  for (const goal of goalsFree) {
     env.reset(cur, goal)
     let lastShield = 0
     let best = Math.hypot(goal[0] - cur[0], goal[1] - cur[1])
     let sinceBest = 0
+    // actions refused in the current cell; cleared as soon as the agent moves
+    const refused = new Set<number>()
     for (;;) {
       if (o.signal?.aborted) return finish('aborted')
       if (steps >= cap) return finish('timeout')
       let action: number
       try {
-        action = await o.infer(env.observe())
+        action = await o.infer(env.observe(), refused)
       } catch (e) {
         return finish('error', e instanceof Error ? e.message : String(e))
       }
@@ -114,6 +150,8 @@ export async function runDrive(o: DriveOptions): Promise<DriveResult> {
       steps++
       const s = env.state
       track.push(s.row, s.col)
+      if (s.row !== cur[0] || s.col !== cur[1]) refused.clear()
+      else if (action !== 8) refused.add(action)
       if (s.shield > lastShield) {
         blocked += s.shield - lastShield
         lastShield = s.shield
