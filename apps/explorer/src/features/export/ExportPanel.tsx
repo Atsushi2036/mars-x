@@ -1,13 +1,11 @@
-import { Check, ChevronDown, Copy, Download, PackageOpen } from 'lucide-react'
+import { Check, Copy, Download, PackageOpen } from '@/ui/icons'
 import { useEffect, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 import { fmtClock } from '../shared/fmt'
 import { useApp } from '@/store/app'
-import { Section } from '@/ui/panels/Section'
+import { Chip, Details, Learn, PanelSection } from '@/ui/kit'
 import { CONTENTS, fmtSize, isZipResponse, packageUrl, parseExportIndex, scenarioName, type ExportIndex, type ExportPackage } from './packages'
 
 type Load = { status: 'loading' } | { status: 'ready'; index: ExportIndex; available: ReadonlySet<string> } | { status: 'unavailable'; reason: string }
@@ -54,7 +52,7 @@ function CopyHash({ hash }: { hash: string }) {
       variant="ghost"
       size="icon"
       aria-label={done ? 'sha256 copied' : 'Copy sha256'}
-      className="size-9 shrink-0 md:size-7"
+      className="size-10 shrink-0"
       onClick={() => {
         void navigator.clipboard
           ?.writeText(hash)
@@ -65,42 +63,42 @@ function CopyHash({ hash }: { hash: string }) {
           .catch(() => undefined)
       }}
     >
-      {done ? <Check /> : <Copy />}
+      {done ? <Check className="size-5" /> : <Copy className="size-5" />}
     </Button>
   )
 }
 
 function PackageCard({ p, base, available }: { p: ExportPackage; base: string; available: boolean }) {
   return (
-    <li className="space-y-2 rounded-lg border border-border bg-card p-3">
+    <li className="space-y-2.5 rounded-2xl border border-border bg-card p-3.5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-medium">{scenarioName(p.scenarioId)}</p>
-          <p className="truncate font-mono text-[11px] text-muted-foreground">{p.scenarioId}</p>
+          <p className="text-base font-medium">{scenarioName(p.scenarioId)}</p>
+          <p className="truncate font-mono text-xs text-muted-foreground">{p.scenarioId}</p>
         </div>
-        <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">{fmtSize(p.bytes)}</span>
+        <Chip className="h-6 tabular-nums">{fmtSize(p.bytes)}</Chip>
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         g = {p.gravity.toFixed(3)} m/s²
         {p.sunElevationDeg != null && p.ltstH != null ? ` · Sun ${p.sunElevationDeg.toFixed(1)}° at ${fmtClock(p.ltstH)} LTST` : ''}
         {p.meshVsDem ? ` · mesh vs DEM: rms ${p.meshVsDem.rmsM.toFixed(2)} m, p95 ${p.meshVsDem.p95M.toFixed(2)} m, max ${p.meshVsDem.maxM.toFixed(2)} m` : ''}
       </p>
-      <div className="flex items-start gap-1 rounded-md bg-surface px-2 py-1.5">
+      <div className="flex items-start gap-1 rounded-xl bg-surface px-2.5 py-1.5">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] text-muted-foreground">sha256</p>
-          <p className="break-all font-mono text-[11px] leading-4">{p.sha256}</p>
+          <p className="text-xs text-muted-foreground">sha256</p>
+          <p className="break-all font-mono text-xs leading-4">{p.sha256}</p>
         </div>
         <CopyHash hash={p.sha256} />
       </div>
       {available ? (
-        <Button asChild className="h-10 w-full md:h-8">
+        <Button asChild className="h-11 w-full gap-2">
           <a href={packageUrl(base, p)} download={p.zip}>
-            <Download /> Download ZIP
+            <Download className="size-5" /> Download ZIP
           </a>
         </Button>
       ) : (
-        <Button disabled className="h-10 w-full md:h-8">
-          <Download /> Not published in this build
+        <Button disabled className="h-11 w-full gap-2">
+          <Download className="size-5" /> Not published in this build
         </Button>
       )}
     </li>
@@ -110,44 +108,40 @@ function PackageCard({ p, base, available }: { p: ExportPackage; base: string; a
 export function ExportPanel() {
   const base = useApp((s) => s.dataset?.base ?? null)
   const load = useExportIndex(base)
-  const [open, setOpen] = useState(false)
   return (
-    <Section title="Export to Gazebo / Isaac Sim" hint="Take the exact benchmark scenario, terrain included, to a higher-fidelity simulator.">
+    <PanelSection
+      title="Export to Gazebo / Isaac Sim"
+      caption="The exact benchmark scenario, terrain included."
+      action={
+        <Learn title="Before you export">
+          <p>The mesh is decimated to 8 m; the GeoTIFF keeps the full 1 m elevations. The Sun comes from Mars24 at the scenario time.</p>
+          <p>Check the download with sha256sum against the value on the card. Simulation only: a first filter, not flight qualification.</p>
+        </Learn>
+      }
+    >
       <div className="flex flex-wrap gap-1.5">
-        <Badge variant="outline" className="h-auto whitespace-normal py-1 text-left">
+        <Chip tone="warning" className="h-auto whitespace-normal py-1 text-left">
           Gazebo: SDF checked against template rules (not run in Gazebo)
-        </Badge>
-        <Badge variant="outline" className="h-auto whitespace-normal py-1 text-left">
+        </Chip>
+        <Chip tone="warning" className="h-auto whitespace-normal py-1 text-left">
           Isaac Sim: not tested (OBJ for the MeshConverter)
-        </Badge>
+        </Chip>
       </div>
 
-      <div>
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
-          className="flex min-h-9 w-full items-center justify-between gap-2 rounded-md text-left text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          What is in each package
-          <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', open && 'rotate-180')} aria-hidden="true" />
-        </button>
-        {open && (
-          <dl className="mt-1 divide-y divide-border rounded-lg border border-border px-3">
-            {CONTENTS.map((c) => (
-              <div key={c.file} className="space-y-0.5 py-2 text-xs">
-                <dt className="font-mono">{c.file}</dt>
-                <dd className="text-muted-foreground">{c.what}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </div>
+      <Details summary="What is in each package">
+        <dl className="divide-y divide-border">
+          {CONTENTS.map((c) => (
+            <div key={c.file} className="space-y-0.5 py-2 text-sm">
+              <dt className="font-mono text-xs">{c.file}</dt>
+              <dd className="text-muted-foreground">{c.what}</dd>
+            </div>
+          ))}
+        </dl>
+      </Details>
 
       {load.status === 'loading' && (
         <div role="status" aria-label="Loading the export packages" className="space-y-2">
-          <Skeleton className="h-36 w-full" />
-          <Skeleton className="h-36 w-full" />
+          <Skeleton className="h-36 w-full rounded-2xl" />
         </div>
       )}
       {load.status === 'unavailable' && (
@@ -169,11 +163,7 @@ export function ExportPanel() {
           ))}
         </ul>
       )}
-      {load.status === 'ready' && load.index.packages.length === 0 && <p className="text-xs text-muted-foreground">This dataset lists no packages.</p>}
-
-      <p className="text-[11px] leading-4 text-muted-foreground">
-        The mesh is decimated to 8 m; the GeoTIFF keeps the full 1 m elevations. The Sun comes from Mars24 at the scenario time. Check the download with <span className="font-mono">sha256sum</span> against the value above. Simulation only: a first filter, not flight qualification.
-      </p>
-    </Section>
+      {load.status === 'ready' && load.index.packages.length === 0 && <p className="text-sm text-muted-foreground">This dataset lists no packages.</p>}
+    </PanelSection>
   )
 }

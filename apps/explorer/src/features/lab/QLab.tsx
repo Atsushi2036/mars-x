@@ -1,4 +1,3 @@
-import { CircleAlert, Pause, Play, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -8,7 +7,8 @@ import { worldToCell } from '@/core/mission/geometry'
 import { astar, PROFILES, useQLearning } from '@/intelligence'
 import { useApp } from '@/store/app'
 import { useMission } from '@/store/mission'
-import { Section } from '@/ui/panels/Section'
+import { CircleAlert, Pause, Play, RotateCcw } from '@/ui/icons'
+import { Details, Learn, PanelSection, StatCard } from '@/ui/kit'
 import { fmtNum } from '../shared/fmt'
 import { compareVerdict, summarizeCurve } from './curve'
 import { RewardChart } from './LineChart'
@@ -23,27 +23,16 @@ function timedAstar(p: QProblem) {
   return { result, ms: performance.now() - t0 }
 }
 
-function Param({ id, label, value, min, max, step, digits = 2, onChange, hint }: { id: string; label: string; value: number; min: number; max: number; step: number; digits?: number; onChange: (v: number) => void; hint?: string }) {
+function Param({ id, label, value, min, max, step, digits = 2, onChange }: { id: string; label: string; value: number; min: number; max: number; step: number; digits?: number; onChange: (v: number) => void }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <div className="flex items-baseline justify-between">
-        <label id={id} className="text-xs text-muted-foreground">
+        <label id={id} className="text-sm text-muted-foreground">
           {label}
         </label>
-        <span className="font-mono text-xs tabular-nums">{value.toFixed(digits)}</span>
+        <span className="text-sm font-medium tabular-nums">{value.toFixed(digits)}</span>
       </div>
       <Slider aria-labelledby={id} min={min} max={max} step={step} value={[value]} onValueChange={([v]) => v !== undefined && onChange(v)} />
-      {hint && <p className="text-[11px] leading-4 text-muted-foreground">{hint}</p>}
-    </div>
-  )
-}
-
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-lg border border-border px-2.5 py-2">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className="font-mono text-sm tabular-nums">{value}</p>
-      {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
     </div>
   )
 }
@@ -142,7 +131,16 @@ export function QLab() {
 
   return (
     <div>
-      <Section title="Q-learning, live" hint="Tabular Q-learning on a downsampled grid. It learns from scratch, in your browser, in a Worker.">
+      <PanelSection
+        title="Q-learning, live"
+        caption="Learns from scratch in your browser, in a Worker."
+        action={
+          <Learn title="What this shows">
+            <p>Tabular Q-learning on a downsampled grid. A* plans on the known map and is optimal on it, so on a known map the learner can only match A*, not beat it.</p>
+            <p>Learning pays off when the map is unknown, which is what the benchmark levels L2 and L3 test.</p>
+          </Learn>
+        }
+      >
         {layersStatus === 'error' && (
           <Alert variant="destructive" role="alert">
             <CircleAlert />
@@ -157,59 +155,43 @@ export function QLab() {
           </div>
         )}
         {shown && (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <PathMap problem={shown} astarPath={astarPath} greedyPath={greedy} />
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <span className="h-0.5 w-4 rounded bg-chart-1" aria-hidden="true" /> A* path
+                <span className="h-0.5 w-4 rounded bg-planner" aria-hidden="true" /> A* path
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-0.5 w-4 rounded bg-chart-2" aria-hidden="true" /> Learned policy
+                <span className="h-0.5 w-4 rounded bg-agent" aria-hidden="true" /> Learned policy
               </span>
-              <span className="ml-auto font-mono tabular-nums">
-                {shown.cols}×{shown.rows} cells · {fmtNum(shown.cellM, 0)} m each
+              <span className="ml-auto tabular-nums">
+                {shown.cols}×{shown.rows} cells · {fmtNum(shown.cellM, 0)} m
               </span>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              {shown.endpoints === 'mission' ? 'Endpoints come from your Mission origin and destination.' : 'Default endpoints. Place an origin and a destination in Mission mode to train on your own route.'} Profile: {PROFILE.label}, {PROFILE.maxSlope}° limit.
+            <p className="text-xs text-muted-foreground">
+              {shown.endpoints === 'mission' ? 'Using your origin and destination.' : 'Default endpoints. Set your own in Plan a route.'} {PROFILE.label}, {PROFILE.maxSlope}° limit.
             </p>
           </div>
         )}
-      </Section>
+      </PanelSection>
 
-      <Section title="Hyper-parameters" hint="Learning rate and discount update live. Exploration and reward weights apply on the next Train.">
-        <div className="space-y-3">
-          <Param id="q-alpha" label="Learning rate (α)" value={alpha} min={0.02} max={1} step={0.01} onChange={setAlpha} />
-          <Param id="q-gamma" label="Discount (γ)" value={gamma} min={0.8} max={1} step={0.005} digits={3} onChange={setGamma} />
-          <Param id="q-eps" label="Exploration at start (ε)" value={epsilon} min={0.05} max={1} step={0.05} onChange={setEpsilon} />
-        </div>
-      </Section>
-
-      <Section title="Reward weights" hint="Each step is priced from the terrain: time is distance, energy is climbing effort, risk is steep and rough ground.">
-        <div className="space-y-3">
-          <Param id="w-energy" label="Energy" value={weights.energy} min={0} max={3} step={0.1} digits={1} onChange={(v) => setWeights((w) => ({ ...w, energy: v }))} />
-          <Param id="w-risk" label="Risk" value={weights.risk} min={0} max={3} step={0.1} digits={1} onChange={(v) => setWeights((w) => ({ ...w, risk: v }))} />
-          <Param id="w-time" label="Time" value={weights.time} min={0.2} max={3} step={0.1} digits={1} onChange={(v) => setWeights((w) => ({ ...w, time: v }))} />
-        </div>
-      </Section>
-
-      <Section title="Train">
+      <PanelSection title="Train">
         <div className="flex gap-2">
-          <Button className="h-10 flex-1 md:h-8" disabled={!!reason || running} onClick={train} aria-describedby={reason ? 'train-why' : undefined}>
-            <Play /> {q.status === 'idle' ? 'Train' : 'Train again'}
+          <Button className="h-11 flex-1 gap-2 text-base" disabled={!!reason || running} onClick={train} aria-describedby={reason ? 'train-why' : undefined}>
+            <Play className="size-5" /> {q.status === 'idle' ? 'Train' : 'Train again'}
           </Button>
           {running ? (
-            <Button variant="outline" className="h-10 md:h-8" onClick={q.pause}>
-              <Pause /> Pause
+            <Button variant="outline" className="h-11 gap-2" onClick={q.pause}>
+              <Pause className="size-5" /> Pause
             </Button>
           ) : (
-            <Button variant="outline" className="h-10 md:h-8" disabled={q.status !== 'paused'} onClick={() => void q.resume()}>
-              <RotateCcw /> Resume
+            <Button variant="outline" className="h-11 gap-2" disabled={q.status !== 'paused'} onClick={() => void q.resume()}>
+              <RotateCcw className="size-5" /> Resume
             </Button>
           )}
         </div>
         {reason && (
-          <p id="train-why" className="text-[11px] text-muted-foreground">
+          <p id="train-why" className="text-xs text-muted-foreground">
             Disabled: {reason}
           </p>
         )}
@@ -220,29 +202,42 @@ export function QLab() {
             <AlertDescription>{q.error}</AlertDescription>
           </Alert>
         )}
-        {q.status !== 'idle' && (
+        {q.status === 'idle' ? (
+          <p className="text-sm text-muted-foreground">Nothing trained yet. Train to watch the policy approach A*.</p>
+        ) : (
           <div className="grid grid-cols-3 gap-2" aria-live="polite">
-            <Stat label="Episodes" value={fmtNum(episodes, 0)} />
-            <Stat label="Goal reached" value={successRate === null ? 'No data' : `${Math.round(successRate * 100)}%`} sub="last 100" />
-            <Stat label="Time" value={`${elapsed.toFixed(0)} s`} />
+            <StatCard compact label="Goal reached" value={successRate === null ? '—' : Math.round(successRate * 100)} unit={successRate === null ? undefined : '%'} sub="last 100" />
+            <StatCard compact label="Episodes" value={fmtNum(episodes, 0)} />
+            <StatCard compact label="Time" value={elapsed.toFixed(0)} unit="s" />
           </div>
         )}
-      </Section>
+      </PanelSection>
 
-      <Section title="Reward per episode">
+      <PanelSection title="Reward per episode">
         <RewardChart points={chart} />
-      </Section>
+      </PanelSection>
 
-      <Section title="Greedy policy vs A*">
+      <PanelSection title="Greedy policy vs A*">
         <div className="grid grid-cols-2 gap-2">
-          <Stat label="A* optimum" value={astarCost === null ? 'No route' : fmtNum(astarCost, 1)} sub={optimum ? `found in ${optimum.ms.toFixed(1)} ms, no training` : undefined} />
-          <Stat label="Learned policy" value={lastEval?.reached ? fmtNum(lastEval.pathCost, 1) : 'Not there yet'} sub={lastEval?.ratio ? `${fmtNum(lastEval.ratio, 3)}× the optimum` : undefined} />
+          <StatCard label="A* optimum" value={astarCost === null ? '—' : fmtNum(astarCost, 1)} sub={astarCost === null ? 'No route' : optimum ? `${optimum.ms.toFixed(1)} ms, no training` : undefined} />
+          <StatCard label="Learned policy" value={lastEval?.reached ? fmtNum(lastEval.pathCost, 1) : '—'} sub={lastEval?.ratio ? `${fmtNum(lastEval.ratio, 3)}× the optimum` : 'Not there yet'} />
         </div>
-        <p className="text-xs">{compareVerdict(lastEval)}</p>
-        <p className="rounded-md bg-surface px-2.5 py-2 text-[11px] leading-4 text-muted-foreground">
-          A* plans, it does not learn. It searches the known map and is optimal on it. Q-learning has to discover the same route through trial and error, so on a known map it can only match A*, not beat it. Learning pays off when the map is unknown, which is what the benchmark levels L2 and L3 test.
-        </p>
-      </Section>
+        <p className="text-sm">{compareVerdict(lastEval)}</p>
+      </PanelSection>
+
+      <PanelSection>
+        <Details summary="Advanced: hyper-parameters and reward">
+          <div className="space-y-4 py-1">
+            <Param id="q-alpha" label="Learning rate (α)" value={alpha} min={0.02} max={1} step={0.01} onChange={setAlpha} />
+            <Param id="q-gamma" label="Discount (γ)" value={gamma} min={0.8} max={1} step={0.005} digits={3} onChange={setGamma} />
+            <Param id="q-eps" label="Exploration at start (ε)" value={epsilon} min={0.05} max={1} step={0.05} onChange={setEpsilon} />
+            <Param id="w-energy" label="Reward: energy" value={weights.energy} min={0} max={3} step={0.1} digits={1} onChange={(v) => setWeights((w) => ({ ...w, energy: v }))} />
+            <Param id="w-risk" label="Reward: risk" value={weights.risk} min={0} max={3} step={0.1} digits={1} onChange={(v) => setWeights((w) => ({ ...w, risk: v }))} />
+            <Param id="w-time" label="Reward: time" value={weights.time} min={0.2} max={3} step={0.1} digits={1} onChange={(v) => setWeights((w) => ({ ...w, time: v }))} />
+            <p className="text-xs text-muted-foreground">Rate and discount update live. Exploration and reward weights apply on the next Train.</p>
+          </div>
+        </Details>
+      </PanelSection>
     </div>
   )
 }

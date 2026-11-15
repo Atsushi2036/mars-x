@@ -11,6 +11,7 @@ import { roverLive } from '@/store/rover'
 import { AstronautIcon, Check, CircleAlert, Flag, MapPin, RoverIcon, Trash2, type LucideIcon } from '../icons'
 import { Chip, Details, EmptyState, Metric, PanelSection, Segmented, StatCard } from '../kit'
 import { MarswalkReport, MarswalkSetup } from './MarswalkPanel'
+import { pickSampleRoute } from './sample-route'
 
 const PROFILE_LABEL: Record<MissionProfile, string> = { astronaut: 'Astronaut', 'rover-rtg': 'Rover RTG', 'rover-solar': 'Rover solar' }
 const PROFILE_ICON: Record<MissionProfile, LucideIcon> = { astronaut: AstronautIcon, 'rover-rtg': RoverIcon, 'rover-solar': RoverIcon }
@@ -88,20 +89,19 @@ function CompareProfiles() {
   )
 }
 
-/** Puts a start a few hundred metres from the rover and a goal further along, so there is something to plan. */
+/** Puts a start near the rover and a goal 300 m or more away over connected gentle ground, so there is something to plan. */
 function useSampleRoute() {
   const ds = useApp((s) => s.dataset)
   const place = useMission((s) => s.place)
   const setPlacing = useMission((s) => s.setPlacing)
   return () => {
-    if (!ds) return
-    const e = ds.heightfield.extent
-    const clamp = (v: number, lo: number, hi: number) => Math.max(lo + 40, Math.min(hi - 40, v))
-    const a = { x: clamp(roverLive.x - 150, e.xMin, e.xMax), z: clamp(roverLive.z - 120, e.zMin, e.zMax) }
-    const b = { x: clamp(roverLive.x + 250, e.xMin, e.xMax), z: clamp(roverLive.z + 220, e.zMin, e.zMax) }
+    const layers = useMission.getState().layers
+    if (!ds || !layers) return
+    const pick = pickSampleRoute(layers, { x: roverLive.x, z: roverLive.z })
+    if (!pick) return
     setPlacing('origin')
-    place(ds, a)
-    place(ds, b)
+    place(ds, pick.origin)
+    place(ds, pick.destination)
   }
 }
 

@@ -1,4 +1,4 @@
-import { CircleAlert, Pause, Play, RotateCcw } from 'lucide-react'
+import { CircleAlert, Pause, Play, RotateCcw } from '@/ui/icons'
 import { useMemo, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -49,7 +49,7 @@ export function EpisodeList({ episodes }: { episodes: readonly Episode[] }) {
                 aria-pressed={on}
                 onClick={() => (setFilter(k || null), setAll(false))}
                 className={cn(
-                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring md:h-7',
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring md:h-7',
                   on ? 'border-primary/60 bg-primary/10 font-medium text-foreground' : 'border-border text-muted-foreground hover:bg-muted',
                 )}
               >
@@ -126,7 +126,7 @@ export function Player({ episodes }: { episodes: readonly Episode[] }) {
         </Button>
         <div className="min-w-0 flex-1 space-y-1">
           <Slider aria-label="Replay position" min={0} max={last} step={1} value={[i]} onValueChange={([v]) => v !== undefined && (setPlaying(false), setStep(v))} />
-          <p className="flex justify-between font-mono text-[11px] tabular-nums text-muted-foreground">
+          <p className="flex justify-between font-mono text-xs tabular-nums text-muted-foreground">
             <span>{fmtElapsed(tS)}</span>
             <span>
               step {i}/{last}
@@ -134,7 +134,7 @@ export function Player({ episodes }: { episodes: readonly Episode[] }) {
           </p>
         </div>
       </div>
-      <dl className="grid grid-cols-3 gap-2 text-[11px]">
+      <dl className="grid grid-cols-3 gap-2 text-xs">
         <div>
           <dt className="text-muted-foreground">Energy</dt>
           <dd className="font-mono tabular-nums">{ep.energyWh != null ? `${Math.round(soc * 100)}%` : 'No data'}</dd>
@@ -155,11 +155,11 @@ export function Player({ episodes }: { episodes: readonly Episode[] }) {
       )}
       {events.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[11px] text-muted-foreground">Events</p>
+          <p className="text-xs text-muted-foreground">Events</p>
           <ul className="max-h-28 space-y-0.5 overflow-y-auto">
             {events.slice(0, 40).map((e, k) => (
               <li key={`${e.t}-${k}`}>
-                <button type="button" className="flex min-h-8 w-full items-center justify-between gap-2 rounded px-1.5 text-left text-[11px] outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring" onClick={() => (setPlaying(false), setStep(e.step))}>
+                <button type="button" className="flex min-h-8 w-full items-center justify-between gap-2 rounded px-1.5 text-left text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring" onClick={() => (setPlaying(false), setStep(e.step))}>
                   <span>{EVENT_LABEL[e.type] ?? e.type}</span>
                   <span className="font-mono tabular-nums text-muted-foreground">{fmtElapsed(e.t)}</span>
                 </button>

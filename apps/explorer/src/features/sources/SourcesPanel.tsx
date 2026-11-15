@@ -1,12 +1,11 @@
-import { ChevronRight, ExternalLink } from 'lucide-react'
+import { ChevronRight, ExternalLink } from '@/ui/icons'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fmtBytes, fmtElevation, fmtInt } from '@/lib/format'
 import { useApp } from '@/store/app'
-import { Row, Section } from '@/ui/panels/Section'
-import { cn } from '@/lib/utils'
-import { DISCLAIMER, NOT_COVERED, STAMP } from '../replay/scorecard'
+import { Details, HonestyChip, Metric, PanelSection, StatCard } from '@/ui/kit'
+import { DISCLAIMER, NOT_COVERED } from '../replay/scorecard'
 import { ProvenanceChip } from '../shared/ProvenanceChip'
 import { EXTRA_SOURCES, type ExtraSource } from './extras'
 import { doiUrl, fmtRes, groupSources, safeHttps, type SourceGroup } from './sources'
@@ -27,8 +26,8 @@ function Disclosure({ title, summary, defaultOpen = false, children }: { title: 
     <details open={defaultOpen} className="group border-b border-border last:border-b-0">
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 outline-none focus-visible:bg-muted [&::-webkit-details-marker]:hidden">
         <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
-        <span className="text-xs font-medium text-foreground">{title}</span>
-        {summary && <span className="ml-auto text-[11px] text-muted-foreground">{summary}</span>}
+        <span className="text-base font-semibold text-foreground">{title}</span>
+        {summary && <span className="ml-auto text-xs text-muted-foreground">{summary}</span>}
       </summary>
       <div className="space-y-3 px-4 pb-4">{children}</div>
     </details>
@@ -39,18 +38,18 @@ function LayerSource({ s }: { s: SourceGroup }) {
   const doi = doiUrl(s.doi)
   const url = safeHttps(s.url)
   return (
-    <li className="space-y-1 rounded-lg border border-border p-3 text-xs">
+    <li className="space-y-1 rounded-lg border border-border p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
-        <p className="font-medium leading-4">{s.title}</p>
+        <p className="font-medium leading-5">{s.title}</p>
         <ProvenanceChip kind={s.provenance} />
       </div>
       <p className="text-muted-foreground">{s.attribution}</p>
       <dl className="space-y-0.5 pt-0.5">
-        <Row label="License" value={s.license} />
-        <Row label="DOI" value={doi ? <Ext href={doi}>{s.doi}</Ext> : 'None'} />
-        <Row label="Resolution" value={fmtRes(s.resM)} />
+        <Metric label="License" value={s.license} />
+        <Metric label="DOI" value={doi ? <Ext href={doi}>{s.doi}</Ext> : 'None'} />
+        <Metric label="Resolution" value={fmtRes(s.resM)} />
       </dl>
-      <p className="text-[11px] leading-4 text-muted-foreground">
+      <p className="text-xs leading-4 text-muted-foreground">
         Used for: <span className="font-mono">{s.layers.join(', ')}</span>
       </p>
       {url && (
@@ -64,7 +63,7 @@ function LayerSource({ s }: { s: SourceGroup }) {
 
 function ExtraItem({ s }: { s: ExtraSource }) {
   return (
-    <li className="space-y-1 rounded-lg border border-border p-3 text-xs">
+    <li className="space-y-1 rounded-lg border border-border p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
         <p className="font-medium leading-4">{s.title}</p>
         {s.provenance && <ProvenanceChip kind={s.provenance} />}
@@ -72,7 +71,7 @@ function ExtraItem({ s }: { s: ExtraSource }) {
       <p className="text-muted-foreground">{s.credit}</p>
       <p className="text-muted-foreground">{s.use}</p>
       <dl>
-        <Row label="License" value={s.license} />
+        <Metric label="License" value={s.license} />
       </dl>
       <p>
         <Ext href={safeHttps(s.url)}>{s.doi ? `doi:${s.doi}` : 'Source'}</Ext>
@@ -106,14 +105,14 @@ function useValidation(base: string | undefined): Report {
 function Validation({ base }: { base: string | undefined }) {
   const v = useValidation(base)
   return (
-    <Section title="Validation" hint="How well the terrain agrees with what Perseverance itself measured on the ground.">
+    <PanelSection title="Validation" caption="How well the terrain agrees with what Perseverance measured.">
       {v.status === 'loading' && (
-        <div className="space-y-2" role="status" aria-label="Loading the validation report">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
+        <div className="grid grid-cols-2 gap-2" role="status" aria-label="Loading the validation report">
+          <Skeleton className="h-[110px] rounded-2xl" />
+          <Skeleton className="h-[110px] rounded-2xl" />
         </div>
       )}
-      {v.status === 'missing' && <p className="text-xs text-muted-foreground">No validation report ships with this dataset, so no agreement figures are shown.</p>}
+      {v.status === 'missing' && <p className="text-sm text-muted-foreground">No validation report ships with this dataset, so no agreement figures are shown.</p>}
       {v.status === 'invalid' && (
         <Alert variant="destructive" role="alert">
           <AlertTitle>The validation report could not be read</AlertTitle>
@@ -122,26 +121,42 @@ function Validation({ base }: { base: string | undefined }) {
       )}
       {v.status === 'ready' && (
         <>
-          <ul className="space-y-2.5">
-            {headlines(v.report).map((h) => (
-              <li key={h.id} className="space-y-1 rounded-lg border border-border p-3">
-                <p className="text-xs text-muted-foreground">{h.title}</p>
-                <p className="font-mono text-xl font-semibold tabular-nums leading-6">{h.big}</p>
-                <p className="text-[11px] leading-4 text-muted-foreground">{h.bigLabel}</p>
-                <dl className="space-y-0.5 pt-1">
-                  {h.lines.map(([k, val]) => (
-                    <Row key={k} label={k} value={val} />
-                  ))}
-                </dl>
-                <p className="pt-1 text-[11px] leading-4 text-muted-foreground">{h.caveat}</p>
-              </li>
-            ))}
-          </ul>
-          <p className="text-[11px] leading-4 text-muted-foreground">{REFERENCE_NOTE}</p>
-          <p className="font-mono text-[11px] text-muted-foreground">Report generated {v.report.generatedAt.slice(0, 10)}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {headlines(v.report).map((h) => {
+              const r = /^r = ([\d.]+)/.exec(h.big)
+              return (
+                <StatCard
+                  key={h.id}
+                  label={h.title}
+                  value={h.big}
+                  provenance="derived"
+                  className={h.id === 'align' ? 'col-span-2' : undefined}
+                  gauge={r ? { value: Number(r[1]), limit: 1, label: h.title + ', correlation against 1' } : undefined}
+                />
+              )
+            })}
+          </div>
+          <Details summary="How to read these numbers">
+            <ul className="space-y-3">
+              {headlines(v.report).map((h) => (
+                <li key={h.id} className="space-y-1">
+                  <p className="font-medium">{h.title}</p>
+                  <p className="text-xs text-muted-foreground">{h.bigLabel}</p>
+                  <dl className="divide-y divide-border">
+                    {h.lines.map(([k, val]) => (
+                      <Metric key={k} label={k} value={val} />
+                    ))}
+                  </dl>
+                  <p className="text-xs text-muted-foreground">{h.caveat}</p>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-muted-foreground">{REFERENCE_NOTE}</p>
+            <p className="font-mono text-xs text-muted-foreground">Report generated {v.report.generatedAt.slice(0, 10)}</p>
+          </Details>
         </>
       )}
-    </Section>
+    </PanelSection>
   )
 }
 
@@ -166,7 +181,7 @@ export function SourcesPanel() {
   return (
     <div>
       {ds.synthetic && (
-        <div className="px-4 pt-3.5">
+        <div className="px-4 pt-4">
           <Alert>
             <AlertTitle>Synthetic terrain</AlertTitle>
             <AlertDescription>This is generated test terrain in the real data format. The real Jezero dataset replaces it when present.</AlertDescription>
@@ -174,73 +189,75 @@ export function SourcesPanel() {
         </div>
       )}
 
-      <Section title="Dataset">
-        <dl className="space-y-1.5">
-          <Row label="Id" value={m.datasetId} />
-          <Row label="Version" value={m.version} />
-          <Row label="Grid" value={`${fmtInt(g.width)} × ${fmtInt(g.height)} px`} />
-          <Row label="Resolution" value={`${g.resM} m/px`} />
-          <Row label="Extent" value={`${fmtInt(g.width * g.resM)} × ${fmtInt(g.height * g.resM)} m`} />
-          <Row label="Elevation" value={`${fmtElevation(hf.zMin)} to ${fmtElevation(hf.zMax)}`} />
-          <Row label="Vertical datum" value={m.crs.verticalDatum} />
-          <Row label="Elevation file" value={fmtBytes(ds.elevationLayer.bytes)} />
-          <Row label="Content hash" value={<span title={m.contentHash}>{m.contentHash.slice(0, 12)}…</span>} />
+      <PanelSection title="Dataset">
+        <div className="grid grid-cols-2 gap-2">
+          <StatCard label="Resolution" value={g.resM} unit="m/px" provenance="measured" />
+          <StatCard label="Extent" value={`${fmtInt(g.width * g.resM)} × ${fmtInt(g.height * g.resM)}`} unit="m" provenance="derived" className="[&_p:nth-child(2)]:text-2xl" />
+        </div>
+        <dl className="divide-y divide-border">
+          <Metric label="Elevation" value={`${fmtElevation(hf.zMin)} to ${fmtElevation(hf.zMax)}`} />
         </dl>
-      </Section>
+      </PanelSection>
 
       <Validation base={ds.synthetic ? undefined : ds.base} />
 
-      <div className="border-b border-border">
-        <div className="px-4 pt-3.5">
-          <h3 className="text-xs font-medium text-muted-foreground">Data sources</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground/90">Credits are read from the dataset manifest, so they always match the data on screen.</p>
+      <PanelSection title="Data sources" className="pb-0" caption="Read from the dataset manifest, so credits match the data on screen.">
+        <div className="-mx-4 border-t border-border">
+          <Disclosure title="Map data" summary={`${groups.length} products`}>
+            <ul className="space-y-2.5">
+              {groups.map((s) => (
+                <LayerSource key={s.key} s={s} />
+              ))}
+            </ul>
+          </Disclosure>
+          <Disclosure title="Atmosphere and physics" summary={`${physics.length} references`}>
+            <ul className="space-y-2.5">
+              {physics.map((s) => (
+                <ExtraItem key={s.id} s={s} />
+              ))}
+            </ul>
+          </Disclosure>
+          <Disclosure title="Open-source software" summary={`${software.length} projects`}>
+            <ul className="space-y-2.5">
+              {software.map((s) => (
+                <ExtraItem key={s.id} s={s} />
+              ))}
+            </ul>
+          </Disclosure>
         </div>
-        <Disclosure title="Map data" summary={`${groups.length} products`} defaultOpen>
-          <ul className="space-y-2.5">
-            {groups.map((s) => (
-              <LayerSource key={s.key} s={s} />
+      </PanelSection>
+
+      <PanelSection title="Scope & limits" caption="MARS-X is a first filter. It does not certify anything.">
+        <HonestyChip />
+        <Details summary="What this test does NOT cover">
+          <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+            {NOT_COVERED.map((x) => (
+              <li key={x}>{x}</li>
             ))}
           </ul>
-        </Disclosure>
-        <Disclosure title="Atmosphere and physics" summary={`${physics.length} references`}>
-          <ul className="space-y-2.5">
-            {physics.map((s) => (
-              <ExtraItem key={s.id} s={s} />
-            ))}
-          </ul>
-        </Disclosure>
-        <Disclosure title="Open-source software" summary={`${software.length} projects`}>
-          <ul className="space-y-2.5">
-            {software.map((s) => (
-              <ExtraItem key={s.id} s={s} />
-            ))}
-          </ul>
-        </Disclosure>
-      </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Imagery is the HiRISE RED band, a single monochrome band, in a false-colour tint. The CRISM mineral layer is a machine-learning product with preliminary attributions. Hazard limits and the astronaut profile are engineering assumptions, not official rover constraints.
+          </p>
+        </Details>
+      </PanelSection>
 
-      <Section title="Scope & limits" hint="What a result here does and does not mean.">
-        <p className={cn('rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium')}>{STAMP}.</p>
-        <p className="text-xs leading-5 text-muted-foreground">
-          MARS-X is a first filter. It tells you whether a navigation model is worth testing in a higher-fidelity simulator or in the field. It does not certify anything.
-        </p>
-        <p className="text-xs font-medium">What this test does NOT cover</p>
-        <ul className="list-disc space-y-1 pl-5 text-xs leading-5 text-muted-foreground">
-          {NOT_COVERED.map((x) => (
-            <li key={x}>{x}</li>
-          ))}
-        </ul>
-        <p className="text-xs leading-5 text-muted-foreground">
-          Imagery is the HiRISE RED band, a single monochrome band, shown in a false-colour tint. The CRISM mineral layer is a machine-learning product with preliminary attributions. Hazard limits and the astronaut profile are engineering assumptions, not official rover constraints.
-        </p>
-      </Section>
+      <PanelSection>
+        <Details summary="Technical details">
+          <dl className="divide-y divide-border">
+            <Metric label="Id" value={m.datasetId} mono />
+            <Metric label="Version" value={m.version} mono />
+            <Metric label="Grid" value={`${fmtInt(g.width)} × ${fmtInt(g.height)} px`} />
+            <Metric label="Vertical datum" value={m.crs.verticalDatum} />
+            <Metric label="Elevation file" value={fmtBytes(ds.elevationLayer.bytes)} />
+            <Metric label="Content hash" value={<span title={m.contentHash}>{m.contentHash.slice(0, 12)}…</span>} mono />
+          </dl>
+        </Details>
+      </PanelSection>
 
-      <Section title="Use of AI">
-        <p className="text-xs leading-5 text-muted-foreground">MARS-X was built with AI assistance (Claude Code) under the team&apos;s direction.</p>
-      </Section>
-
-      <Section title="Notice">
-        <p className="text-xs leading-5 text-muted-foreground">{DISCLAIMER}</p>
-      </Section>
+      <PanelSection title="Notice">
+        <p className="text-sm text-muted-foreground">{DISCLAIMER}</p>
+        <p className="text-xs text-muted-foreground">Built with AI assistance (Claude Code) under the team&apos;s direction.</p>
+      </PanelSection>
     </div>
   )
 }

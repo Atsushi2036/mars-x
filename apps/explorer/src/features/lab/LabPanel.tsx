@@ -1,22 +1,26 @@
 import { useState } from 'react'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Brain, Upload } from '@/ui/icons'
+import { PanelSection, Segmented } from '@/ui/kit'
 import { ByoModel } from './ByoModel'
 import { QLab } from './QLab'
 
+type Tab = 'train' | 'byo'
+
 export function LabPanel() {
-  const [tab, setTab] = useState<'train' | 'byo'>('train')
+  const [tab, setTab] = useState<Tab>('train')
   return (
     <div>
-      <div className="border-b border-border px-4 py-3">
-        <ToggleGroup type="single" value={tab} onValueChange={(v) => v && setTab(v as 'train' | 'byo')} variant="outline" spacing={0} className="w-full" aria-label="Lab view">
-          <ToggleGroupItem value="train" className="h-10 flex-1 text-xs md:h-8">
-            Train Q-learning
-          </ToggleGroupItem>
-          <ToggleGroupItem value="byo" className="h-10 flex-1 text-xs md:h-8">
-            Bring your model
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </div>
+      <PanelSection>
+        <Segmented<Tab>
+          label="Lab view"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'train', label: 'Train in the browser', sub: 'Q-learning, live', icon: Brain },
+            { value: 'byo', label: 'Bring your model', sub: '.onnx or run.json', icon: Upload },
+          ]}
+        />
+      </PanelSection>
       {tab === 'train' ? <QLab /> : <ByoModel />}
     </div>
   )

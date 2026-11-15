@@ -1,11 +1,11 @@
-import { CircleAlert, Download } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { policyCardSchema, type PolicyCard } from '@/intelligence'
 import { fmtBytes } from '@/lib/format'
 import { useApp } from '@/store/app'
-import { Section } from '@/ui/panels/Section'
+import { CircleAlert, Download } from '@/ui/icons'
+import { Chip, Details, PanelSection } from '@/ui/kit'
 import { useByo } from '../shared/byo-store'
 import { short } from '../shared/fmt'
 import { honestSummary } from './reference'
@@ -54,28 +54,28 @@ export function ReferencePolicy() {
   }
 
   return (
-    <Section title="Reference policy" hint="A PPO network we trained, so you can try the full flow and have something to compare against.">
+    <PanelSection title="Reference policy" caption="A PPO we trained, to try the full flow.">
       {state.status === 'loading' && <Skeleton className="h-24 w-full" role="status" aria-label="Loading the model card" />}
-      {state.status === 'missing' && <p className="text-xs text-muted-foreground">The reference policy is not published with this build.</p>}
+      {state.status === 'missing' && <p className="text-sm text-muted-foreground">The reference policy is not published with this build.</p>}
       {state.status === 'ready' && <Card card={state.card} />}
       {state.status === 'ready' && (
         <>
-          <Button variant="outline" className="h-10 w-full md:h-8" disabled={fetching || busy || !!loaded} onClick={() => void use()} aria-describedby={loaded ? 'ref-why' : undefined}>
-            <Download /> {fetching ? 'Fetching…' : 'Load the reference policy'}
+          <Button variant="outline" className="h-11 w-full gap-2" disabled={fetching || busy || !!loaded} onClick={() => void use()} aria-describedby={loaded ? 'ref-why' : undefined}>
+            <Download className="size-5" /> {fetching ? 'Fetching…' : 'Load the reference policy'}
           </Button>
           {loaded && (
-            <p id="ref-why" className="text-[11px] text-muted-foreground">
+            <p id="ref-why" className="text-xs text-muted-foreground">
               Disabled: a policy is already loaded. Remove it below first.
             </p>
           )}
           {err && (
-            <p role="alert" className="flex items-center gap-1.5 text-xs text-destructive">
-              <CircleAlert className="size-3.5" aria-hidden="true" /> Could not fetch it: {err}
+            <p role="alert" className="flex items-center gap-1.5 text-sm text-destructive">
+              <CircleAlert className="size-4" aria-hidden="true" /> Could not fetch it: {err}
             </p>
           )}
         </>
       )}
-    </Section>
+    </PanelSection>
   )
 }
 
@@ -83,34 +83,39 @@ function Card({ card }: { card: PolicyCard }) {
   const h = honestSummary(card)
   const t = card.training
   return (
-    <div className="space-y-2.5 rounded-lg border border-border p-3 text-xs">
-      <div>
-        <p className="text-sm font-medium">{card.name}</p>
-        <p className="font-mono text-[11px] text-muted-foreground" title={card.onnxSha256}>
-          v{card.version} · {fmtBytes(card.onnxBytes)} · sha256 {short(card.onnxSha256, 12)}
-        </p>
+    <div className="space-y-3 rounded-2xl border border-border p-3.5 text-sm">
+      <div className="space-y-1.5">
+        <p className="text-base font-medium">{card.name}</p>
+        <div className="flex flex-wrap gap-1.5">
+          <Chip>v{card.version}</Chip>
+          <Chip>{fmtBytes(card.onnxBytes)}</Chip>
+          <Chip className="font-mono" title={card.onnxSha256}>
+            {short(card.onnxSha256, 8)}
+          </Chip>
+        </div>
       </div>
-      <dl className="space-y-1.5">
+      <dl className="space-y-2">
         <div>
-          <dt className="text-muted-foreground">Inside its training distribution</dt>
+          <dt className="text-xs text-muted-foreground">Inside its training distribution</dt>
           <dd>{h.inDistribution}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">On the official benchmark</dt>
+          <dt className="text-xs text-muted-foreground">On the official benchmark</dt>
           <dd className="font-medium">{h.official}</dd>
           <dd className="font-medium text-destructive">{h.verdict}</dd>
         </div>
-        {t && (
-          <div>
-            <dt className="text-muted-foreground">Training</dt>
-            <dd>
-              {t.algorithm}, {t.library}, {t.timesteps.toLocaleString('en-US')} steps, seed {t.seed}
-            </dd>
-          </div>
-        )}
       </dl>
-      <p className="leading-4 text-muted-foreground">{card.limitations}</p>
-      <p className="text-[11px] text-muted-foreground">License {card.license}.</p>
+      <Details summary="Training, limits and license">
+        <div className="space-y-2 text-sm">
+          {t && (
+            <p>
+              {t.algorithm}, {t.library}, {t.timesteps.toLocaleString('en-US')} steps, seed {t.seed}.
+            </p>
+          )}
+          <p className="text-muted-foreground">{card.limitations}</p>
+          <p className="text-xs text-muted-foreground">License {card.license}.</p>
+        </div>
+      </Details>
     </div>
   )
 }

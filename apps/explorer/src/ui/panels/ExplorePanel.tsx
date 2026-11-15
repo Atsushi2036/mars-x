@@ -1,9 +1,8 @@
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/store/app'
-import { useCamera, type CameraMode } from '@/store/camera'
 import { roverLive, useRover } from '@/store/rover'
-import { Eye, Footprints, Orbit, RoverIcon, Square } from '../icons'
-import { Details, PanelSection, Segmented } from '../kit'
+import { RoverIcon, Square } from '../icons'
+import { Details, PanelSection } from '../kit'
 import { SunOverride } from './SunSection'
 
 /** Demo loop around the rover; NOT a planned route (planning lives in "Plan a route"). */
@@ -21,10 +20,8 @@ function demoLoop(hf: NonNullable<ReturnType<typeof useApp.getState>['dataset']>
   return pts
 }
 
-/** Camera and rover quick tools. The camera cards disappear once the always-visible camera dock owns this choice. */
+/** Rover demo and the manual sun. The camera choice lives in the always-visible camera dock, not here. */
 export function ExploreTools() {
-  const camMode = useCamera((s) => s.mode)
-  const setCam = useCamera((s) => s.setMode)
   const ds = useApp((s) => s.dataset)
   const status = useRover((s) => s.status)
   const follow = useRover((s) => s.followPath)
@@ -32,17 +29,7 @@ export function ExploreTools() {
 
   return (
     <>
-      <PanelSection title="View">
-        <Segmented<CameraMode>
-          label="Camera mode"
-          value={camMode}
-          onChange={setCam}
-          options={[
-            { value: 'orbit', label: 'Orbit', sub: 'Key 1', icon: Orbit },
-            { value: 'fpv', label: 'Walk', sub: 'Key 2', icon: Footprints },
-            { value: 'chase', label: 'Follow', sub: 'Key 3', icon: Eye },
-          ]}
-        />
+      <PanelSection title="Rover" caption="A short loop that shows the rover following the ground.">
         {status === 'driving' ? (
           <Button variant="secondary" className="h-11 w-full gap-2" onClick={stop}>
             <Square className="size-5" strokeWidth={1.75} /> Stop rover

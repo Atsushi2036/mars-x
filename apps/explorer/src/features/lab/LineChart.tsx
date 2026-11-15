@@ -28,7 +28,7 @@ export function RewardChart({ points }: { points: ChartPoint[] }) {
 
   if (!geo) {
     return (
-      <div className="grid h-[168px] place-items-center rounded-lg border border-dashed border-input text-xs text-muted-foreground">
+      <div className="grid h-[168px] place-items-center rounded-xl border border-dashed border-input text-sm text-muted-foreground">
         The curve appears here once training starts.
       </div>
     )
@@ -66,28 +66,28 @@ export function RewardChart({ points }: { points: ChartPoint[] }) {
           {geo.ticks.map((t) => (
             <g key={t}>
               <line x1={M.l} x2={W - M.r} y1={geo.sy(t)} y2={geo.sy(t)} className="stroke-border" strokeWidth={1} />
-              <text x={M.l - 5} y={geo.sy(t)} textAnchor="end" dominantBaseline="middle" className="fill-muted-foreground font-mono text-[9px]">
+              <text x={M.l - 5} y={geo.sy(t)} textAnchor="end" dominantBaseline="middle" className="fill-muted-foreground font-mono text-[11px]">
                 {fmtNum(t, Math.abs(t) < 10 && !Number.isInteger(t) ? 1 : 0)}
               </text>
             </g>
           ))}
           {geo.xt.map((t) => (
-            <text key={t} x={geo.sx(t)} y={H - 8} textAnchor="middle" className="fill-muted-foreground font-mono text-[9px]">
+            <text key={t} x={geo.sx(t)} y={H - 8} textAnchor="middle" className="fill-muted-foreground font-mono text-[11px]">
               {fmtNum(t, 0)}
             </text>
           ))}
-          <path d={geo.raw} fill="none" className="stroke-chart-1" strokeOpacity={0.35} strokeWidth={1} strokeLinejoin="round" />
-          <path d={geo.smooth} fill="none" className="stroke-chart-1" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          <path d={geo.raw} fill="none" className="stroke-agent" strokeOpacity={0.35} strokeWidth={1} strokeLinejoin="round" />
+          <path d={geo.smooth} fill="none" className="stroke-agent" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
           {hp && (
             <g>
               <line x1={geo.sx(hp.episode)} x2={geo.sx(hp.episode)} y1={M.t} y2={H - M.b} className="stroke-muted-foreground" strokeWidth={1} strokeDasharray="3 3" />
-              <circle cx={geo.sx(hp.episode)} cy={geo.sy(hp.smooth)} r={4} className="fill-chart-1 stroke-card" strokeWidth={2} />
+              <circle cx={geo.sx(hp.episode)} cy={geo.sy(hp.smooth)} r={4} className="fill-agent stroke-card" strokeWidth={2} />
             </g>
           )}
         </svg>
         {hp && (
           <div
-            className="pointer-events-none absolute top-1 rounded-md border border-border bg-popover px-2 py-1 font-mono text-[10.5px] leading-4 text-popover-foreground shadow-md"
+            className="pointer-events-none absolute top-1 rounded-md border border-border bg-popover px-2 py-1 font-mono text-xs leading-4 text-popover-foreground shadow-md"
             style={{ left: `${Math.min(62, Math.max(0, (geo.sx(hp.episode) / W) * 100 - 14))}%` }}
           >
             <div>Episode {fmtNum(hp.episode, 0)}</div>
@@ -96,18 +96,18 @@ export function RewardChart({ points }: { points: ChartPoint[] }) {
           </div>
         )}
       </div>
-      <figcaption className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+      <figcaption className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
         <span className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded bg-chart-1" aria-hidden="true" /> Moving average
+            <span className="h-0.5 w-4 rounded bg-agent" aria-hidden="true" /> Moving average
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-px w-4 bg-chart-1/40" aria-hidden="true" /> Per episode
+            <span className="h-px w-4 bg-agent/40" aria-hidden="true" /> Per episode
           </span>
         </span>
         <span>{geo.clipped ? 'Early low values are clipped. Episodes →' : 'Episodes →'}</span>
       </figcaption>
-      <details className="text-[11px] text-muted-foreground">
+      <details className="text-xs text-muted-foreground">
         <summary className="cursor-pointer rounded outline-none focus-visible:ring-2 focus-visible:ring-ring">Data table</summary>
         <table className="mt-1 w-full font-mono tabular-nums">
           <thead>

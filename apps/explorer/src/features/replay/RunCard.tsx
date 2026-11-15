@@ -1,12 +1,13 @@
-import { CircleAlert, CircleCheck, Download, FileText, X } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/store/app'
+import { CircleAlert, CircleCheck, Download, FileText, X } from '@/ui/icons'
+import { Details, HonestyChip, Metric, StatCard } from '@/ui/kit'
 import { useByo } from '../shared/byo-store'
-import { fmtCi, fmtNum, short } from '../shared/fmt'
+import { fmtNum, short } from '../shared/fmt'
 import { EpisodeList, orderEpisodes, Player } from './Player'
-import { buildScorecard, DISCLAIMER, reportJson, STAMP, verificationLabel } from './scorecard'
+import { buildScorecard, DISCLAIMER, reportJson, verificationLabel } from './scorecard'
 import { ScorecardDialog, StatusMark } from './ScorecardDialog'
 import { useScorecardUi } from './scorecard-ui'
 import { useReplay } from './store'
@@ -53,85 +54,73 @@ export function RunCard() {
     }
   }
 
+  const pct = lvl.success === null ? null : lvl.success * 100
+  const ci = lvl.ci ? `95% CI ${(lvl.ci[0] * 100).toFixed(0)} to ${(lvl.ci[1] * 100).toFixed(0)}` : undefined
+  const verified = card.precheck.passed && card.verification?.notResimulable === 0
+
   return (
     <div className="space-y-3">
-      <div className="space-y-2.5 rounded-lg border border-border p-3">
+      <div className="space-y-3 rounded-2xl border border-border p-3.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{fileName ?? 'run.json'}</p>
-            <p className="truncate text-[11px] text-muted-foreground">
+            <p className="truncate text-base font-medium">{fileName ?? 'run.json'}</p>
+            <p className="truncate text-xs text-muted-foreground">
               {r.policy.name} · {r.suite.level} · {r.suite.id} {r.suite.version}
             </p>
           </div>
-          <Button variant="ghost" size="icon" aria-label="Remove the run" className="-mr-1 size-9 md:size-7" onClick={closeRun}>
-            <X />
+          <Button variant="ghost" size="icon" aria-label="Remove the run" className="-mr-1 size-10" onClick={closeRun}>
+            <X className="size-5" />
           </Button>
         </div>
 
-        <div role={card.precheck.passed ? undefined : 'alert'} className={card.precheck.passed && card.verification?.notResimulable === 0 ? 'space-y-1.5 text-xs text-success' : card.precheck.passed && !running ? 'space-y-1.5 text-xs text-foreground' : card.precheck.passed ? 'space-y-1.5 text-xs text-muted-foreground' : 'space-y-1.5 text-xs text-destructive'}>
-          <p className="flex items-start gap-1.5">
-            {card.precheck.passed ? <CircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" /> : <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />}
+        <div role={card.precheck.passed ? undefined : 'alert'} className={verified ? 'space-y-1.5 text-sm text-success' : card.precheck.passed && !running ? 'space-y-1.5 text-sm text-foreground' : card.precheck.passed ? 'space-y-1.5 text-sm text-muted-foreground' : 'space-y-1.5 text-sm text-destructive'}>
+          <p className="flex items-start gap-2">
+            {card.precheck.passed ? <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> : <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />}
             <span>{card.precheck.passed || running ? verificationLabel(card.verification, running) : 'Not verifiable. ' + (card.precheck.reasons[0] ?? '')}</span>
           </p>
           {running && <Progress value={Math.round(ver.progress * 100)} aria-label="Re-simulation progress" className="h-1" />}
           {ver.status === 'error' && <p className="text-destructive">Re-simulation could not run: {ver.error}</p>}
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-muted-foreground">
             {r.suite.level} · {lvl.name}
           </span>
           <StatusMark status={lvl.status} />
         </div>
 
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-          <div>
-            <dt className="text-muted-foreground">Episodes</dt>
-            <dd className="font-mono tabular-nums">{lvl.n}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Success (95% CI)</dt>
-            <dd className="font-mono tabular-nums">{fmtCi(lvl.success, lvl.ci)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">SPL</dt>
-            <dd className="font-mono tabular-nums">{fmtNum(lvl.spl, 3)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Energy vs oracle</dt>
-            <dd className="font-mono tabular-nums">{lvl.energyRatio === null ? 'No data' : `${fmtNum(lvl.energyRatio, 2)}×`}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Critical violations</dt>
-            <dd className="font-mono tabular-nums">{lvl.violations}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Dataset</dt>
-            <dd className="font-mono tabular-nums" title={r.dataset.sha256}>
-              {datasetMatches === null ? short(r.dataset.sha256, 8) : datasetMatches ? 'matches' : 'different'}
-            </dd>
-          </div>
-        </dl>
+        <div className="grid grid-cols-2 gap-2">
+          <StatCard label="Success" value={pct === null ? '—' : pct.toFixed(0)} unit={pct === null ? undefined : '%'} sub={ci} provenance="modeled" />
+          <StatCard label="Episodes" value={lvl.n} sub={`${lvl.violations ?? 0} critical violations`} provenance="modeled" />
+        </div>
+        <Details summary="More numbers">
+          <dl className="divide-y divide-border">
+            <Metric label="SPL" value={fmtNum(lvl.spl, 3)} />
+            <Metric label="Energy vs oracle" value={lvl.energyRatio === null ? 'No data' : `${fmtNum(lvl.energyRatio, 2)}×`} />
+            <Metric label="Dataset" value={datasetMatches === null ? short(r.dataset.sha256, 8) : datasetMatches ? 'matches' : 'different'} mono />
+          </dl>
+        </Details>
 
         <div className="flex gap-2">
-          <Button className="h-10 flex-1 md:h-8" onClick={() => setOpen(true)}>
-            <FileText /> Open scorecard
+          <Button className="h-11 flex-1 gap-2" onClick={() => setOpen(true)}>
+            <FileText className="size-5" /> Open scorecard
           </Button>
           <Button
             variant="outline"
-            className="h-10 md:h-8"
+            className="h-11 gap-2"
             onClick={() => download(`marsx-scorecard-${r.suite.level}-${r.runId.slice(0, 8)}.json`, JSON.stringify(reportJson(result, card, { generatedUtc: new Date().toISOString(), datasetSha256: ds?.manifest.contentHash ?? null }), null, 2))}
           >
-            <Download /> JSON
+            <Download className="size-5" /> JSON
           </Button>
         </div>
-        <p className="text-[11px] leading-4 text-muted-foreground">
-          {STAMP}. {DISCLAIMER}
+        <HonestyChip />
+        <p className="text-xs text-muted-foreground">
+          {DISCLAIMER}
         </p>
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs text-muted-foreground">Replay an episode on the terrain. Failures come first.</p>
+        <p className="text-sm text-muted-foreground">Replay an episode on the terrain. Failures come first.</p>
         <EpisodeList episodes={r.episodes} />
         <Player episodes={r.episodes} />
       </div>

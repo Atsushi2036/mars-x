@@ -69,6 +69,18 @@ export const SCENARIOS = {
     await scrollPanel(page, vp === 'mobile' ? 900 : 700)
   },
   lab: async (page, vp) => openMode(page, vp, 'Test your AI', 'Test AI'),
+  'lab-trained': async (page, vp) => {
+    await openMode(page, vp, 'Test your AI', 'Test AI')
+    await page.getByRole('button', { name: 'Train', exact: true }).click()
+    await page.waitForTimeout(9000)
+    await scrollPanel(page, vp === 'mobile' ? 380 : 330)
+  },
+  'lab-byo': async (page, vp) => {
+    await openMode(page, vp, 'Test your AI', 'Test AI')
+    await page.getByRole('radio', { name: /Bring your model/ }).click()
+    await page.waitForTimeout(600)
+    await scrollPanel(page, vp === 'mobile' ? 300 : 280)
+  },
   data: async (page, vp) => openMode(page, vp, 'Data', 'Data'),
   'data-2': async (page, vp) => {
     await openMode(page, vp, 'Data', 'Data')

@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, CircleMinus, CircleX } from 'lucide-react'
+import { CircleAlert, CircleCheck, CircleMinus, CircleX } from '@/ui/icons'
 import { useEffect, type ReactNode } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { RunLoadResult } from '@/intelligence'
@@ -45,7 +45,7 @@ function CiCell({ p, ci }: { p: number | null; ci: readonly [number, number] | n
   return (
     <>
       {fmtPct(p)}
-      <span className="block text-[11px] text-muted-foreground">
+      <span className="block text-xs text-muted-foreground">
         {fmtPct(ci[0])} to {fmtPct(ci[1])}
       </span>
     </>
@@ -240,7 +240,7 @@ function BaselineBlock({ lvl, suite }: { lvl: LevelRow; suite: string }) {
               </tbody>
             </table>
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Baselines are scored on the whole {rows[0]?.suite ?? 'suite'} test split with full re-simulation (`marsx bench scorecard`).
             {differs ? ' Your run used a different suite version, so the comparison is indicative only.' : ''}
             {rows.length < BASELINES.length ? ' Some baselines are missing from this dataset.' : ''}
@@ -307,7 +307,7 @@ export function ScorecardDialog({ result, card, open, onOpenChange, onReplayFail
                 ))}
               </ul>
             )}
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Thresholds {THRESHOLDS_VERSION}: L1 at least 80% success; L2 at least 70%; L3 a Wilson 95% lower bound of at least 60% with 20 or more episodes in every family. Any critical violation fails the level. SPL is measured against the A* oracle path.
             </p>
             <p className={cn('rounded-lg border px-3 py-2 text-xs', card.seal ? 'border-primary/40 bg-primary/5' : 'border-border bg-surface')}>
@@ -328,7 +328,7 @@ export function ScorecardDialog({ result, card, open, onOpenChange, onReplayFail
                   </li>
                 ))}
             </ul>
-            <p className="text-[11px] text-muted-foreground">Any one of these fails the level, however high the success rate.</p>
+            <p className="text-xs text-muted-foreground">Any one of these fails the level, however high the success rate.</p>
           </Block>
 
           <BaselineBlock lvl={lvl} suite={`${r.suite.id} ${r.suite.version}`} />
@@ -375,7 +375,7 @@ export function ScorecardDialog({ result, card, open, onOpenChange, onReplayFail
               <KV k="Gravity" v={<span className="inline-flex items-center gap-2">{fmtNum(r.conditions.gravity, 3)} m/s²<ProvenanceChip kind="derived" /></span>} />
               <KV k="One-way light time" v={r.conditions.owltMin != null ? <span className="inline-flex items-center gap-2">{fmtNum(r.conditions.owltMin, 1)} min<ProvenanceChip kind="modeled" /></span> : NO_DATA} />
             </dl>
-            <p className="text-[11px] text-muted-foreground">Energy, dust and slip are simplified models. The file does not record where tau came from, so it is shown as an assumption.</p>
+            <p className="text-xs text-muted-foreground">Energy, dust and slip are simplified models. The file does not record where tau came from, so it is shown as an assumption.</p>
           </Block>
 
           <Block title="Reproducibility" id="sc-repro">
@@ -396,7 +396,7 @@ export function ScorecardDialog({ result, card, open, onOpenChange, onReplayFail
             </ul>
           </Block>
 
-          <div className="space-y-1 border-t border-border pt-4 text-[11px] text-muted-foreground">
+          <div className="space-y-1 border-t border-border pt-4 text-xs text-muted-foreground">
             <p className="font-medium text-foreground">{STAMP}.</p>
             <p>{DISCLAIMER}</p>
           </div>

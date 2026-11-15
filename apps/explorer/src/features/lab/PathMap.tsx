@@ -9,7 +9,7 @@ function token(name: string, fallback: string): string {
   return v || fallback
 }
 
-/** The learning grid: cost as brightness, blocked cells hatched, A* path in blue, the learner's greedy path in orange. */
+/** The learning grid: cost as brightness, blocked cells dark, A* path in cyan (planner), the learner's greedy path in amber (agent). */
 export function PathMap({ problem, astarPath, greedyPath }: { problem: QProblem; astarPath: ArrayLike<number> | null; greedyPath: ArrayLike<number> | null }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const theme = useApp((s) => s.theme)
@@ -24,9 +24,9 @@ export function PathMap({ problem, astarPath, greedyPath }: { problem: QProblem;
     const g = cv.getContext('2d')
     if (!g) return
     const dark = theme === 'dark'
-    const c1 = token('--chart-1', '#5cc8e6')
-    const c2 = token('--chart-2', '#f08a4b')
-    const brand = token('--brand', '#ffb81f')
+    const c1 = token('--planner', '#5cc8e6')
+    const c2 = token('--agent', '#ffb81f')
+    const pin = token('--foreground', '#ffffff')
     let max = 1
     for (const v of cost) if (Number.isFinite(v) && v > max) max = v
     for (let r = 0; r < rows; r++) {
@@ -62,7 +62,7 @@ export function PathMap({ problem, astarPath, greedyPath }: { problem: QProblem;
     const dot = (idx: number, shape: 'o' | 'd') => {
       const x = (idx % cols) * k + k / 2
       const y = Math.floor(idx / cols) * k + k / 2
-      g.fillStyle = brand
+      g.fillStyle = pin
       g.strokeStyle = dark ? '#0b0e14' : '#ffffff'
       g.lineWidth = 3
       g.beginPath()
@@ -79,7 +79,7 @@ export function PathMap({ problem, astarPath, greedyPath }: { problem: QProblem;
     <canvas
       ref={ref}
       role="img"
-      aria-label={`Learning grid ${problem.cols} by ${problem.rows} cells of ${problem.cellM} metres. Blue is the A* path, orange is the path the learned policy follows.`}
+      aria-label={`Learning grid ${problem.cols} by ${problem.rows} cells of ${problem.cellM} metres. Cyan is the A* path, amber is the path the learned policy follows.`}
       className="block aspect-square w-full rounded-md border border-border"
     />
   )
