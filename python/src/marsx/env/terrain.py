@@ -26,6 +26,7 @@ class Terrain:
     sky_view: np.ndarray | None = None  # float32 (H, W) from the pipeline's sky_view layer
     slip_class: np.ndarray | None = None  # float32 (H, W): 0 fines, 1 mixed, 2 rock, NaN unknown (THEMIS proxy)
     tables: dict[str, tuple[np.ndarray, dict]] | None = None  # time tables (sun_table, owlt_table): id -> (rows, meta)
+    data_dir: str | None = None  # processed dataset folder (published MEDA summaries live in <data_dir>/meda)
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -50,8 +51,8 @@ def load_terrain(data_dir: str | Path, grid_id: str = "plan") -> Terrain:
     data_dir = Path(data_dir)
     manifest = json.loads((data_dir / "manifest.json").read_text(encoding="utf-8"))
     layers = {(l["kind"], l["gridId"]): l for l in manifest["layers"]}
-    get = lambda kind: _decode(data_dir, layers[(kind, grid_id)])  # noqa: E731
-    opt = lambda kind: get(kind) if (kind, grid_id) in layers else None  # noqa: E731
+    get = lambda kind: _decode(data_dir, layers[(kind, grid_id)])
+    opt = lambda kind: get(kind) if (kind, grid_id) in layers else None
     hz = opt("horizon")
     horizon = None if hz is None else np.nan_to_num(hz, nan=0.0).astype(np.float16)  # nodata -> open sky
     sky = opt("sky_view")
@@ -63,7 +64,7 @@ def load_terrain(data_dir: str | Path, grid_id: str = "plan") -> Terrain:
                    dataset_sha256=manifest.get("contentHash"), horizon_deg=horizon,
                    center_lat_deg=float(center.get("lat", 18.49)), center_lon_east_deg=float(center.get("lon", 77.40)),
                    sky_view=None if sky is None else np.nan_to_num(sky, nan=1.0), slip_class=opt("slip_class"),
-                   tables=tables or None)
+                   tables=tables or None, data_dir=str(data_dir))
 
 
 def synthetic_terrain(n: int = 128, seed: int = 0, res_m: float = 2.0, relief_m: float = 4.0) -> Terrain:
@@ -81,7 +82,7 @@ def synthetic_terrain(n: int = 128, seed: int = 0, res_m: float = 2.0, relief_m:
     slope = np.degrees(np.arctan(np.hypot(gx, gy)))
     # same definition as marsx.pipeline.derive.step_height: max over 4 directions of |z(+d) + z(-d) - 2z|
     pad = np.pad(h, 1, mode="edge")
-    sh = lambda dy, dx: pad[1 + dy:1 + dy + n, 1 + dx:1 + dx + n]  # noqa: E731
+    sh = lambda dy, dx: pad[1 + dy:1 + dy + n, 1 + dx:1 + dx + n]
     step = np.max([np.abs(sh(dy, dx) + sh(-dy, -dx) - 2 * h) for dy, dx in ((0, 1), (1, 0), (1, 1), (1, -1))], axis=0)
     return Terrain(slope.astype(np.float32), step.astype(np.float32), h.astype(np.float32), res_m, f"synthetic:{seed}")
 

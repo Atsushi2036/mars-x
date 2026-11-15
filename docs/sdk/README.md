@@ -19,11 +19,17 @@ Python ≥ 3.12 (Google Colab works). Colab quick start: [`colab_quickstart.ipyn
 
 ### Get the data
 
-The processed dataset (`manifest.json` + raw layers, ~100 MB) is not in the wheel. Either:
+The processed dataset is not in the wheel. Download what the environment needs (~50 MB) from the published site:
 
-- clone the repo and run `just fetch-data` (downloads the GitHub Release `data-jezero-v1` and checks the sha256
-  recorded in `data/dataset.lock.json`), or `just data` to rebuild it from the public NASA/USGS sources;
-- or download the release archive yourself, verify its sha256 against `data/dataset.lock.json`, extract it.
+```python
+from marsx import data
+path = data.fetch()   # https://mars-x-7k9.pages.dev/data/jezero-v1 by default; override with base_url= or MARSX_DATA_URL
+```
+
+`fetch` verifies TLS, checks the sha256 of every layer against the dataset manifest, caches files in
+`~/.cache/marsx/jezero-v1` (or `MARSX_DATA_CACHE`), refuses unsafe paths, and also downloads the daily MEDA
+summaries (`meda/sol-NNNN.json`; not listed in the manifest, so they are schema-checked and their sha256 recorded
+in `meda/index.json` as not manifest-verified). From a clone you can also rebuild everything with `just data`.
 
 Then `export MARSX_DATA=/path/to/jezero-v1` (or pass `terrain=<path>`). `terrain="synthetic"` gives a small
 deterministic map for quick tests without data. MEDA weather files (optional, for L2 temperature/wind) live in

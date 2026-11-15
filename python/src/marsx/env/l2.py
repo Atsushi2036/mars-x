@@ -15,7 +15,8 @@ for that sol/hour (and no tau is given by the scenario). -1 is impossible for th
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from pathlib import Path
 
 import numpy as np
 
@@ -30,10 +31,10 @@ SOL_S = mars24.SOL_DAYS * 86400.0
 
 
 def utc_ms(text: str) -> int:
-    dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    dt = datetime.fromisoformat(text)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return int(round(dt.timestamp() * 1000))
+        dt = dt.replace(tzinfo=UTC)
+    return round(dt.timestamp() * 1000)
 
 
 def _interp(rows: np.ndarray, f: np.ndarray, kind: str) -> np.ndarray:
@@ -81,14 +82,26 @@ def perseverance_sol(unix_ms, lon_east_deg: float):
     return int(out) if out.ndim == 0 else out
 
 
-def load_meda(sols, root=None) -> dict[int, dict]:
-    """Summaries (marsx.conditions.meda format) for the sols available under root / MARSX_MEDA / data/raw/meda."""
+def load_meda(sols, root=None, published_dir=None) -> dict[int, dict]:
+    """Summaries (marsx.conditions.meda format): raw CSVs under root / MARSX_MEDA / data/raw/meda, else the
+    published per-sol summaries ``<dataset>/meda/sol-NNNN.json`` (what ``marsx.data.fetch`` downloads)."""
+    import json
     import os
     from pathlib import Path
 
     from marsx.conditions import meda
 
     roots = [root] if root is not None else [os.environ.get("MARSX_MEDA"), "data/raw/meda", "../data/raw/meda"]
+    if published_dir is not None and root is None:
+        pub = {}
+        for sol in sols:
+            f = Path(published_dir) / f"sol-{int(sol):04d}.json"
+            if f.exists():
+                doc = json.loads(f.read_text(encoding="utf-8"))
+                if doc.get("sol") == int(sol):
+                    pub[int(sol)] = doc
+        if pub:
+            return pub
     out = {}
     for r in roots:
         if not r or not Path(r).exists():
@@ -130,7 +143,8 @@ class MarsConditions:
         sol_of = perseverance_sol(t_ms, terrain.center_lon_east_deg)
         if sol_summaries is None:
             wanted = sorted(set(scenario.conditions.meda_sols) | set(np.unique(sol_of).tolist()))
-            sol_summaries = load_meda(wanted, meda_root) if scenario.conditions.meda_sols else {}
+            pub = None if terrain.data_dir is None else Path(terrain.data_dir) / "meda"
+            sol_summaries = load_meda(wanted, meda_root, pub) if scenario.conditions.meda_sols else {}
         self.sources["meda"] = "sols:" + ",".join(str(k) for k in sorted(sol_summaries)) if sol_summaries else "none"
         hour = np.floor(self.lmst).astype(np.int64) % 24
         temp_k, wind, tau = np.full(n, np.nan), np.full(n, np.nan), np.full(n, np.nan)
@@ -148,7 +162,7 @@ class MarsConditions:
         self.temp_c, self.wind, self.tau_series = temp_k - 273.15, wind, tau
         self.tau = float(np.nanmean(tau)) if np.isfinite(tau).any() else 0.0  # irradiance needs a value; see note
         self.tau_known = bool(np.isfinite(tau).all())
-        glob, direct, diffuse = insolation.surface_irradiance(self.zen, np.nan_to_num(tau, nan=self.tau), r_au)
+        _glob, direct, diffuse = insolation.surface_irradiance(self.zen, np.nan_to_num(tau, nan=self.tau), r_au)
         self.direct, self.diffuse = np.asarray(direct, np.float64), np.asarray(diffuse, np.float64)
         # comms: link (conjunction moratorium), OWLT, next uplink (one plan per sol)
         ow = _table_rows(terrain, "owlt_table", t_ms)
