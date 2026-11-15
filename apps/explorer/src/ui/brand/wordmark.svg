@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 118 28" width="118" height="28" role="img" aria-label="MARS-X" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g stroke="currentColor" stroke-width="3.2" transform="translate(2 4)">
+    <path d="M0 20V0l8 11 8-11v20"/>
+    <path d="M22 20L30 0l8 20M24.8 13.5h10.4"/>
+    <path d="M44 20V0h9a5.5 5.5 0 0 1 0 11h-9M53 11l7 9"/>
+    <path d="M81 3.5C79 .5 69 0 67.5 5 66 10 81 10 81 15.5 81 21 69 21 66.5 17" transform="translate(-1 0)"/>
+  </g>
+  <g stroke-width="3.2" transform="translate(92 4)">
+    <path d="M0 0L20 20" stroke="#5CC8E6"/>
+    <path d="M20 0C12.5 5.6 12.5 14.4 0 20" stroke="#FFB81F"/>
+  </g>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="MARS-X" fill="none" stroke-linecap="round">
+  <defs><clipPath id="t"><rect width="32" height="32" rx="8"/></clipPath></defs>
+  <rect width="32" height="32" rx="8" fill="#0B0E14"/>
+  <g clip-path="url(#t)" stroke="#1C2530" stroke-width=".8">
+    <path d="M-1 19C5 15 12 20 19 16S28 14 33 17" opacity=".7"/>
+    <path d="M-1 24C6 20 11 26 18 22S28 20 33 23"/>
+    <path d="M-1 28C7 25 12 31 19 27S28 26 33 28"/>
+  </g>
+  <rect x=".5" y=".5" width="31" height="31" rx="7.5" stroke="#2A3340"/>
+  <path d="M8 8L24 24" stroke="#5CC8E6" stroke-width="3.4"/>
+  <path d="M24 8C18 12.5 18 19.5 8 24" stroke="#FFB81F" stroke-width="3.4"/>
+</svg>
