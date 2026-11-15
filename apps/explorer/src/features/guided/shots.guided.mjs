@@ -9,12 +9,13 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const out = path.resolve(here, '../../../.shots/guided')
-fs.mkdirSync(out, { recursive: true })
 const arg = (n, d) => {
   const i = process.argv.indexOf(`--${n}`)
   return i > -1 ? process.argv[i + 1] : d
 }
+const out = path.resolve(here, '../../../.shots', arg('out', 'guided'))
+fs.mkdirSync(out, { recursive: true })
+const STEPS = arg('steps', '').split(',').filter(Boolean)
 const URL_BASE = arg('url', 'http://localhost:5186')
 const THEMES = arg('theme', 'dark,light').split(',')
 const VPS = arg('vp', 'desktop,mobile').split(',')
@@ -46,6 +47,7 @@ for (const vpName of VPS) {
     await page.goto(`${URL_BASE}/?tour=1${DATA ? `&data=${DATA}` : ''}`, { waitUntil: 'domcontentloaded' })
     await page.waitForFunction(() => window.__marsx?.ready === true, null, { timeout: 120000 })
     const shot = async (name) => {
+      if (STEPS.length && !STEPS.includes(name.replace('step', '').replace('-scorecard', ''))) return
       await page.waitForTimeout(2500)
       await page.screenshot({ path: path.join(out, `${name}__${vpName}__${theme}.png`) })
     }

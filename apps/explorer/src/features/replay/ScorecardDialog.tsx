@@ -56,14 +56,65 @@ function KV({ k, v, mono = true }: { k: string; v: ReactNode; mono?: boolean }) 
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border py-1.5 text-xs last:border-b-0">
       <dt className="text-muted-foreground">{k}</dt>
-      <dd className={cn('min-w-0 break-all text-right', mono && 'font-mono tabular-nums')}>{v}</dd>
+      <dd className={cn('min-w-0 text-right [overflow-wrap:anywhere]', mono && 'font-mono tabular-nums')}>{v}</dd>
     </div>
+  )
+}
+
+/** Phones: one card per level (a 7-column table does not fit in 390 px). */
+function LevelCards({ levels, runLevel }: { levels: LevelRow[]; runLevel: string }) {
+  return (
+    <ul className="space-y-2 sm:hidden" aria-label="Results per level">
+      <li className="rounded-lg border border-border px-3 py-2 text-xs">
+        <p className="font-medium">Pre-check</p>
+        <p className="text-muted-foreground">Integration check. Not a level. Shown above.</p>
+      </li>
+      {levels.map((l) => {
+        const none = l.status === 'not-run'
+        const cells: Array<[string, ReactNode]> = [
+          ['Episodes', none ? NO_DATA : l.n],
+          ['Success (95% CI)', none ? NO_DATA : <CiCell p={l.success} ci={l.ci} />],
+          ['SPL', none ? NO_DATA : fmtNum(l.spl, 3)],
+          ['Energy vs oracle', none || l.energyRatio === null ? NO_DATA : `${fmtNum(l.energyRatio, 2)}×`],
+          ['Critical violations', none ? NO_DATA : l.violations],
+        ]
+        return (
+          <li key={l.level} className={cn('rounded-lg border border-border px-3 py-2.5 text-xs', l.level === runLevel && 'border-primary/40 bg-primary/5')}>
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-medium">
+                {l.level} <span className="font-normal text-muted-foreground">{l.name}</span>
+              </p>
+              <StatusMark status={l.status} />
+            </div>
+            {!none && (
+              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                {cells.map(([k, v]) => (
+                  <div key={k}>
+                    <dt className="text-muted-foreground">{k}</dt>
+                    <dd className="font-mono tabular-nums">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
 function LevelTable({ levels, runLevel }: { levels: LevelRow[]; runLevel: string }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <>
+      <LevelCards levels={levels} runLevel={runLevel} />
+      <LevelTableWide levels={levels} runLevel={runLevel} />
+    </>
+  )
+}
+
+function LevelTableWide({ levels, runLevel }: { levels: LevelRow[]; runLevel: string }) {
+  return (
+    <div className="hidden overflow-x-auto rounded-lg border border-border sm:block">
       <table className="w-full min-w-[34rem] text-xs">
         <caption className="sr-only">Results per level</caption>
         <thead className="bg-surface text-left text-muted-foreground">
