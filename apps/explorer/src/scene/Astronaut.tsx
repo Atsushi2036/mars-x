@@ -37,7 +37,7 @@ export function Astronaut({ hf }: { hf: Heightfield }) {
       dark: new MeshStandardMaterial({ color: '#3b4048', roughness: 0.75, metalness: 0.2 }),
       gold: new MeshStandardMaterial({ color: '#f2b93c', roughness: 0.22, metalness: 0.55, emissive: '#a06a00', emissiveIntensity: 0.9 }),
       agent: new MeshStandardMaterial({ color: '#ffb81f', roughness: 0.5, metalness: 0.1, emissive: '#7a4d00', emissiveIntensity: 0.35 }),
-      shadow: new MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.38, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
+      shadow: new MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.25, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
       pack: new CapsuleGeometry(0.15, 0.26, 4, 12),
       lid: new SphereGeometry(0.16, 14, 8),
       thigh: new CapsuleGeometry(0.088, 0.26, 4, 10),
@@ -49,7 +49,7 @@ export function Astronaut({ hf }: { hf: Heightfield }) {
       torso: new CapsuleGeometry(0.17, 0.26, 6, 14),
       helmet: new SphereGeometry(0.235, 18, 14),
       visor: new SphereGeometry(0.2, 18, 14),
-      disc: new CircleGeometry(0.62, 24).rotateX(-Math.PI / 2),
+      disc: new CircleGeometry(0.36, 24).rotateX(-Math.PI / 2),
     }),
     [],
   )
