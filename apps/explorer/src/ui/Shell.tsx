@@ -7,6 +7,8 @@ import { TelemetryBar } from './TelemetryBar'
 import { Slot } from './slots'
 import { Topbar } from './Topbar'
 import { useCoverVars } from './cover'
+import { FlyIn } from '@/scene/FlyIn'
+import { RouteToasts } from './motion/RouteToasts'
 
 /**
  * Mission-control shell: labelled dark rail, full-bleed canvas, glass topbar and inspector, telemetry strip.
@@ -31,9 +33,11 @@ export function Shell({ children }: { children: ReactNode }) {
         <Topbar />
         <Onboarding />
         <Slot name="overlay" />
+        <FlyIn />
         <Inspector />
         <Joystick />
         <TelemetryBar />
+        <RouteToasts />
       </main>
     </div>
   )

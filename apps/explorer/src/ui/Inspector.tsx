@@ -2,7 +2,7 @@ import { X } from '@/ui/icons'
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useApp } from '@/store/app'
+import { useApp, type Mode } from '@/store/app'
 import { useMission } from '@/store/mission'
 import { MODES } from './modes'
 import { PanelSlot } from './slots'
@@ -14,6 +14,14 @@ import { MissionPanel } from './panels/MissionPanel'
 
 function PanelBody() {
   const mode = useApp((s) => s.mode)
+  return (
+    <div key={mode} className="panel-swap">
+      <PanelFor mode={mode} />
+    </div>
+  )
+}
+
+function PanelFor({ mode }: { mode: Mode }) {
   switch (mode) {
     case 'explore':
       return <PanelSlot name="panel:explore" builtin={<ExplorePanel />} />
@@ -38,8 +46,8 @@ function Header({ compact = false }: { compact?: boolean }) {
         <def.icon className="size-6" strokeWidth={1.75} />
       </span>
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-xl font-semibold leading-tight">{def.title}</h2>
-        {!compact && <p className="truncate text-sm text-muted-foreground">{def.subtitle}</p>}
+        <h2 className="text-xl font-semibold leading-tight">{def.title}</h2>
+        {!compact && <p className="text-sm leading-5 text-muted-foreground">{def.subtitle}</p>}
       </div>
       <Button variant="ghost" size="icon" aria-label="Close panel" className="-mr-2 size-10 [&_svg]:size-5" onClick={() => setOpen(false)}>
         <X />

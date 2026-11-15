@@ -1,0 +1,37 @@
+/* Motion layer (UX spec package E). Everything that moves on its own lives behind no-preference. */
+@media (prefers-reduced-motion: no-preference) {
+  .flyin-title {
+    background: rgb(11 14 20 / 0.55);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    animation: flyin-title 3.3s var(--ease-in-out) both;
+  }
+  @keyframes flyin-title {
+    0% { opacity: 0; transform: translateY(6px); }
+    15% { opacity: 1; transform: none; }
+    70% { opacity: 1; transform: none; }
+    100% { opacity: 0; }
+  }
+
+  /* press feedback on every shadcn button */
+  [data-slot='button']:not(:disabled):active {
+    transform: scale(0.97);
+  }
+  [data-slot='button'] {
+    transition-duration: var(--dur-fast);
+  }
+
+  /* panel switch: short cross-fade with an 8 px rise */
+  .panel-swap {
+    animation: panel-swap 150ms var(--ease-out) both;
+  }
+  @keyframes panel-swap {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flyin-title {
+    background: rgb(11 14 20 / 0.55);
+  }
+}
