@@ -7,7 +7,7 @@ import { useApp } from '@/store/app'
 import { useMission, type MissionProfile } from '@/store/mission'
 import { ROVER_REAL_SPEED } from '@/store/watch'
 import { beginJourney } from './journey'
-import { DriverPicker } from '../nav/DriverPicker'
+import { DriverPicker, ROVER_ONLY } from '../nav/DriverPicker'
 import { setDriveMode, useDriver, GUIDED_SPACING_M, type DriveMode } from '@/store/driver'
 import { AstronautIcon, CircleAlert, Flag, Play, Route, RoverIcon, type LucideIcon } from '../icons'
 import { Segmented, StatCard } from '../kit'
@@ -174,6 +174,9 @@ function Review() {
             <StatCard compact label="Max slope" value={ok.stats.maxSlopeDeg.toFixed(1)} unit="°" sub={`limit ${limit}°`} />
             <StatCard compact label="Mission time" value={missionTime.value} unit={missionTime.unit} />
           </div>
+        )}
+        {profile === 'astronaut' && driverKind !== 'astar' && (
+          <p className="rounded-lg bg-warning/15 px-3 py-2 text-sm text-foreground">{ROVER_ONLY}</p>
         )}
         {outcome && outcome.status !== 'ok' && (
           <Alert variant="destructive" role="alert">

@@ -15,7 +15,12 @@ interface Option {
   icon: typeof Route
   /** why it cannot be picked right now (undefined = available) */
   why?: string
+  /** an honest heads-up shown on the card (still pickable) */
+  chip?: string
 }
+
+/** The built-in policies were trained on the rover profile only. */
+export const ROVER_ONLY = 'Trained for a rover · expect failures as an astronaut'
 
 const MODES: { id: DriveMode; label: string; sub: string }[] = [
   { id: 'guided', label: 'Guided (waypoints)', sub: `A* sets a waypoint every ~${GUIDED_SPACING_M} m and the AI drives from one to the next, the way a rover team works.` },
@@ -64,11 +69,13 @@ export function DriverPicker({ className, part = 'all' }: { className?: string; 
   }, [catalog.models])
 
   const userOk = !!file && !!loaded && !fromCatalog
-  const options: Option[] = [{ kind: 'astar', label: 'A* plan', sub: 'Classic search, not AI', icon: Route }]
+  const astro = profile === 'astronaut'
+  const options: Option[] = [{ kind: 'astar', label: 'A* plan', sub: astro ? 'Recommended for astronauts' : 'Classic search, not AI', icon: Route }]
   if (hasCatalog)
     for (const m of catalog.models)
       options.push({ kind: `catalog:${m.id}`, label: m.kind === 'reference' ? 'Reference AI' : 'Example model', sub: m.kind === 'reference' ? `PPO ${m.version}, trained offline` : `${m.name}, 1.5M steps`, icon: m.kind === 'reference' ? Bot : Sparkles })
   else options.push({ kind: 'reference', label: 'Reference AI', sub: 'PPO 0.2.0, trained offline', icon: Bot, why: ref === 'missing' ? 'The reference model is not published with this build' : undefined })
+  if (astro) for (const o of options) if (o.kind !== 'astar' && o.kind !== 'user') o.chip = ROVER_ONLY
   options.push({ kind: 'user', label: 'Your model', sub: userOk ? (name ?? 'ONNX policy') : 'Drop an ONNX in Test your AI', icon: FlaskConical, why: userOk ? undefined : 'Drop an ONNX policy in Test your AI first' })
 
   // a selection that stopped being available (model removed, catalog gone) falls back to the A* plan
@@ -108,7 +115,8 @@ export function DriverPicker({ className, part = 'all' }: { className?: string; 
               <o.icon className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.75} aria-hidden="true" />
               <span className="min-w-0">
                 <span className="block text-sm font-medium leading-tight">{o.label}</span>
-                <span className="block truncate text-xs text-muted-foreground">{o.sub}</span>
+                <span className="line-clamp-2 block text-xs text-muted-foreground">{o.sub}</span>
+                {o.chip && <span className="mt-1 block rounded-md bg-warning/15 px-1.5 py-0.5 text-xs leading-snug text-foreground">{o.chip}</span>}
               </span>
             </button>
           )
