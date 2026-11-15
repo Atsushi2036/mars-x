@@ -8,13 +8,13 @@
   "suite": {
    "id": "jezero-v1",
    "version": "0.1.0",
-   "sha256": "96765641e7513c1d500bfa4394c33b6a836cb1acbbb79611090fdf6bc7ac6749"
+   "sha256": "225150b15092d69e87ead4762ac6479a65e8e6aed49cd7764d560cae0205bf85"
   },
   "marsx": {
    "version": "0.1.0",
-   "gitSha": "4ede62de0654ce7577d40a5708ee04520b66d09c"
+   "gitSha": "382c885637d5150caafa03eae4ba3d36b83091da"
   },
-  "date": "2026-11-15T00:59:25Z",
+  "date": "2026-11-15T02:23:21Z",
   "status": "Verified by re-simulation ✓"
  },
  "verdict": {
@@ -241,7 +241,7 @@
  },
  "alertCompliance": {
   "L1": null,
-  "L2": null,
+  "L2": 0.0,
   "L3": null
  },
  "conditions": {
@@ -270,11 +270,11 @@
  },
  "reproducibility": {
   "rootSeed": 20261115,
-  "datasetSha256": "ff3543fbe375b4e9705e14429f02e4be13634dcfce403bce001046c79e46494b",
+  "datasetSha256": "f7f19e48c57dc688f8747ca90d21c305ad111bb5c84bdf908302fbd99a5ca689",
   "runIds": {
-   "L1": "8c130662-df51-4796-833e-9ec257466536",
-   "L2": "5d13dbd8-1b08-4867-ad14-edc872e324b0",
-   "L3": "8d2bfd27-2a64-4cf3-8669-32076af9e30e"
+   "L1": "c5d8bc83-29ff-4388-9881-c52ddb90055a",
+   "L2": "842654d8-106f-4d53-8bdd-3cf78b3b9fc1",
+   "L3": "b1c7cbf5-8076-4bcb-8719-6fceb2fd56c2"
   },
   "command": "marsx evaluate --policy <model.onnx> --suite bench/jezero-v1/suite.json --level <L1|L2|L3>"
  },
