@@ -12,7 +12,7 @@ export interface StatCardProps {
   /** one short line under the number */
   sub?: ReactNode
   /** draws a bar of `value` against `limit` */
-  gauge?: { value: number; limit: number; label: string }
+  gauge?: { value: number; limit: number; label: string; neutral?: boolean }
   /** smaller number (text-2xl) for three-across grids */
   compact?: boolean
   className?: string
@@ -24,7 +24,7 @@ export function StatCard({ label, value, unit, provenance, sub, gauge, compact, 
     <div className={cn('flex min-h-[92px] min-w-0 flex-col gap-1 rounded-2xl border border-border bg-surface/60 p-3.5 max-md:p-3', className)}>
       <p className="truncate text-xs text-muted-foreground">{label}</p>
       <p className={cn('flex items-baseline gap-1 font-semibold tabular-nums leading-none', compact ? 'text-2xl' : 'text-3xl')}>
-        <span className="min-w-0 truncate">{value}</span>
+        <span className="min-w-0 break-words">{value}</span>
         {unit && <span className="text-sm font-normal text-muted-foreground">{unit}</span>}
       </p>
       {gauge && <GaugeBar {...gauge} className="mt-1" />}

@@ -29,7 +29,7 @@ const VIEWPORTS = {
 async function openMode(page, vp, label, mobileLabel) {
   const name = vp === 'mobile' ? mobileLabel : label
   await page.locator('nav button:visible').filter({ hasText: new RegExp(`^\\s*${name}\\s*$`) }).first().click()
-  await page.waitForTimeout(500)
+  await page.waitForTimeout(1100)
   if (vp === 'mobile') {
     const h = page.getByRole('button', { name: 'Expand panel' })
     for (let i = 0; i < 2; i++) if (await h.count()) await h.first().click({ force: true }).catch(() => {})

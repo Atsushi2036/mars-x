@@ -80,6 +80,8 @@ function ExtraItem({ s }: { s: ExtraSource }) {
   )
 }
 
+const SHORT: Record<string, string> = { height: 'Height vs rover', slope: 'Slope vs tilt' }
+
 type Report = { status: 'loading' } | { status: 'missing' } | { status: 'invalid' } | { status: 'ready'; report: ValidationReport }
 
 function useValidation(base: string | undefined): Report {
@@ -127,11 +129,12 @@ function Validation({ base }: { base: string | undefined }) {
               return (
                 <StatCard
                   key={h.id}
-                  label={h.title}
-                  value={h.big}
+                  label={SHORT[h.id] ?? h.title}
+                  compact
+                  value={r ? `r = ${(Math.floor(Number(r[1]) * 1000) / 1000).toFixed(3)}` : h.big}
                   provenance="derived"
                   className={h.id === 'align' ? 'col-span-2' : undefined}
-                  gauge={r ? { value: Number(r[1]), limit: 1, label: h.title + ', correlation against 1' } : undefined}
+                  gauge={r ? { value: Number(r[1]), limit: 1, neutral: true, label: h.title + ', correlation against 1' } : undefined}
                 />
               )
             })}
@@ -191,8 +194,8 @@ export function SourcesPanel() {
 
       <PanelSection title="Dataset">
         <div className="grid grid-cols-2 gap-2">
-          <StatCard label="Resolution" value={g.resM} unit="m/px" provenance="measured" />
-          <StatCard label="Extent" value={`${fmtInt(g.width * g.resM)} × ${fmtInt(g.height * g.resM)}`} unit="m" provenance="derived" className="[&_p:nth-child(2)]:text-2xl" />
+          <StatCard compact label="Resolution" value={g.resM} unit="m/px" provenance="measured" />
+          <StatCard compact label="Extent" value={`${((g.width * g.resM) / 1000).toFixed(1)} × ${((g.height * g.resM) / 1000).toFixed(1)}`} unit="km" provenance="derived" />
         </div>
         <dl className="divide-y divide-border">
           <Metric label="Elevation" value={`${fmtElevation(hf.zMin)} to ${fmtElevation(hf.zMax)}`} />
