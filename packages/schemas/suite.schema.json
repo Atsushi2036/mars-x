@@ -47,7 +47,7 @@
           "type": "string"
         },
         "seed": {
-          "exclusiveMaximum": 9223372036854775808,
+          "maximum": 9007199254740991,
           "minimum": 0,
           "title": "Seed",
           "type": "integer"
@@ -218,7 +218,7 @@
       "type": "array"
     },
     "rootSeed": {
-      "exclusiveMaximum": 9223372036854775808,
+      "maximum": 9007199254740991,
       "minimum": 0,
       "title": "Rootseed",
       "type": "integer"

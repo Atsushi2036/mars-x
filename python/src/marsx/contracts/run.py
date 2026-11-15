@@ -10,6 +10,7 @@ from typing import Annotated, Literal
 from pydantic import Field, model_validator
 
 from marsx.contracts.scenario import Cell, Finite, Level
+from marsx.contracts.suite import Seed
 from marsx.contracts.traj import TrajectoryBlock
 from marsx.schemas import Model, Sha256
 
@@ -33,7 +34,7 @@ class SuiteRef(Model):
     version: Short
     level: Level
     split: Literal["train", "test"]
-    root_seed: int = Field(ge=0, lt=2**63)
+    root_seed: Seed
 
 
 class DatasetRef(Model):
@@ -81,7 +82,7 @@ class Event(Model):
 
 class EpisodeResult(Model):
     index: int = Field(ge=0)
-    seed: int = Field(ge=0, lt=2**63)
+    seed: Seed
     scenario_id: Short | None = None
     start: Cell
     goal: Cell

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import layout from '../../../../packages/schemas/obs-v1.layout.json'
 import policyExample from '../../../../packages/schemas/examples/policy.example.json'
 import runExample from '../../../../packages/schemas/examples/run.example.json'
+import realRun from '../../../../packages/schemas/examples/run.real-l1-astar.json'
 import { ACTIONS, OBS_BLOCKS, OBS_DIM, PATCH_K, decodeTrajectory, halfToFloat, policyCardSchema, runSchema } from './contracts'
 
 describe('contracts mirror the Python models', () => {
@@ -33,5 +34,17 @@ describe('contracts mirror the Python models', () => {
     expect(Array.from(t.action)).toEqual([2, 6, 8])
     expect(halfToFloat(t.socHalf[0]!)).toBe(1)
     await expect(decodeTrajectory({ ...run.episodes[0]!.trajectory!, sha256: '0'.repeat(64) })).rejects.toThrow('sha256')
+  })
+
+  it('accepts a real benchmark run.json (53-bit seeds) and rejects seeds beyond 2^53 - 1', async () => {
+    const parsed = runSchema.safeParse(realRun)
+    expect(parsed.success).toBe(true)
+    const seeds = realRun.episodes.map((e) => e.seed)
+    expect(seeds.every((s) => Number.isSafeInteger(s))).toBe(true)
+    const bad = structuredClone(realRun)
+    bad.episodes[0]!.seed = 2 ** 53
+    expect(runSchema.safeParse(bad).success).toBe(false)
+    const t = await decodeTrajectory(runSchema.parse(realRun).episodes[0]!.trajectory!)
+    expect(t.row.length).toBe(realRun.episodes[0]!.steps + 1)
   })
 })

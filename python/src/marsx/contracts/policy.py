@@ -14,6 +14,7 @@ from pydantic import Field
 
 from marsx.contracts import obs
 from marsx.contracts.scenario import Finite
+from marsx.contracts.suite import Seed
 from marsx.schemas import Model, Sha256
 
 POLICY_CONTRACT = "policy/1"
@@ -31,7 +32,7 @@ class TrainingInfo(Model):
     library: str = Field(max_length=64)
     timesteps: int = Field(ge=0)
     wall_clock_s: Finite = Field(ge=0)
-    seed: int = Field(ge=0)
+    seed: Seed
     suite_id: str | None = Field(default=None, max_length=64)
     split: Literal["train", "test"] = "train"
 

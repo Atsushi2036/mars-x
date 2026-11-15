@@ -168,3 +168,30 @@ def test_examples_validate_against_json_schema(name):
     jsonschema.validate(example_documents()[name], all_schemas()[name])
     committed_example = json.loads((SCHEMAS / "examples" / f"{name}.example.json").read_text(encoding="utf-8"))
     assert committed_example == example_documents()[name]
+
+
+def test_seeds_are_json_safe_integers():
+    """Seeds must survive JavaScript (IEEE double): [0, 2^53 - 1] in run/1 and suite/1."""
+    assert suite.MAX_SEED == 2**53 - 1
+    ok = _example_run()
+    ok["episodes"][0]["seed"] = 2**53 - 1
+    run.Run.model_validate(ok)
+    for bad_seed in (2**53, 1648931755283963286):
+        bad = _example_run()
+        bad["episodes"][0]["seed"] = bad_seed
+        with pytest.raises(ValidationError):
+            run.Run.model_validate(bad)
+    with pytest.raises(ValidationError):
+        suite.EpisodeSpec(index=0, seed=2**53, scenario_id="x", start=[0, 0], goal=[1, 1])
+    with pytest.raises(ValidationError):
+        suite.Suite(id="s", version="1", root_seed=2**53, levels=[suite.LevelSpec(level="L1", scenario_ids=["x"], episodes=1)])
+    sch = all_schemas()["run"]["$defs"]["EpisodeResult"]["properties"]["seed"]
+    assert sch.get("maximum") == 2**53 - 1
+
+
+def test_real_benchmark_run_validates():
+    doc = json.loads((SCHEMAS / "examples" / "run.real-l1-astar.json").read_text(encoding="utf-8"))
+    r = run.Run.model_validate(doc)
+    assert r.metrics.n == len(r.episodes) == 10
+    assert all(0 <= e.seed <= suite.MAX_SEED for e in r.episodes)
+    jsonschema.validate(doc, all_schemas()["run"])

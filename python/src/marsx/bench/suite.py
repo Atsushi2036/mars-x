@@ -23,7 +23,7 @@ import numpy as np
 
 from marsx.contracts.canonical import sha256_json
 from marsx.contracts.scenario import CommSpec, Scenario, SpeSpec
-from marsx.contracts.suite import EpisodeSpec, LevelSpec, Suite
+from marsx.contracts.suite import MAX_SEED, EpisodeSpec, LevelSpec, Suite
 from marsx.env import scenarios as env_scenarios
 from marsx.nav import NavStatus, astar
 
@@ -151,7 +151,7 @@ def generate_episodes(
             if res.status != NavStatus.OK or len(res.path) - 1 > limit:
                 continue
             out.append(EpisodeSpec(
-                index=i, seed=int(rng.integers(0, 2**63 - 1)), scenario_id=scenario_id,
+                index=i, seed=int(rng.integers(0, 2**63 - 1)) & MAX_SEED, scenario_id=scenario_id,  # JSON-safe
                 start=[int(s[0]), int(s[1])], goal=[int(g[0]), int(g[1])],
                 oracle_cost=round(float(res.cost), 6), oracle_path_m=round(_path_m(res.path, res_m), 6),
             ))

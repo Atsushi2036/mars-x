@@ -40,6 +40,8 @@ const sha256 = z.string().regex(/^[0-9a-f]{64}$/)
 const short = z.string().max(96)
 const cell = z.tuple([z.number().int(), z.number().int()])
 const level = z.enum(['L1', 'L2', 'L3'])
+/** Seeds are exact JSON integers in [0, 2^53 - 1] (no rounding in JavaScript). */
+const seed = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
 
 export const MAX_RUN_BYTES = 10 * 1024 * 1024
 export const MAX_EPISODES = 5000
@@ -65,7 +67,7 @@ const eventSchema = z
 export const episodeSchema = z
   .object({
     index: z.number().int().min(0),
-    seed: z.number().int().min(0),
+    seed,
     scenarioId: short.nullish(),
     start: cell,
     goal: cell,
@@ -88,7 +90,7 @@ export const runSchema = z
     createdUtc: short,
     producer: z.object({ marsxVersion: short, gitSha: short.nullish(), python: short, platform: short }).strict(),
     suite: z
-      .object({ id: short, version: short, level, split: z.enum(['train', 'test']), rootSeed: z.number().int().min(0) })
+      .object({ id: short, version: short, level, split: z.enum(['train', 'test']), rootSeed: seed })
       .strict(),
     dataset: z.object({ id: short, sha256, layers: z.record(z.string(), sha256).default({}) }).strict(),
     scenario: z.object({ id: short, sha256 }).strict(),
@@ -144,7 +146,7 @@ export const policyCardSchema = z
         library: z.string().max(64),
         timesteps: z.number().int().min(0),
         wallClockS: num.min(0),
-        seed: z.number().int().min(0),
+        seed,
         suiteId: z.string().max(64).nullish(),
         split: z.enum(['train', 'test']).default('train'),
       })

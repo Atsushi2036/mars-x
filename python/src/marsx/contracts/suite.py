@@ -10,6 +10,9 @@ from marsx.contracts.scenario import Cell, Finite, Level
 from marsx.schemas import Model, Sha256
 
 MAX_SUITE_EPISODES = 20_000
+# Seeds travel through JSON to JavaScript (IEEE double): exact integers in [0, 2^53 - 1].
+MAX_SEED = 2**53 - 1
+Seed = Annotated[int, Field(ge=0, le=MAX_SEED)]
 
 
 class PassCriterion(Model):
@@ -31,7 +34,7 @@ DEFAULT_PASS_CRITERIA = (
 
 class EpisodeSpec(Model):
     index: int = Field(ge=0)
-    seed: int = Field(ge=0, lt=2**63)
+    seed: Seed
     scenario_id: str = Field(max_length=96)
     start: Cell
     goal: Cell
@@ -50,7 +53,7 @@ class Suite(Model):
     id: str = Field(max_length=64)
     version: str = Field(max_length=16)
     dataset_sha256: Sha256 | None = None
-    root_seed: int = Field(ge=0, lt=2**63)
+    root_seed: Seed
     split: Literal["train", "test"] = "test"
     levels: Annotated[list[LevelSpec], Field(min_length=1, max_length=8)]
     pass_criteria: list[PassCriterion] = Field(default_factory=lambda: list(DEFAULT_PASS_CRITERIA))
