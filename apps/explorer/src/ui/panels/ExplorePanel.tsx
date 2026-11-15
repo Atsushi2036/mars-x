@@ -1,11 +1,11 @@
 import { Bot, Footprints, Orbit, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Slider } from '@/components/ui/slider'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { setSun, useApp } from '@/store/app'
+import { useApp } from '@/store/app'
 import { useCamera, type CameraMode } from '@/store/camera'
 import { roverLive, useRover } from '@/store/rover'
 import { Section } from './Section'
+import { SunSection } from './SunSection'
 
 const HINTS: Record<CameraMode, string> = {
   orbit: 'Drag to orbit, right-drag or two fingers to pan, wheel or pinch to zoom.',
@@ -31,7 +31,6 @@ function demoLoop(hf: NonNullable<ReturnType<typeof useApp.getState>['dataset']>
 export function ExplorePanel() {
   const camMode = useCamera((s) => s.mode)
   const setCam = useCamera((s) => s.setMode)
-  const sun = useApp((s) => s.sun)
   const ds = useApp((s) => s.dataset)
   const status = useRover((s) => s.status)
   const follow = useRover((s) => s.followPath)
@@ -78,34 +77,7 @@ export function ExplorePanel() {
         )}
       </Section>
 
-      <Section title="Sun" hint="Set by hand for now; the conditions engine will drive it from the date and time.">
-        <label className="block space-y-1.5 text-xs">
-          <span className="flex justify-between text-muted-foreground">
-            Azimuth <span className="font-mono tabular-nums text-foreground">{Math.round(sun.azimuthDeg)}°</span>
-          </span>
-          <Slider
-            min={0}
-            max={359}
-            step={1}
-            value={[sun.azimuthDeg]}
-            onValueChange={([v]) => setSun(v ?? 0, sun.elevationDeg)}
-            aria-label="Sun azimuth"
-          />
-        </label>
-        <label className="block space-y-1.5 text-xs">
-          <span className="flex justify-between text-muted-foreground">
-            Elevation <span className="font-mono tabular-nums text-foreground">{Math.round(sun.elevationDeg)}°</span>
-          </span>
-          <Slider
-            min={-5}
-            max={80}
-            step={1}
-            value={[sun.elevationDeg]}
-            onValueChange={([v]) => setSun(sun.azimuthDeg, v ?? 0)}
-            aria-label="Sun elevation"
-          />
-        </label>
-      </Section>
+      <SunSection />
     </div>
   )
 }

@@ -2,7 +2,22 @@ import { create } from 'zustand'
 import type { Dataset, LoadStage } from '@/core/data/loader'
 
 export type Mode = 'explore' | 'layers' | 'mission' | 'lab' | 'data'
-export type LayerId = 'none' | 'slope' | 'hazard' | 'crism'
+export type LayerId = 'none' | 'slope' | 'hazard' | 'crism' | 'slip' | 'illum'
+/** who drives the sun: the scenario (sol + local time, Mars24 tables) or a manual override */
+export type SunMode = 'scenario' | 'manual'
+
+export interface WaypointInfo {
+  sol: number
+  site: number
+  drive: number
+  tiltDeg: number
+  pitchDeg: number
+  rollDeg: number
+  yawDeg: number
+  distTotalM: number
+  x: number
+  z: number
+}
 export type Theme = 'dark' | 'light'
 export type Status = 'loading' | 'ready' | 'error'
 
@@ -27,10 +42,17 @@ export interface AppState {
   dataset: Dataset | null
   layer: LayerId
   layerOpacity: number
+  /** load state of the data behind the active overlay (null for layers that need no download) */
+  layerLoad: { id: LayerId; state: 'loading' | 'ready' | 'error'; message?: string } | null
   /** sun direction, compass azimuth (0 = north, clockwise) and elevation above the horizon, degrees */
   sun: { azimuthDeg: number; elevationDeg: number }
   /** atmospheric dust optical depth (tau); drives haze density. Typical 0.3 to 1, dust storms above 3 */
   haze: number
+  sunMode: SunMode
+  /** draw the real Perseverance traverse and waypoints over the terrain */
+  showTraverse: boolean
+  /** waypoint the user picked on the 3D view */
+  selectedWaypoint: WaypointInfo | null
   /** mobile bottom sheet: false = peek (title + first controls), true = expanded */
   sheetExpanded: boolean
   onboardingOpen: boolean
@@ -40,11 +62,15 @@ export interface AppState {
   setOnboardingOpen: (o: boolean) => void
   setInspectorOpen: (o: boolean) => void
   setTheme: (t: Theme) => void
+  setSunMode: (m: SunMode) => void
+  setShowTraverse: (on: boolean) => void
+  setSelectedWaypoint: (w: WaypointInfo | null) => void
   setProgress: (stage: LoadStage, fraction: number) => void
   setDataset: (d: Dataset) => void
   setError: (message: string) => void
   setLayer: (l: LayerId) => void
   setLayerOpacity: (o: number) => void
+  setLayerLoad: (l: AppState['layerLoad']) => void
   setTelemetry: (t: Telemetry) => void
 }
 
@@ -79,12 +105,17 @@ export const useApp = create<AppState>((set) => ({
   dataset: null,
   layer: 'none',
   layerOpacity: 0.85,
+  layerLoad: null,
   sun: { azimuthDeg: 250, elevationDeg: 32 },
   haze: 0.5,
+  sunMode: 'scenario',
+  showTraverse: false,
+  selectedWaypoint: null,
   sheetExpanded: false,
   onboardingOpen: false,
   telemetry: { lat: 0, lon: 0, elevation: 0, slopeDeg: 0, x: 0, z: 0, fps: 0 },
-  setMode: (mode) => set({ mode, inspectorOpen: true, sheetExpanded: false }),
+  // Data & Sources carries the disclaimer and the attributions: its sheet opens at the middle height
+  setMode: (mode) => set({ mode, inspectorOpen: true, sheetExpanded: mode === 'data' }),
   setSheetExpanded: (sheetExpanded) => set({ sheetExpanded }),
   setOnboardingOpen: (onboardingOpen) => set({ onboardingOpen }),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
@@ -92,16 +123,24 @@ export const useApp = create<AppState>((set) => ({
     applyTheme(theme)
     set({ theme })
   },
+  setSunMode: (sunMode) => set({ sunMode }),
+  setShowTraverse: (showTraverse) => set({ showTraverse, ...(showTraverse ? {} : { selectedWaypoint: null }) }),
+  setSelectedWaypoint: (selectedWaypoint) => set({ selectedWaypoint }),
   setProgress: (stage, fraction) => set((s) => ({ progress: { ...s.progress, [stage]: Math.max(s.progress[stage], fraction) } })),
   setDataset: (dataset) => set({ dataset }),
   setError: (error) => set({ status: 'error', error }),
   setLayer: (layer) => set({ layer }),
   setLayerOpacity: (layerOpacity) => set({ layerOpacity }),
+  setLayerLoad: (layerLoad) => set({ layerLoad }),
   setTelemetry: (telemetry) => set({ telemetry }),
 }))
 
-/** Public API for the conditions engine: sets the sun direction (compass azimuth, elevation in degrees). */
-export function setSun(azimuthDeg: number, elevationDeg: number) {
+/**
+ * Public API for the conditions engine: sets the sun direction (compass azimuth, elevation in degrees).
+ * `source` 'scenario' (default) is ignored while the user holds the manual override; 'manual' always applies.
+ */
+export function setSun(azimuthDeg: number, elevationDeg: number, source: SunMode = 'scenario') {
+  if (source === 'scenario' && useApp.getState().sunMode === 'manual') return
   const az = ((azimuthDeg % 360) + 360) % 360
   const el = Math.max(-5, Math.min(90, elevationDeg))
   useApp.setState({ sun: { azimuthDeg: az, elevationDeg: el } })

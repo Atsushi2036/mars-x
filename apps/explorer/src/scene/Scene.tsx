@@ -2,7 +2,11 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import { ACESFilmicToneMapping, PCFShadowMap, SRGBColorSpace } from 'three'
 import type { Dataset } from '@/core/data/loader'
-import { LAYER_IDS, terrainUniforms } from './terrain-material'
+import { LAYER_IDS, layerTextureUniforms, terrainUniforms } from './terrain-material'
+import { loadLayerTexture } from './layers/layer-textures'
+import { layerAvailability } from './layers/layer-defs'
+import { ConditionsDriver } from './ConditionsDriver'
+import { TraverseLayer } from './TraverseLayer'
 import { ChunkManager } from './chunk-manager'
 import { CameraRig } from './CameraRig'
 import { Slot } from '@/ui/slots'
@@ -17,7 +21,7 @@ import { roverLive } from '@/store/rover'
 
 declare global {
   interface Window {
-    __marsx?: { ready: boolean; fps: number; frameCount: number; chunks: number; triangles: number; mode: string; drawCalls: number; renderedTriangles: number; geometries: number; textures: number }
+    __marsx?: { ready: boolean; fps: number; frameCount: number; chunks: number; triangles: number; mode: string; drawCalls: number; renderedTriangles: number; geometries: number; textures: number; sunAz?: number; sunEl?: number; layer?: string }
   }
 }
 
@@ -51,8 +55,8 @@ function Terrain({ ds }: { ds: Dataset }) {
   return <primitive object={mgr.group} />
 }
 
-/** Syncs layer state to the shared terrain uniforms. */
-function LayerSync() {
+/** Syncs layer state to the shared terrain uniforms and loads the data behind a data layer on first use. */
+function LayerSync({ ds }: { ds: Dataset }) {
   useEffect(() => {
     const apply = () => {
       const { layer, layerOpacity } = useApp.getState()
@@ -62,6 +66,36 @@ function LayerSync() {
     apply()
     return useApp.subscribe(apply)
   }, [])
+
+  const layer = useApp((s) => s.layer)
+  useEffect(() => {
+    if (layer === 'none' || layer === 'slope') {
+      useApp.getState().setLayerLoad(null)
+      return
+    }
+    if (!layerAvailability(layer, ds.manifest).ok) {
+      terrainUniforms.uLayer.value = 0
+      useApp.getState().setLayerLoad({ id: layer, state: 'error', message: 'This layer is not in the dataset.' })
+      return
+    }
+    let live = true
+    useApp.getState().setLayerLoad({ id: layer, state: 'loading' })
+    loadLayerTexture(ds, layer)
+      .then((tex) => {
+        if (!live) return
+        layerTextureUniforms[layer as keyof typeof layerTextureUniforms].value = tex
+        if (layer === 'illum') terrainUniforms.uHorizonOn.value = 1
+        useApp.getState().setLayerLoad({ id: layer, state: 'ready' })
+      })
+      .catch((e: unknown) => {
+        if (!live) return
+        if (useApp.getState().layer === layer) terrainUniforms.uLayer.value = 0
+        useApp.getState().setLayerLoad({ id: layer, state: 'error', message: e instanceof Error ? e.message : String(e) })
+      })
+    return () => {
+      live = false
+    }
+  }, [layer, ds])
   return null
 }
 
@@ -118,6 +152,9 @@ function Probes({ ds }: { ds: Dataset }) {
       w.geometries = gl.info.memory.geometries
       w.textures = gl.info.memory.textures
       w.mode = mode
+      w.sunAz = s.sun.azimuthDeg
+      w.sunEl = s.sun.elevationDeg
+      w.layer = s.layer
       if (!acc.ready && s.progress.mesh >= 1 && s.progress.ortho >= 1) {
         acc.ready = true
         s.setProgress('ready', 1)
@@ -157,7 +194,9 @@ export default function Scene({ dataset }: { dataset: Dataset }) {
     >
       <Sky />
       <Sun />
-      <LayerSync />
+      <LayerSync ds={dataset} />
+      <ConditionsDriver ds={dataset} />
+      <TraverseLayer ds={dataset} />
       <Terrain ds={dataset} />
       <Rover hf={dataset.heightfield} />
       <MissionLayer ds={dataset} />

@@ -51,18 +51,19 @@ export function Onboarding() {
   return (
     <section
       aria-label="Quick tour"
-      onPointerEnter={() => (hover.current = true)}
+      // only a real mouse hover pauses the auto-close: on touch there is no pointerleave, so it would never close
+      onPointerEnter={(e) => (hover.current = e.pointerType === 'mouse')}
       onPointerLeave={() => (hover.current = false)}
-      className="pointer-events-auto absolute left-3 right-3 top-[3.75rem] z-30 rounded-xl border border-border bg-card/95 p-4 text-card-foreground shadow-lg backdrop-blur-md md:left-1/2 md:right-auto md:w-[26rem] md:-translate-x-1/2"
+      className="pointer-events-auto absolute left-3 right-3 top-[3.75rem] z-30 rounded-xl border border-border bg-card/95 p-2.5 text-card-foreground md:p-4 shadow-lg backdrop-blur-md md:left-1/2 md:right-auto md:w-[26rem] md:-translate-x-1/2"
     >
       <div className="flex items-start gap-3">
         <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
         <div className="min-w-0 flex-1 space-y-2">
-          <h2 className="text-sm font-semibold leading-5">Real terrain from Jezero crater, Mars</h2>
+          <h2 className="text-[13px] font-semibold leading-5 md:text-sm">Real terrain from Jezero crater, Mars</h2>
           <ul className="list-disc space-y-1 pl-4 text-xs leading-5 text-muted-foreground">
             <li>Drag to orbit and scroll or pinch to zoom. Keys 1, 2 and 3 switch the camera.</li>
-            <li>Open Mission, then click the terrain to set an origin and a destination.</li>
-            <li>Sources and the NASA/JPL/Caltech disclaimer are in Data &amp; Sources.</li>
+            <li className="hidden md:list-item">Open Mission, then click the terrain to set an origin and a destination.</li>
+            <li className="hidden md:list-item">Sources and the NASA/JPL/Caltech disclaimer are in Data &amp; Sources.</li>
           </ul>
         </div>
         <Button variant="ghost" size="icon" aria-label="Dismiss tips" className="-mr-1.5 -mt-1.5 size-9 md:size-7" onClick={close}>

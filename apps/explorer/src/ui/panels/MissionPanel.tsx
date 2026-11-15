@@ -1,5 +1,5 @@
 import { CircleAlert, MapPin, Trash2 } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -40,6 +40,11 @@ export function MissionPanel() {
   }, [ds, ensureLayers])
 
   const outcome = m.outcomes[m.profile]
+  const resultRef = useRef<HTMLDivElement>(null)
+  // on the phone sheet the result can sit below the fold: bring it into view when it appears
+  useEffect(() => {
+    if (outcome) resultRef.current?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }, [outcome])
   const both = !!m.origin && !!m.destination
 
   return (
@@ -119,23 +124,25 @@ export function MissionPanel() {
             <Skeleton className="h-4 w-full" />
           </div>
         )}
-        {outcome?.status === 'ok' && (
-          <dl className="space-y-1.5">
-            <Row label="Distance" value={`${fmtInt(outcome.stats.lengthM)} m`} />
-            <Row label="Max slope" value={fmtDeg(outcome.stats.maxSlopeDeg)} />
-            <Row label="Mean slope" value={fmtDeg(outcome.stats.meanSlopeDeg)} />
-            <Row label="Climb" value={`${fmtInt(outcome.stats.climbM)} m`} />
-            <Row label="Nodes expanded" value={fmtInt(outcome.expanded)} />
-            <Row label="Planned in" value={`${outcome.ms.toFixed(0)} ms`} />
-          </dl>
-        )}
-        {outcome && outcome.status !== 'ok' && (
-          <Alert variant="destructive" role="alert">
-            <CircleAlert />
-            <AlertTitle>{outcome.status === 'no-route' ? 'No route for this profile' : 'Planner error'}</AlertTitle>
-            <AlertDescription>{outcome.message}</AlertDescription>
-          </Alert>
-        )}
+        <div ref={resultRef} className="scroll-mb-3">
+          {outcome?.status === 'ok' && (
+            <dl className="space-y-1.5">
+              <Row label="Distance" value={`${fmtInt(outcome.stats.lengthM)} m`} />
+              <Row label="Max slope" value={fmtDeg(outcome.stats.maxSlopeDeg)} />
+              <Row label="Mean slope" value={fmtDeg(outcome.stats.meanSlopeDeg)} />
+              <Row label="Climb" value={`${fmtInt(outcome.stats.climbM)} m`} />
+              <Row label="Nodes expanded" value={fmtInt(outcome.expanded)} />
+              <Row label="Planned in" value={`${outcome.ms.toFixed(0)} ms`} />
+            </dl>
+          )}
+          {outcome && outcome.status !== 'ok' && (
+            <Alert variant="destructive" role="alert">
+              <CircleAlert />
+              <AlertTitle>{outcome.status === 'no-route' ? 'No route for this profile' : 'Planner error'}</AlertTitle>
+              <AlertDescription>{outcome.message}</AlertDescription>
+            </Alert>
+          )}
+        </div>
         {m.layers && (
           <p className="text-[11px] text-muted-foreground">
             {m.layers.origin === 'pipeline'

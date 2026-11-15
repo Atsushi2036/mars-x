@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { DirectionalLight, Object3D } from 'three'
 import { sunDirection, useApp } from '@/store/app'
 import { cameraRig } from '@/store/camera'
+import { terrainUniforms } from './terrain-material'
 
 const MIN_HALF = 90 // metres around the focus covered by the shadow map when close to the ground
 const MAX_HALF = 1250 // overview: covers the whole window so there is no visible shadow-frustum edge
@@ -41,6 +42,8 @@ export function Sun() {
     const t = target.current
     if (!l || !t) return
     const { sun } = useApp.getState()
+    terrainUniforms.uSunAz.value = sun.azimuthDeg
+    terrainUniforms.uSunEl.value = sun.elevationDeg
     const d = sunDirection(sun.azimuthDeg, sun.elevationDeg)
     const f = cameraRig.focus
     // snap the focus to the shadow texel grid so shadows do not shimmer while moving

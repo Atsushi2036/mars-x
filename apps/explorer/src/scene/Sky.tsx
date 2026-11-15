@@ -53,7 +53,7 @@ void main(){
     if (!scene.fog) scene.fog = new FogExp2(HORIZON.clone(), 0.00032)
     const fog = scene.fog as FogExp2
     // dust optical depth: denser, duller haze as tau grows (0.5 is the nominal Jezero value)
-    fog.density = 0.00012 + 0.00042 * haze
+    fog.density = 0.00012 + 0.0003 * haze
     fog.color.copy(HORIZON).lerp(HAZE_DULL, Math.min(1, haze / 6)).multiplyScalar(day * 0.92)
     terrainUniforms.uFadeColor.value.copy(HORIZON).multiplyScalar(day)
     scene.background = null

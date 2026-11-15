@@ -1,8 +1,9 @@
 import { X } from 'lucide-react'
-import { useRef } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useApp } from '@/store/app'
+import { useMission } from '@/store/mission'
 import { MODES } from './modes'
 import { PanelSlot } from './slots'
 import { DataPanel } from './panels/DataPanel'
@@ -77,32 +78,58 @@ function SheetHandle() {
   )
 }
 
-/** Desktop: floating card docked on the right. Mobile: non-modal bottom sheet that starts as a peek. */
+const DESKTOP = '(min-width: 768px)'
+function useIsDesktop(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(DESKTOP)
+      m.addEventListener('change', cb)
+      return () => m.removeEventListener('change', cb)
+    },
+    () => window.matchMedia(DESKTOP).matches,
+    () => true,
+  )
+}
+
+/**
+ * Desktop: floating card docked on the right. Mobile: non-modal bottom sheet that starts as a peek and rises by itself
+ * to the middle height when a Mission result arrives. Only ONE aside is mounted at a time, so `[aria-label="Inspector"]`
+ * is always the visible one (two copies of the panels would also duplicate every control id).
+ */
 export function Inspector() {
   const open = useApp((s) => s.inspectorOpen)
   const expanded = useApp((s) => s.sheetExpanded)
+  const desktop = useIsDesktop()
+  const results = useMission((s) => Object.keys(s.outcomes).length)
+  const setExpanded = useApp((s) => s.setSheetExpanded)
+  // a new Mission result (distance, or "No route") must not stay hidden under the peek height
+  useEffect(() => {
+    if (results > 0 && !desktop) setExpanded(true)
+  }, [results, desktop, setExpanded])
   if (!open) return null
-  return (
-    <>
+  if (desktop) {
+    return (
       <aside
         aria-label="Inspector"
-        className="pointer-events-auto absolute right-3 top-[3.75rem] z-20 hidden max-h-[calc(100%-6.5rem)] w-80 flex-col overflow-hidden rounded-xl border border-border bg-card/95 text-card-foreground shadow-lg backdrop-blur-md md:flex"
+        className="pointer-events-auto absolute right-3 top-[3.75rem] z-20 flex max-h-[calc(100%-6.5rem)] w-80 flex-col overflow-hidden rounded-xl border border-border bg-card/95 text-card-foreground shadow-lg backdrop-blur-md"
       >
         <Header />
         <ScrollArea className="min-h-0 flex-1">
           <PanelBody />
         </ScrollArea>
       </aside>
-      <aside
-        aria-label="Inspector"
-        className={`pointer-events-auto fixed inset-x-0 bottom-[6.25rem] z-20 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 border-border bg-card/95 text-card-foreground shadow-lg backdrop-blur-md transition-[height] duration-200 md:hidden ${expanded ? 'h-[52dvh]' : 'h-[14.5rem]'}`}
-      >
-        <SheetHandle />
-        <Header />
-        <div className={`min-h-0 flex-1 overscroll-contain ${expanded ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-          <PanelBody />
-        </div>
-      </aside>
-    </>
+    )
+  }
+  return (
+    <aside
+      aria-label="Inspector"
+      className={`pointer-events-auto fixed inset-x-0 bottom-[7.25rem] z-20 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 border-border bg-card/95 text-card-foreground shadow-lg backdrop-blur-md transition-[height] duration-200 ${expanded ? 'h-[52dvh]' : 'h-[14.5rem]'}`}
+    >
+      <SheetHandle />
+      <Header />
+      <div className={`min-h-0 flex-1 overscroll-contain ${expanded ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+        <PanelBody />
+      </div>
+    </aside>
   )
 }
