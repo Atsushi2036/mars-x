@@ -120,10 +120,10 @@ export function ExportPanel() {
       }
     >
       <div className="flex flex-wrap gap-1.5">
-        <Chip tone="warning" className="h-auto whitespace-normal py-1 text-left">
+        <Chip tone="warning" className="h-auto max-w-full shrink whitespace-normal py-1 text-left">
           Gazebo: SDF checked against template rules (not run in Gazebo)
         </Chip>
-        <Chip tone="warning" className="h-auto whitespace-normal py-1 text-left">
+        <Chip tone="warning" className="h-auto max-w-full shrink whitespace-normal py-1 text-left">
           Isaac Sim: not tested (OBJ for the MeshConverter)
         </Chip>
       </div>

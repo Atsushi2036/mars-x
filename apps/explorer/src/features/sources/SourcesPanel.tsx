@@ -26,8 +26,8 @@ function Disclosure({ title, summary, defaultOpen = false, children }: { title: 
     <details open={defaultOpen} className="group border-b border-border last:border-b-0">
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 outline-none focus-visible:bg-muted [&::-webkit-details-marker]:hidden">
         <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
-        <span className="text-base font-semibold text-foreground">{title}</span>
-        {summary && <span className="ml-auto text-xs text-muted-foreground">{summary}</span>}
+        <span className="min-w-0 text-base font-semibold text-foreground">{title}</span>
+        {summary && <span className="ml-auto shrink-0 text-xs text-muted-foreground">{summary}</span>}
       </summary>
       <div className="space-y-3 px-4 pb-4">{children}</div>
     </details>
@@ -38,9 +38,9 @@ function LayerSource({ s }: { s: SourceGroup }) {
   const doi = doiUrl(s.doi)
   const url = safeHttps(s.url)
   return (
-    <li className="space-y-1 rounded-lg border border-border p-3 text-sm">
+    <li className="min-w-0 space-y-1 rounded-lg border border-border p-3 text-sm [overflow-wrap:anywhere]">
       <div className="flex items-start justify-between gap-2">
-        <p className="font-medium leading-5">{s.title}</p>
+        <p className="min-w-0 font-medium leading-5">{s.title}</p>
         <ProvenanceChip kind={s.provenance} />
       </div>
       <p className="text-muted-foreground">{s.attribution}</p>
@@ -63,9 +63,9 @@ function LayerSource({ s }: { s: SourceGroup }) {
 
 function ExtraItem({ s }: { s: ExtraSource }) {
   return (
-    <li className="space-y-1 rounded-lg border border-border p-3 text-sm">
+    <li className="min-w-0 space-y-1 rounded-lg border border-border p-3 text-sm [overflow-wrap:anywhere]">
       <div className="flex items-start justify-between gap-2">
-        <p className="font-medium leading-4">{s.title}</p>
+        <p className="min-w-0 font-medium leading-4">{s.title}</p>
         {s.provenance && <ProvenanceChip kind={s.provenance} />}
       </div>
       <p className="text-muted-foreground">{s.credit}</p>

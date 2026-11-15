@@ -74,7 +74,7 @@ export function ScrollPanel({ id, enabled = true, className, children }: { id: s
         data-scroller
         className="scroll-visible h-full overflow-y-auto overflow-x-hidden overscroll-contain"
       >
-        {children}
+        <div className="min-w-0 max-w-full">{children}</div>
       </div>
       {enabled && (
         <>
