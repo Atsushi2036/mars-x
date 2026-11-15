@@ -31,6 +31,16 @@
   }
 }
 @media (prefers-reduced-motion: no-preference) {
+  /* loading globe: the surface texture slides under the terminator, so Mars turns */
+  .globe-scroll {
+    animation: globe-spin 140s linear infinite;
+  }
+  @keyframes globe-spin {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
   /* "more below" pill: a short pulse the first time a long panel opens */
   .pill-pulse {
     animation: pill-pulse 1.1s var(--ease-out) 2;
