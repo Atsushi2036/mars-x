@@ -13,15 +13,17 @@ export interface StatCardProps {
   sub?: ReactNode
   /** draws a bar of `value` against `limit` */
   gauge?: { value: number; limit: number; label: string }
+  /** smaller number (text-2xl) for three-across grids */
+  compact?: boolean
   className?: string
 }
 
 /** Big number + unit + provenance chip. The single way a panel shows a headline value. */
-export function StatCard({ label, value, unit, provenance, sub, gauge, className }: StatCardProps) {
+export function StatCard({ label, value, unit, provenance, sub, gauge, compact, className }: StatCardProps) {
   return (
     <div className={cn('flex min-h-[92px] min-w-0 flex-col gap-1 rounded-2xl border border-border bg-surface/60 p-3.5 max-md:p-3', className)}>
       <p className="truncate text-xs text-muted-foreground">{label}</p>
-      <p className="flex items-baseline gap-1 text-3xl font-semibold tabular-nums leading-none">
+      <p className={cn('flex items-baseline gap-1 font-semibold tabular-nums leading-none', compact ? 'text-2xl' : 'text-3xl')}>
         <span className="min-w-0 truncate">{value}</span>
         {unit && <span className="text-sm font-normal text-muted-foreground">{unit}</span>}
       </p>

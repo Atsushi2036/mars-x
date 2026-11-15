@@ -1,19 +1,12 @@
-import { Bot, Footprints, Orbit, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useApp } from '@/store/app'
 import { useCamera, type CameraMode } from '@/store/camera'
 import { roverLive, useRover } from '@/store/rover'
-import { Section } from './Section'
-import { SunSection } from './SunSection'
+import { Eye, Footprints, Orbit, RoverIcon, Square } from '../icons'
+import { Details, PanelSection, Segmented } from '../kit'
+import { SunOverride } from './SunSection'
 
-const HINTS: Record<CameraMode, string> = {
-  orbit: 'Drag to orbit, right-drag or two fingers to pan, wheel or pinch to zoom.',
-  fpv: 'W A S D to move, Shift to sprint. Click the view to capture the mouse, Esc releases it. On touch: left stick moves, drag to look.',
-  chase: 'The camera follows the rover from behind.',
-}
-
-/** Demo loop around the rover; NOT a planned route (planning arrives with the Mission mode). */
+/** Demo loop around the rover; NOT a planned route (planning lives in "Plan a route"). */
 function demoLoop(hf: NonNullable<ReturnType<typeof useApp.getState>['dataset']>['heightfield']) {
   const cx = roverLive.x
   const cz = roverLive.z
@@ -28,7 +21,8 @@ function demoLoop(hf: NonNullable<ReturnType<typeof useApp.getState>['dataset']>
   return pts
 }
 
-export function ExplorePanel() {
+/** Camera and rover quick tools. The camera cards disappear once the always-visible camera dock owns this choice. */
+export function ExploreTools() {
   const camMode = useCamera((s) => s.mode)
   const setCam = useCamera((s) => s.setMode)
   const ds = useApp((s) => s.dataset)
@@ -37,47 +31,42 @@ export function ExplorePanel() {
   const stop = useRover((s) => s.stop)
 
   return (
-    <div>
-      <Section title="Camera" hint={HINTS[camMode]}>
-        <ToggleGroup
-          type="single"
+    <>
+      <PanelSection title="View">
+        <Segmented<CameraMode>
+          label="Camera mode"
           value={camMode}
-          onValueChange={(v) => v && setCam(v as CameraMode)}
-          variant="outline"
-          spacing={0}
-          className="w-full"
-          aria-label="Camera mode"
-        >
-          <ToggleGroupItem value="orbit" className="h-10 flex-1 gap-1.5 md:h-8" aria-label="Orbit camera (1)">
-            <Orbit /> Orbit
-          </ToggleGroupItem>
-          <ToggleGroupItem value="fpv" className="h-10 flex-1 gap-1.5 md:h-8" aria-label="First-person camera (2)">
-            <Footprints /> Walk
-          </ToggleGroupItem>
-          <ToggleGroupItem value="chase" className="h-10 flex-1 gap-1.5 md:h-8" aria-label="Follow rover camera (3)">
-            <Bot /> Rover
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </Section>
-
-      <Section title="Rover" hint="Perseverance 3D model (NASA/JPL-Caltech). The demo loop shows terrain-following; plan real routes in Mission.">
+          onChange={setCam}
+          options={[
+            { value: 'orbit', label: 'Orbit', sub: 'Key 1', icon: Orbit },
+            { value: 'fpv', label: 'Walk', sub: 'Key 2', icon: Footprints },
+            { value: 'chase', label: 'Follow', sub: 'Key 3', icon: Eye },
+          ]}
+        />
         {status === 'driving' ? (
-          <Button variant="secondary" className="h-10 w-full md:h-8" onClick={stop}>
-            <Square /> Stop rover
+          <Button variant="secondary" className="h-11 w-full gap-2" onClick={stop}>
+            <Square className="size-5" strokeWidth={1.75} /> Stop rover
           </Button>
         ) : (
-          <Button
-            variant="secondary"
-            className="h-10 w-full md:h-8"
-            disabled={!ds}
-            onClick={() => ds && follow(demoLoop(ds.heightfield), 2, true)}
-          >
-            <Bot /> Drive demo loop
+          <Button variant="secondary" className="h-11 w-full gap-2" disabled={!ds} onClick={() => ds && follow(demoLoop(ds.heightfield), 2, true)}>
+            <RoverIcon className="size-6" strokeWidth={1.75} /> Drive demo loop
           </Button>
         )}
-      </Section>
+      </PanelSection>
+      <PanelSection>
+        <Details summary="Sun and shadows">
+          <SunOverride />
+        </Details>
+      </PanelSection>
+    </>
+  )
+}
 
-      <SunSection />
+/** Built-in Explore body (shown until the scenario module replaces it with the full panel). */
+export function ExplorePanel() {
+  return (
+    <div>
+      <ExploreTools />
     </div>
   )
 }
