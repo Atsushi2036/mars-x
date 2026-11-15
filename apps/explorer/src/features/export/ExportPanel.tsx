@@ -95,7 +95,7 @@ export function ExportPanel() {
     <Section title="Export to Gazebo / Isaac Sim" hint="Take the exact benchmark scenario, terrain included, to a higher-fidelity simulator.">
       <div className="flex flex-wrap gap-1.5">
         <Badge variant="outline" className="h-auto whitespace-normal py-1 text-left">
-          Gazebo: SDF validated, not run in Gazebo
+          Gazebo: SDF checked against template rules (not run in Gazebo)
         </Badge>
         <Badge variant="outline" className="h-auto whitespace-normal py-1 text-left">
           Isaac Sim: not tested (OBJ for the MeshConverter)
