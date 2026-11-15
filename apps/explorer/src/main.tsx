@@ -1,3 +1,4 @@
+import './zod-config' // must stay the first import: schemas are built while later modules load
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { applyTheme, useApp } from '@/store/app'
