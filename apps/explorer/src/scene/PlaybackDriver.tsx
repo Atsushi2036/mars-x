@@ -133,7 +133,7 @@ function driveRun(ctx: RunCtx, pb: PB, a: Acc, dt: number) {
     a.tick = 0
     pb.tick(ctx.step)
   }
-  if (a.store >= 1 / 30) {
+  if (a.store >= 1 / 15) {
     a.store = 0
     rep.setStep(ctx.step)
   }
