@@ -71,3 +71,23 @@ def test_scorecard_prints_on_a_legacy_windows_console(tmp_path, suite_file, make
     assert cli.main(["scorecard", str(out), "--suite", str(suite_file)], make_env=make_env) == 0
     sys.stdout.flush()
     assert b"Verified by re-simulation" in buf.getvalue()
+
+
+def test_export_subcommand_delegates_to_export_cli(monkeypatch):
+    import marsx.export.cli as export_cli
+
+    seen = {}
+    monkeypatch.setattr(export_cli, "main", lambda argv=None: seen.setdefault("argv", list(argv)) and 0)
+    assert cli.main(["export", "--scenario", "jezero-v1/l2/solar-clear", "--out", "x"]) == 0
+    assert seen["argv"] == ["--scenario", "jezero-v1/l2/solar-clear", "--out", "x"]
+
+
+def test_console_streams_are_switched_to_utf8(monkeypatch, suite_file, make_env):
+    import io
+    import sys
+
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(io.BytesIO(), encoding="cp1252"))
+    with pytest.raises(SystemExit):
+        cli.main(["evaluate", "--policy", "baseline:nope", "--suite", str(suite_file), "--level", "L1"],
+                 make_env=make_env)
+    assert sys.stdout.encoding.lower().replace("-", "") == "utf8"

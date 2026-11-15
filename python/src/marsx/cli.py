@@ -3,6 +3,7 @@
     marsx evaluate --policy model.onnx --suite bench/jezero-v1/suite.json --level L1 --out run.json
     marsx evaluate --policy baseline:astar --level L2
     marsx scorecard run_L1.json run_L2.json --suite bench/jezero-v1/suite.json --out scorecard.json
+    marsx export --scenario jezero-v1/l2/solar-clear --out out/      (delegates to marsx.export.cli)
 
 ``scorecard`` re-simulates every run (anti-cheat) and exits 0 when all runs are verified, 2 when any run
 is "Not verifiable", 1 on invalid input. Without an installed entry point use ``python -m marsx.cli``.
@@ -133,6 +134,7 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument("--out", default=None)
     ev.add_argument("--name", default=None, help="policy name shown in the scorecard")
     ev.add_argument("--batch", type=int, default=R.DEFAULT_BATCH)
+    sub.add_parser("export", add_help=False, help="export a scenario package (Gazebo / Isaac / web); marsx export --help")
     scp = sub.add_parser("scorecard", help="verify run.json files by re-simulation and build the scorecard")
     scp.add_argument("runs", nargs="+")
     scp.add_argument("--suite", default=_default_suite())
@@ -145,7 +147,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None, make_env: R.EnvFactory | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):  # legacy Windows consoles (cp1252) cannot print ✓ or ·
         if hasattr(stream, "reconfigure"):
-            stream.reconfigure(errors="replace")
+            stream.reconfigure(encoding="utf-8", errors="replace")
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["export"]:  # scenario export packages (marsx.export, owned by devops)
+        from marsx.export import cli as export_cli
+
+        return export_cli.main(argv[1:])
     args = build_parser().parse_args(argv)
     if args.cmd == "evaluate":
         return cmd_evaluate(args, make_env)
