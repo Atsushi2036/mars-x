@@ -77,6 +77,11 @@ export function WatchBar() {
             </button>
           ))}
         </div>
+        {s.source === 'route' && s.timeScale * s.speed > 1.05 && (
+          <span className="hidden text-xs font-medium text-muted-foreground sm:inline" title="Playback runs faster than the real mission">
+            {Math.round(s.timeScale * s.speed)}× sped up
+          </span>
+        )}
         <button type="button" onClick={s.exit} aria-label="Exit Watch (Esc)" title="Exit (Esc)" className="ml-auto inline-flex h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-9">
           <X className="size-4" strokeWidth={2} aria-hidden="true" />
           Exit
@@ -112,7 +117,7 @@ export function WatchBar() {
         />
         <p className="mt-0.5 flex justify-between font-mono text-xs tabular-nums text-muted-foreground" aria-live="off">
           <span>{s.label(s.t)}</span>
-          <span>{s.source === 'route' ? `of ${s.label(s.duration)}` : s.events.at(-1)?.label}</span>
+          <span>{s.source === 'route' ? `of ${s.label(s.duration)} mission time` : s.events.at(-1)?.label}</span>
         </p>
       </div>
     </div>

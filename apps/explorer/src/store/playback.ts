@@ -24,6 +24,8 @@ export interface BeginOptions {
   events?: PlaybackEvent[]
   /** what the bar calls the thing being watched ("route", "run") */
   noun?: string
+  /** mission seconds per second of playback at 1x (a rover is shown ~36x faster than it drives); default 1 */
+  timeScale?: number
 }
 
 interface PlaybackState {
@@ -32,6 +34,8 @@ interface PlaybackState {
   speed: PlaybackSpeed
   t: number
   duration: number
+  /** how much faster than real time the 1x playback is (1 = real time) */
+  timeScale: number
   events: PlaybackEvent[]
   label: (t: number) => string
   /** camera to return to on Exit */
@@ -54,7 +58,7 @@ interface PlaybackState {
 /** Mutable flags the scene reads every frame (no re-renders): the rover pauses and runs fast through these. */
 export const playbackLive = { paused: false, rate: 1, travelled: 0 }
 
-const IDLE = { source: null, playing: false, speed: 1 as PlaybackSpeed, t: 0, duration: 0, events: [] as PlaybackEvent[], label: (t: number) => String(t) }
+const IDLE = { source: null, playing: false, speed: 1 as PlaybackSpeed, t: 0, duration: 0, timeScale: 1, events: [] as PlaybackEvent[], label: (t: number) => String(t) }
 
 const sync = (s: Pick<PlaybackState, 'playing' | 'speed'>) => {
   playbackLive.paused = !s.playing
@@ -68,7 +72,7 @@ export const usePlayback = create<PlaybackState>((set, get) => ({
   begin: (o) => {
     const cur = useCamera.getState().mode
     const prev = get().source ? get().prevMode : cur === 'chase' ? 'orbit' : cur
-    set({ ...IDLE, source: o.source, playing: true, duration: Math.max(0, o.duration), events: o.events ?? [], label: o.label, prevMode: prev, seekNonce: get().seekNonce + 1 })
+    set({ ...IDLE, source: o.source, playing: true, duration: Math.max(0, o.duration), timeScale: Math.max(1, o.timeScale ?? 1), events: o.events ?? [], label: o.label, prevMode: prev, seekNonce: get().seekNonce + 1 })
     sync({ playing: true, speed: 1 })
     useCamera.getState().setMode('chase')
   },
@@ -122,6 +126,15 @@ export const usePlayback = create<PlaybackState>((set, get) => ({
 export function fmtClock(sec: number): string {
   const s = Math.max(0, Math.round(sec))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+/** Mission time for people: "42 s", "12 min", "2 h 50 min". */
+export function fmtMission(sec: number): string {
+  const s = Math.max(0, Math.round(sec))
+  if (s < 60) return `${s} s`
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m} min`
+  return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`
 }
 
 /** Replay event type to the marker the bar draws (rock, space weather, low energy, stuck, end of the run); null = not a marker. */

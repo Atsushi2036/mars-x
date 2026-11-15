@@ -50,15 +50,28 @@ export function fmtHoursUntil(hours: number | null | undefined): string {
   return `${f1.format(hours)} h`
 }
 
+/**
+ * A fraction (0..1) as a percent number, honest at the ends: anything below 1 never reads "100" and anything above 0
+ * never reads "0" because of rounding (99.75 % with one decimal is "99.8", 99.96 % is "99.9").
+ */
+export function pctNumber(v: number, digits = 1): string {
+  const p = v * 100
+  const s = p.toFixed(digits)
+  const step = 10 ** -digits
+  if (v < 1 && Number(s) >= 100) return (100 - step).toFixed(digits)
+  if (v > 0 && Number(s) <= 0) return step.toFixed(digits)
+  return s
+}
+
 export function fmtPct(v: number | null | undefined, digits = 1): string {
   if (!ok(v)) return NO_DATA
-  return `${(v * 100).toFixed(digits)}%`
+  return `${pctNumber(v, digits)}%`
 }
 
 /** "84.0% (81.0 to 87.0)" */
 export function fmtCi(p: number | null | undefined, ci: readonly [number, number] | null | undefined): string {
   if (!ok(p) || !ci || !ok(ci[0]) || !ok(ci[1])) return NO_DATA
-  return `${(p * 100).toFixed(1)}% (${(ci[0] * 100).toFixed(1)} to ${(ci[1] * 100).toFixed(1)})`
+  return `${pctNumber(p)}% (${pctNumber(ci[0])} to ${pctNumber(ci[1])})`
 }
 
 export function fmtDeg(v: number | null | undefined, digits = 1): string {

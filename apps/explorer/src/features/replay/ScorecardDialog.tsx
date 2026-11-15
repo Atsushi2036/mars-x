@@ -6,7 +6,7 @@ import { useApp } from '@/store/app'
 import { cn } from '@/lib/utils'
 import { HonestyChip, StatCard } from '@/ui/kit'
 import { ProvenanceChip } from '../shared/ProvenanceChip'
-import { fmtCi, fmtNum, fmtPct, NO_DATA, short } from '../shared/fmt'
+import { fmtCi, fmtNum, fmtPct, NO_DATA, pctNumber, short } from '../shared/fmt'
 import { BASELINES, baselineRow, type BaselineRow } from './baselines'
 import { DISCLAIMER, failureLabel, NOT_COVERED, PROGRAM, STAMP, statusLabel, THRESHOLDS_VERSION, VIOLATION_LABEL, verificationLabel, type LevelRow, type Scorecard, type Status } from './scorecard'
 import { useBaselines } from './verification'
@@ -302,7 +302,7 @@ export function ScorecardDialog({ result, card, open, onOpenChange, onReplayFail
               </div>
             )}
             <div className="grid grid-cols-3 gap-2">
-              <StatCard compact label="Success" value={lvl.success === null ? '—' : (lvl.success * 100).toFixed(0)} unit={lvl.success === null ? undefined : '%'} provenance="modeled" />
+              <StatCard compact label="Success" value={lvl.success === null ? '—' : pctNumber(lvl.success)} unit={lvl.success === null ? undefined : '%'} provenance="modeled" />
               <StatCard compact label="Episodes" value={lvl.n} provenance="modeled" />
               <StatCard compact label="Violations" value={lvl.violations ?? 0} provenance="modeled" />
             </div>

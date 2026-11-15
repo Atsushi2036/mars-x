@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useCamera } from './camera'
-import { eventKind, fmtClock, pathLength, pointAlong, playbackLive, usePlayback } from './playback'
+import { eventKind, fmtClock, fmtMission, pathLength, pointAlong, playbackLive, usePlayback } from './playback'
 
 const reset = () => {
   usePlayback.getState().exit()
@@ -105,5 +105,13 @@ describe('playback helpers', () => {
     expect(cut.rest).toEqual([{ x: 10, z: 10 }])
     expect(pointAlong(path, 0).rest).toHaveLength(2)
     expect(pointAlong(path, 99).rest).toEqual([{ x: 10, z: 10 }])
+  })
+})
+
+describe('fmtMission', () => {
+  it('reads like mission time', () => {
+    expect(fmtMission(42)).toBe('42 s')
+    expect(fmtMission(720)).toBe('12 min')
+    expect(fmtMission(429 / 0.042)).toBe('2 h 50 min')
   })
 })

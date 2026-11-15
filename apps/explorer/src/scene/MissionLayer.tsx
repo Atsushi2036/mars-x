@@ -7,6 +7,7 @@ import { raycastTerrain, type XZ } from '@/core/mission/geometry'
 import { marswalkReport } from '@/core/mission/marswalk'
 import { useApp } from '@/store/app'
 import { useMission } from '@/store/mission'
+import { useCamera } from '@/store/camera'
 import { usePlayback } from '@/store/playback'
 
 const UNSAFE = new Color('#ff5d4d')
@@ -20,16 +21,27 @@ const ROUTE_LIFT = 0.25
 const AMBER = '#ffb81f'
 const DRAW_MS = 700
 
+/**
+ * Pin of the route (origin / goal). Constant apparent size (about 60 px tall), never the 6 m post it would be up close:
+ * the scale follows the camera distance with no lower bound of one. While an agent is being watched or followed, the
+ * origin pin is hidden (the agent stands there) and the goal pin shrinks.
+ */
+const PIN_PX_SCALE = 0.012
 function Marker({ at, kind, hf }: { at: XZ; kind: 'origin' | 'destination'; hf: Dataset['heightfield'] }) {
   const g = useRef<Group>(null)
+  const watching = usePlayback((s) => s.source !== null)
+  const following = useCamera((s) => s.mode === 'chase')
+  const hidden = kind === 'origin' && (watching || following)
+  const small = watching || following
   useFrame(({ camera }) => {
     const m = g.current
     if (!m) return
     const y = hf.sampleHeight(at.x, at.z)
     m.position.set(at.x, y, at.z)
     const d = Math.hypot(camera.position.x - at.x, camera.position.y - y, camera.position.z - at.z)
-    m.scale.setScalar(Math.max(1, d * 0.02)) // constant apparent size
+    m.scale.setScalar(Math.max(0.02, d * PIN_PX_SCALE * (small ? 0.6 : 1)))
   })
+  if (hidden) return null
   return (
     <group ref={g}>
       <mesh position={[0, 3, 0]}>
@@ -64,7 +76,7 @@ function ShelterLimitMarker({ at, hf }: { at: XZ; hf: Dataset['heightfield'] }) 
     const y = hf.sampleHeight(at.x, at.z)
     m.position.set(at.x, y, at.z)
     const d = Math.hypot(camera.position.x - at.x, camera.position.y - y, camera.position.z - at.z)
-    m.scale.setScalar(Math.max(1, d * 0.02))
+    m.scale.setScalar(Math.max(0.02, d * PIN_PX_SCALE))
   })
   return (
     <group ref={g}>

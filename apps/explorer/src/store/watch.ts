@@ -3,12 +3,15 @@ import { useByo } from '@/features/shared/byo-store'
 import { EVENT_LABEL, fmtElapsed, stepAtTime, useReplay } from '@/features/replay/store'
 import { agentLive } from './camera'
 import { useMission } from './mission'
-import { eventKind, fmtClock, pathLength, playbackLive, usePlayback, type PlaybackEvent } from './playback'
+import { eventKind, fmtMission, pathLength, playbackLive, usePlayback, type PlaybackEvent } from './playback'
 import { roverLive, useRover } from './rover'
 
 /** Replay speed at 1x, trajectory steps per second (same pace as the replay in the AI Lab panel). */
 export const RUN_RATE = 24
+/** how fast the rover MOVES on screen at 1x playback (m/s) */
 const ROVER_SPEED = 1.5
+/** how fast the real rover drives (m/s, Perseverance autonav average): mission time = distance / this */
+export const ROVER_REAL_SPEED = 0.042
 
 /** What the Watch button would play right now: the planned route of the selected profile, or the selected replay episode. */
 export type WatchTarget = { kind: 'route'; label: 'Watch route' } | { kind: 'run'; label: 'Watch run' }
@@ -55,6 +58,8 @@ export function startRouteWatch(): boolean {
   const speed = astro ? m.walk.speedMs : ROVER_SPEED
   const length = pathLength(path)
   const duration = length / speed
+  // an astronaut walks at real pace; the rover is shown sped up
+  const timeScale = astro ? 1 : ROVER_SPEED / ROVER_REAL_SPEED
   agentLive.kind = astro ? 'astronaut' : 'rover'
   roverLive.x = path[0]!.x
   roverLive.z = path[0]!.z
@@ -65,7 +70,8 @@ export function startRouteWatch(): boolean {
   usePlayback.getState().begin({
     source: 'route',
     duration,
-    label: fmtClock,
+    timeScale,
+    label: (t) => fmtMission(t * timeScale),
     events: [{ t: duration, kind: 'end', label: astro ? 'Reach the stop' : 'Arrive' }],
   })
   return true

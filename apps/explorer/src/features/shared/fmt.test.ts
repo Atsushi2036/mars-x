@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fmtCi, fmtClock, fmtHoursUntil, fmtNum, fmtOwlt, fmtPct, fmtPressureRange, fmtTempRange, NO_DATA } from './fmt'
+import { fmtCi, fmtClock, fmtHoursUntil, fmtNum, fmtOwlt, fmtPct, fmtPressureRange, pctNumber, fmtTempRange, NO_DATA } from './fmt'
 import { toProvenance } from './provenance'
 
 describe('formatting', () => {
@@ -36,5 +36,19 @@ describe('provenance mapping', () => {
   it('falls back to the most cautious label', () => {
     expect(toProvenance('whatever')).toBe('assumption')
     expect(toProvenance(undefined)).toBe('assumption')
+  })
+})
+
+describe('pctNumber', () => {
+  it('never rounds a failing 99.75 % up to 100', () => {
+    expect(pctNumber(0.9975)).toBe('99.8')
+    expect(pctNumber(0.9996)).toBe('99.9')
+    expect(pctNumber(0.9996, 0)).toBe('99')
+    expect(fmtPct(0.9996)).toBe('99.9%')
+  })
+  it('keeps exact ends and never shows 0 for a non-zero rate', () => {
+    expect(pctNumber(1)).toBe('100.0')
+    expect(pctNumber(0)).toBe('0.0')
+    expect(pctNumber(0.0001)).toBe('0.1')
   })
 })

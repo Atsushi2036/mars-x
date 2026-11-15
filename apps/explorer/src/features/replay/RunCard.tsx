@@ -5,7 +5,7 @@ import { useApp } from '@/store/app'
 import { CircleAlert, CircleCheck, Download, FileText, X } from '@/ui/icons'
 import { Details, HonestyChip, Metric, StatCard } from '@/ui/kit'
 import { useByo } from '../shared/byo-store'
-import { fmtNum, short } from '../shared/fmt'
+import { fmtNum, pctNumber, short } from '../shared/fmt'
 import { EpisodeList, orderEpisodes, Player } from './Player'
 import { buildScorecard, DISCLAIMER, reportJson, verificationLabel } from './scorecard'
 import { ScorecardDialog, StatusMark } from './ScorecardDialog'
@@ -54,8 +54,8 @@ export function RunCard() {
     }
   }
 
-  const pct = lvl.success === null ? null : lvl.success * 100
-  const ci = lvl.ci ? `95% CI ${(lvl.ci[0] * 100).toFixed(0)} to ${(lvl.ci[1] * 100).toFixed(0)}` : undefined
+  const pct = lvl.success === null ? null : pctNumber(lvl.success)
+  const ci = lvl.ci ? `95% CI ${pctNumber(lvl.ci[0], 0)} to ${pctNumber(lvl.ci[1], 0)}` : undefined
   const verified = card.precheck.passed && card.verification?.notResimulable === 0
 
   return (
@@ -90,7 +90,7 @@ export function RunCard() {
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <StatCard label="Success" value={pct === null ? '—' : pct.toFixed(0)} unit={pct === null ? undefined : '%'} sub={ci} provenance="modeled" />
+          <StatCard label="Success" value={pct === null ? '—' : pct} unit={pct === null ? undefined : '%'} sub={ci} provenance="modeled" />
           <StatCard label="Episodes" value={lvl.n} sub={`${lvl.violations ?? 0} critical violations`} provenance="modeled" />
         </div>
         <Details summary="More numbers">
