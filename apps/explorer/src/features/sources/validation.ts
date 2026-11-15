@@ -58,7 +58,7 @@ export function headlines(rep: ValidationReport): Headline[] {
         ['Bias', `${r(h.bias * 100, 1)} cm`],
         ['RMSE', `${r(h.rmse * 100, 1)} cm`],
       ],
-      caveat: 'The rover's published elevations may themselves be tied to orbital maps, so read this as a georeferencing and datum check more than an independent test of the terrain.',
+      caveat: "The rover's published elevations may themselves be tied to orbital maps, so read this as a georeferencing and datum check more than an independent test of the terrain.",
     },
     {
       id: 'slope',
