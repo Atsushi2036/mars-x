@@ -27,7 +27,7 @@ export function WatchSwitch({ on, onChange, speed, onSpeed }: { on: boolean; onC
       {on && (
         <ToggleGroup type="single" value={speed} onValueChange={(v) => v && onSpeed(v as WatchSpeed)} variant="outline" spacing={0} className="w-full" aria-label="Watch speed">
           {SPEEDS.map((s) => (
-            <ToggleGroupItem key={s.id} value={s.id} className="h-10 flex-1 text-sm">
+            <ToggleGroupItem key={s.id} value={s.id} className="h-10 flex-1 text-sm data-[state=on]:bg-primary! data-[state=on]:text-primary-foreground!">
               {s.label}
             </ToggleGroupItem>
           ))}
@@ -55,7 +55,7 @@ export function ViewSwitch({ view, onView }: { view: StageView; onView: (v: Stag
     <div className="space-y-1.5">
       <ToggleGroup type="single" value={view} onValueChange={(v) => v && onView(v as StageView)} variant="outline" spacing={0} className="w-full" aria-label="What to show on the map">
         {VIEWS.map((v) => (
-          <ToggleGroupItem key={v.id} value={v.id} className="h-10 flex-1 text-sm">
+          <ToggleGroupItem key={v.id} value={v.id} className="h-10 flex-1 text-sm data-[state=on]:bg-primary! data-[state=on]:text-primary-foreground!">
             {v.label}
           </ToggleGroupItem>
         ))}
@@ -118,6 +118,28 @@ export function ConceptChips() {
           {cur.line}
         </p>
       )}
+    </div>
+  )
+}
+
+/** Two big numbers side by side: the episode being learned and the success rate over the last 100. */
+export function StatStrip({ episode, seconds, success }: { episode: number | null; seconds: number; success: number | null }) {
+  return (
+    <div className="grid grid-cols-2 gap-2" aria-live="polite">
+      <div className="rounded-2xl border border-border bg-surface/60 px-3.5 py-2">
+        <p className="text-xs text-muted-foreground">Episode</p>
+        <p className="flex items-baseline gap-1.5 text-2xl font-semibold leading-8 tabular-nums">
+          {episode === null ? '—' : episode.toLocaleString('en-US')}
+          {episode !== null && <span className="text-sm font-normal text-muted-foreground">{Math.round(seconds)} s</span>}
+        </p>
+      </div>
+      <div className="rounded-2xl border border-border bg-surface/60 px-3.5 py-2">
+        <p className="text-xs text-muted-foreground">Success, last 100</p>
+        <p className="text-2xl font-semibold leading-8 tabular-nums">
+          {success === null ? '—' : Math.round(success * 100)}
+          {success !== null && <span className="ml-0.5 text-sm font-normal text-muted-foreground">%</span>}
+        </p>
+      </div>
     </div>
   )
 }

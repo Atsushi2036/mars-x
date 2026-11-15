@@ -101,4 +101,18 @@ describe('policySnapshot', () => {
     }
     expect(ACTIONS.length).toBeGreaterThanOrEqual(8)
   })
+  it('the arrows agree with the greedy path: each step of it is the best action of its cell', () => {
+    const { n, cost, start, goal } = crop(32, 5)
+    const l = new QLearner({ rows: n, cols: n, cost, start, goal, seed: 3, params: { epsilonDecay: 0.998 } })
+    l.runBatch(6000, 0)
+    const g = l.greedyPath()
+    expect(g.reached).toBe(true)
+    const { action } = l.policySnapshot()
+    for (let i = 0; i + 1 < g.path.length; i++) {
+      const u = g.path[i]!
+      const v = g.path[i + 1]!
+      const [, dr, dc] = ACTIONS[action[u]!]!
+      expect([Math.floor(u / n) + dr, (u % n) + dc]).toEqual([Math.floor(v / n), v % n])
+    }
+  })
 })

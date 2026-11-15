@@ -78,46 +78,50 @@ export const SCENARIOS = {
   train: async (page, vp, _theme, shot) => {
     await openMode(page, vp, 'Test your AI', 'Test AI')
     const cv = page.locator('canvas[aria-label^="Learning grid"]')
+    const snap = async (n) => {
+      await scrollPanel(page, 0)
+      await shot(n)
+    }
     await cv.scrollIntoViewIfNeeded()
-    await shot('0-before')
+    await snap('0-before')
     await page.getByRole('button', { name: 'Train', exact: true }).click()
     // 1. Fast: agent wandering, floating numbers
     await page.waitForTimeout(3500)
     await cv.scrollIntoViewIfNeeded()
-    await shot('1-fast-wandering')
+    await snap('1-fast-wandering')
     // 2. Slow: agent half way, then a hazard (bump) and the timeout banner
     await page.getByRole('radio', { name: 'Slow' }).click()
     const seen = new Set()
     for (let i = 0; i < 80 && seen.size < 2; i++) {
       await page.waitForTimeout(250)
       const b = await cv.getAttribute('data-banner')
-      if (!seen.has('mid') && i === 6) { seen.add('mid'); await shot('2-slow-mid-episode') }
-      if (b && !seen.has(b.split(' ')[0])) { seen.add(b.split(' ')[0]); await shot('3-banner-' + b.split(' ')[0].replace(/[^a-z]/gi, '')) }
+      if (!seen.has('mid') && i === 6) { seen.add('mid'); await snap('2-slow-mid-episode') }
+      if (b && !seen.has(b.split(' ')[0])) { seen.add(b.split(' ')[0]); await snap('3-banner-' + b.split(' ')[0].replace(/[^a-z]/gi, '')) }
     }
     // 2b. the same episode in 3D with a ghost rover on the real terrain, camera framed on the learning area
     await page.getByRole('switch', { name: 'Show in 3D' }).click()
     await page.getByRole('button', { name: 'Follow the learner' }).click()
     await page.waitForTimeout(2500)
-    await shot('7-3d-ghost')
+    await snap('7-3d-ghost')
     await page.waitForTimeout(1500)
-    await shot('7b-3d-ghost')
+    await snap('7b-3d-ghost')
     await page.getByRole('switch', { name: 'Show in 3D' }).click()
     // 3. learn for a while at Turbo, then show what it learned
     await page.getByRole('radio', { name: 'Turbo' }).click()
     await page.waitForTimeout(25000)
     await page.getByRole('radio', { name: 'Value' }).click()
     await page.waitForTimeout(1500)
-    await shot('4-value-map')
+    await snap('4-value-map')
     await page.getByRole('radio', { name: 'Best moves' }).click()
     await page.waitForTimeout(1500)
-    await shot('5-best-moves')
+    await snap('5-best-moves')
     // 4. Slow again with a trained agent: catch the goal banner
     await page.getByRole('radio', { name: 'Paths' }).click()
     await page.getByRole('radio', { name: 'Slow' }).click()
     for (let i = 0; i < 120; i++) {
       await page.waitForTimeout(250)
       const b = await cv.getAttribute('data-banner')
-      if (b && b.includes('Goal')) { await shot('6-goal-reached'); break }
+      if (b && b.includes('Goal')) { await snap('6-goal-reached'); break }
     }
     await page.waitForTimeout(500)
   },
@@ -167,6 +171,7 @@ for (const [name, drive] of Object.entries(SCENARIOS)) {
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
         report.push({ name, vp: vpName, theme, overflow, errors })
         console.log(name, vpName, theme, overflow ? 'OVERFLOW' : '', errors.length ? `${errors.length} console issues` : 'clean')
+        for (const e of [...new Set(errors)].slice(0, 4)) console.log('   ', e.slice(0, 220))
       } catch (e) {
         report.push({ name, vp: vpName, theme, fatal: String(e), errors })
         console.log(name, vpName, theme, 'FAILED', String(e).slice(0, 200))

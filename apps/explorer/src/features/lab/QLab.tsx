@@ -18,7 +18,7 @@ import { fmtNum } from '../shared/fmt'
 import { compareVerdict, summarizeCurve } from './curve'
 import { RewardChart } from './LineChart'
 import { TrainStage, type StageView } from './TrainStage'
-import { ConceptChips, ExploreBar, ViewSwitch, WatchSwitch } from './WatchControls'
+import { ConceptChips, ExploreBar, StatStrip, ViewSwitch, WatchSwitch } from './WatchControls'
 import { planBatch, successRate as recentSuccess, type WatchSpeed } from './watch'
 import { buildQProblem, DEFAULT_WEIGHTS, type QProblem, type RewardWeights } from './problem'
 
@@ -170,7 +170,6 @@ export function QLab() {
     <div>
       <PanelSection
         title="Q-learning, live"
-        caption="Learns from scratch in your browser, in a Worker."
         action={
           <Learn title="What this shows">
             <p>Tabular Q-learning on a downsampled grid. A* plans on the known map and is optimal on it, so on a known map the learner can only match A*, not beat it.</p>
@@ -231,11 +230,9 @@ export function QLab() {
               <AlertDescription>{q.error}</AlertDescription>
             </Alert>
           )}
+            <WatchSwitch on={watch} onChange={setWatch} speed={speed} onSpeed={setSpeed} />
             <div className="space-y-2.5" aria-live="polite">
-              <div className="grid grid-cols-2 gap-2">
-                <StatCard label="Episode" value={q.status === 'idle' ? '—' : fmtNum(episodes, 0)} sub={q.status === 'idle' ? 'Press Train' : `${elapsed.toFixed(0)} s`} />
-                <StatCard label="Success, last 100" value={successRate === null ? '—' : Math.round(successRate * 100)} unit={successRate === null ? undefined : '%'} />
-              </div>
+              <StatStrip episode={q.status === 'idle' ? null : episodes} seconds={elapsed} success={successRate} />
               <ExploreBar epsilon={lastEps} />
             </div>
             <ViewSwitch view={view} onView={setView} />
@@ -250,7 +247,6 @@ export function QLab() {
       </PanelSection>
 
       <PanelSection title="Watch it learn">
-        <WatchSwitch on={watch} onChange={setWatch} speed={speed} onSpeed={setSpeed} />
         <div className="space-y-2.5">
           <div className="flex items-center justify-between gap-3">
             <label htmlFor="show-3d" className="flex items-center gap-2 text-sm font-medium">

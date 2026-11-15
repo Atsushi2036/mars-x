@@ -21,6 +21,7 @@ export function Segmented<T extends string>({
   label,
   columns,
   stacked,
+  compact,
 }: {
   value: T
   onChange: (v: T) => void
@@ -28,6 +29,8 @@ export function Segmented<T extends string>({
   label: string
   columns?: 2 | 3
   stacked?: boolean
+  /** one line per option (icon + label), 48 px high, no sub text */
+  compact?: boolean
 }) {
   const cols = columns ?? (options.length === 2 ? 2 : 3)
   return (
@@ -44,7 +47,8 @@ export function Segmented<T extends string>({
             disabled={o.disabled}
             onClick={() => onChange(o.value)}
             className={cn(
-              'flex min-h-16 min-w-0 flex-col justify-center gap-0.5 rounded-xl border px-2.5 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
+              compact ? 'flex min-h-11 min-w-0 flex-col justify-center' : 'flex min-h-16 min-w-0 flex-col justify-center gap-0.5',
+              'rounded-xl border px-2.5 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
               stacked ? 'items-center text-center' : 'items-start text-left',
               on ? 'border-primary bg-primary/10' : 'border-border bg-transparent hover:bg-muted',
             )}
@@ -54,7 +58,7 @@ export function Segmented<T extends string>({
               {!stacked && Icon && <Icon className={cn('size-6 shrink-0', on ? 'text-primary' : 'text-muted-foreground')} strokeWidth={1.75} aria-hidden="true" />}
               <span className="leading-tight">{o.label}</span>
             </span>
-            {o.sub && <span className={cn('text-xs text-muted-foreground', 'max-w-full')}>{o.sub}</span>}
+            {o.sub && !compact && <span className={cn('text-xs text-muted-foreground', 'max-w-full')}>{o.sub}</span>}
           </button>
         )
       })}

@@ -306,5 +306,5 @@ export function TrainStage({
     wake.current()
   }, [sample])
 
-  return <canvas ref={ref} role="img" aria-label={label} className="block aspect-square w-full rounded-xl border border-border" />
+  return <canvas ref={ref} role="img" aria-label={label} className="mx-auto block aspect-square w-full rounded-xl border border-border md:max-w-[300px]" />
 }

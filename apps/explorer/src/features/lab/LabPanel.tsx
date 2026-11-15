@@ -13,6 +13,7 @@ export function LabPanel() {
       <PanelSection>
         <Segmented<Tab>
           label="Lab view"
+          compact
           value={tab}
           onChange={setTab}
           options={[
