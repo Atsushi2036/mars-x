@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { computeMetrics, diffMetrics, type Episode, type Run, type RunLoadResult } from '@/intelligence'
-import { buildScorecard, evaluateLevel, failureLabel, NOT_COVERED, reportJson, STAMP, statusLabel } from './scorecard'
+import { buildScorecard, evaluateLevel, failureLabel, NOT_COVERED, reportJson, STAMP, statusLabel, verificationLabel, violationKind, violationTypes } from './scorecard'
+import type { VerificationSummary } from './verify'
+
+const ver = (o: Partial<VerificationSummary> = {}): VerificationSummary => ({ verified: 10, mismatched: 0, notResimulable: 0, total: 10, examples: [], gaps: {}, state: 'verified', ...o })
 
 const ep = (i: number, outcome: Episode['outcome'] = 'success', scenarioId = 'jezero-v1/l1/rtg-geometry', violations = 0): Episode => ({
   index: i,
@@ -41,7 +44,7 @@ function mk(eps: Episode[], level: 'L1' | 'L2' | 'L3' = 'L1', tamper?: (r: Run) 
 describe('level verdicts (thresholds v0.1)', () => {
   it('L1 passes at 80% success with no critical violation', () => {
     const eps = Array.from({ length: 10 }, (_, i) => ep(i, i < 8 ? 'success' : 'timeout'))
-    const c = buildScorecard(mk(eps))
+    const c = buildScorecard(mk(eps), true, ver())
     expect(c.levels[0]!.status).toBe('pass')
     expect(c.seal).toContain('Passed MARS-X First Filter · L1')
     expect(c.seal).toContain('necessary, not sufficient')
@@ -105,6 +108,53 @@ describe('verification', () => {
   it('uses recomputed figures, never the claimed ones', () => {
     const l = evaluateLevel('L1', mk([ep(0), ep(1, 'timeout')]).run, true)
     expect(l.success).toBe(0.5)
+  })
+})
+
+describe('re-simulation of the episodes', () => {
+  const eps = Array.from({ length: 10 }, (_, i) => ep(i))
+  it('no seal until the replay has finished and matched', () => {
+    expect(buildScorecard(mk(eps), true, null).seal).toBeNull()
+    expect(buildScorecard(mk(eps), true, null, true).seal).toBeNull()
+    expect(buildScorecard(mk(eps), true, ver()).seal).not.toBeNull()
+  })
+  it('an episode that does not replay makes the run Not verifiable: no level, no seal', () => {
+    const v = ver({ verified: 9, mismatched: 1, state: 'mismatch', examples: [{ index: 3, reason: 'outcome: file says success, dynamics give collision' }] })
+    const c = buildScorecard(mk(eps), true, v)
+    expect(c.verified).toBe(false)
+    expect(c.levels[0]!.status).toBe('unverifiable')
+    expect(c.seal).toBeNull()
+    expect(c.precheck.reasons.join(' ')).toContain('Episode #3')
+  })
+  it('nothing re-simulated means nothing verified', () => {
+    const c = buildScorecard(mk(eps), true, ver({ verified: 0, notResimulable: 10, state: 'not-resimulated' }))
+    expect(c.precheck.passed).toBe(false)
+    expect(c.seal).toBeNull()
+  })
+  it('says exactly how much was replayed', () => {
+    expect(verificationLabel(ver(), false)).toBe('Verified by re-simulation: 10 of 10 episodes replay exactly')
+    expect(verificationLabel(ver({ verified: 6, notResimulable: 4 }), false)).toContain('4 could not be replayed in the browser')
+    expect(verificationLabel(null, true)).toContain('Re-simulating')
+    expect(verificationLabel(ver({ mismatched: 2, state: 'mismatch' }), false)).toContain('Not verifiable')
+  })
+})
+
+describe('critical violations by kind', () => {
+  it('maps outcomes to violation kinds', () => {
+    expect(violationKind(ep(0, 'collision'))).toBe('collision')
+    expect(violationKind(ep(0, 'battery'))).toBe('battery')
+    expect(violationKind(ep(0, 'spe_violation'))).toBe('spe_violation')
+    expect(violationKind(ep(0, 'hazard'))).toBe('hazard')
+    expect(violationKind(ep(0, 'timeout'))).toBeNull()
+    expect(violationKind(ep(0, 'stuck'))).toBeNull()
+    expect(violationKind(ep(0, 'success', undefined, 2))).toBe('collision')
+  })
+  it('counts episodes per kind', () => {
+    expect(violationTypes([ep(0, 'collision'), ep(1, 'collision'), ep(2, 'battery'), ep(3)])).toEqual({ collision: 2, battery: 1 })
+  })
+  it('lands in the level row', () => {
+    const l = buildScorecard(mk([ep(0), ep(1, 'battery')])).levels[0]!
+    expect(l.violationTypes).toEqual({ battery: 1 })
   })
 })
 

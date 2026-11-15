@@ -16,15 +16,50 @@ export function orderEpisodes(eps: readonly Episode[]): Episode[] {
   return [...eps].sort((a, b) => Number(fail(b)) - Number(fail(a)) || (a.outcome < b.outcome ? -1 : a.outcome > b.outcome ? 1 : 0) || a.index - b.index)
 }
 
+/** Filter key of an episode: 'ok' for a clean success, otherwise its outcome. */
+export const filterKey = (e: Episode) => (e.outcome === 'success' && e.violations === 0 ? 'ok' : e.outcome)
+
+export function filterCounts(eps: readonly Episode[]): [string, number][] {
+  const m = new Map<string, number>()
+  for (const e of eps) m.set(filterKey(e), (m.get(filterKey(e)) ?? 0) + 1)
+  // failures first (alphabetical), then successes
+  return [...m.entries()].sort(([a], [b]) => Number(a === 'ok') - Number(b === 'ok') || (a < b ? -1 : 1))
+}
+
 export function EpisodeList({ episodes }: { episodes: readonly Episode[] }) {
   const sel = useReplay((s) => s.episodeIndex)
   const select = useReplay((s) => s.select)
   const [all, setAll] = useState(false)
+  const [filter, setFilter] = useState<string | null>(null)
   const ordered = useMemo(() => orderEpisodes(episodes), [episodes])
-  const shown = all ? ordered : ordered.slice(0, 12)
+  const counts = useMemo(() => filterCounts(episodes), [episodes])
+  const filtered = useMemo(() => (filter ? ordered.filter((e) => filterKey(e) === filter) : ordered), [ordered, filter])
+  const shown = all ? filtered : filtered.slice(0, 12)
   if (episodes.length === 0) return <p className="text-xs text-muted-foreground">This run has no episodes.</p>
   return (
     <div className="space-y-1.5">
+      {counts.length > 1 && (
+        <div role="group" aria-label="Filter episodes by result" className="flex flex-wrap gap-1">
+          {[['', episodes.length] as [string, number], ...counts].map(([k, n]) => {
+            const on = (filter ?? '') === k
+            return (
+              <button
+                key={k || 'all'}
+                type="button"
+                aria-pressed={on}
+                onClick={() => (setFilter(k || null), setAll(false))}
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring md:h-7',
+                  on ? 'border-primary/60 bg-primary/10 font-medium text-foreground' : 'border-border text-muted-foreground hover:bg-muted',
+                )}
+              >
+                {k === '' ? 'All' : k === 'ok' ? 'Reached the goal' : failureLabel(k)}
+                <span className="font-mono tabular-nums">{n}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
       <ul className="space-y-1" aria-label="Episodes">
         {shown.map((e) => {
           const ok = e.outcome === 'success' && e.violations === 0
@@ -49,9 +84,9 @@ export function EpisodeList({ episodes }: { episodes: readonly Episode[] }) {
           )
         })}
       </ul>
-      {ordered.length > 12 && (
+      {filtered.length > 12 && (
         <Button variant="ghost" size="sm" className="h-8 w-full text-xs" onClick={() => setAll((a) => !a)}>
-          {all ? 'Show fewer' : `Show all ${ordered.length} episodes`}
+          {all ? 'Show fewer' : `Show all ${filtered.length} episodes`}
         </Button>
       )}
     </div>

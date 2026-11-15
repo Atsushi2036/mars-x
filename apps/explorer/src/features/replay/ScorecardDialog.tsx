@@ -1,11 +1,14 @@
 import { CircleAlert, CircleCheck, CircleMinus, CircleX } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { RunLoadResult } from '@/intelligence'
+import { useApp } from '@/store/app'
 import { cn } from '@/lib/utils'
 import { ProvenanceChip } from '../shared/ProvenanceChip'
 import { fmtCi, fmtNum, fmtPct, NO_DATA, short } from '../shared/fmt'
-import { DISCLAIMER, failureLabel, NOT_COVERED, PROGRAM, STAMP, statusLabel, THRESHOLDS_VERSION, type LevelRow, type Scorecard, type Status } from './scorecard'
+import { BASELINES, baselineRow, type BaselineRow } from './baselines'
+import { DISCLAIMER, failureLabel, NOT_COVERED, PROGRAM, STAMP, statusLabel, THRESHOLDS_VERSION, VIOLATION_LABEL, verificationLabel, type LevelRow, type Scorecard, type Status } from './scorecard'
+import { useBaselines } from './verification'
 import { useReplay } from './store'
 
 const STATUS_STYLE: Record<Status, { icon: typeof CircleCheck; cls: string }> = {
@@ -106,6 +109,84 @@ function LevelTable({ levels, runLevel }: { levels: LevelRow[]; runLevel: string
   )
 }
 
+function BaselineBlock({ lvl, suite }: { lvl: LevelRow; suite: string }) {
+  const base = useApp((s) => s.dataset?.base ?? null)
+  const load = useBaselines((s) => s.load)
+  const ensure = useBaselines((s) => s.ensure)
+  useEffect(() => {
+    if (base) ensure(base)
+  }, [base, ensure])
+  const rows: BaselineRow[] =
+    load?.status === 'ready' ? BASELINES.flatMap((b) => (load.cards[b.id] ? [baselineRow(b, load.cards[b.id]!, lvl.level)].filter((x): x is BaselineRow => x !== null) : [])) : []
+  const differs = rows.some((r) => r.suite !== suite)
+  return (
+    <Block title={`Compared with the baselines (${lvl.level})`} id="sc-base">
+      {!load ? (
+        <p role="status" className="text-xs text-muted-foreground">
+          Loading the baselines…
+        </p>
+      ) : load.status === 'unavailable' ? (
+        <p className="text-xs text-muted-foreground">Baselines not available. {load.reason}</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-[30rem] text-xs">
+              <caption className="sr-only">Your run against the verified baselines on the same level</caption>
+              <thead className="bg-surface text-left text-muted-foreground">
+                <tr>
+                  <th scope="col" className="px-3 py-2 font-medium">
+                    Agent
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                    Episodes
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                    Success (95% CI)
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                    SPL
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                    Violations
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                <tr className="bg-primary/5">
+                  <th scope="row" className="px-3 py-2 text-left font-medium">
+                    Your run
+                  </th>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums">{lvl.n}</td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtCi(lvl.success, lvl.ci)}</td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtNum(lvl.spl, 3)}</td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums">{lvl.violations}</td>
+                </tr>
+                {rows.map((b) => (
+                  <tr key={b.id}>
+                    <th scope="row" className="px-3 py-2 text-left font-medium">
+                      {b.label}
+                      <span className="block font-normal text-muted-foreground">{b.note}</span>
+                    </th>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{b.n}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtCi(b.success, b.ci)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtNum(b.spl, 3)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{b.violations}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Baselines are scored on the whole {rows[0]?.suite ?? 'suite'} test split with full re-simulation (`marsx bench scorecard`).
+            {differs ? ' Your run used a different suite version, so the comparison is indicative only.' : ''}
+            {rows.length < BASELINES.length ? ' Some baselines are missing from this dataset.' : ''}
+          </p>
+        </>
+      )}
+    </Block>
+  )
+}
+
 export function ScorecardDialog({ result, card, open, onOpenChange, onReplayFailure }: { result: RunLoadResult; card: Scorecard; open: boolean; onOpenChange: (o: boolean) => void; onReplayFailure: (outcome: string) => void }) {
   const r = result.run
   const lvl = card.levels.find((l) => l.level === card.runLevel)!
@@ -133,15 +214,10 @@ export function ScorecardDialog({ result, card, open, onOpenChange, onReplayFail
               <KV
                 k="Check"
                 v={
-                  card.verified ? (
-                    <span className="inline-flex items-center gap-1.5 text-success">
-                      <CircleCheck className="size-3.5" aria-hidden="true" /> Metrics recomputed from the episodes match
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-destructive">
-                      <CircleAlert className="size-3.5" aria-hidden="true" /> Not verifiable
-                    </span>
-                  )
+                  <span className={cn('inline-flex items-start justify-end gap-1.5 text-right', card.verified ? 'text-success' : 'text-destructive')}>
+                    {card.verified ? <CircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" /> : <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />}
+                    {verificationLabel(card.verification, card.resimPending)}
+                  </span>
                 }
                 mono={false}
               />
@@ -174,6 +250,24 @@ export function ScorecardDialog({ result, card, open, onOpenChange, onReplayFail
               {card.seal ?? `No level granted. ${STAMP}.`}
             </p>
           </Block>
+
+          <Block title="Critical violations" id="sc-viol">
+            <ul className="divide-y divide-border rounded-lg border border-border">
+              {Object.entries(VIOLATION_LABEL)
+                .filter(([k]) => k !== 'hazard' || (lvl.violationTypes.hazard ?? 0) > 0)
+                .map(([k, label]) => (
+                  <li key={k} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                    <span>{label}</span>
+                    <span className={cn('font-mono tabular-nums', (lvl.violationTypes[k] ?? 0) > 0 ? 'font-medium text-destructive' : 'text-muted-foreground')}>
+                      {lvl.violationTypes[k] ?? 0} {(lvl.violationTypes[k] ?? 0) === 1 ? 'episode' : 'episodes'}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+            <p className="text-[11px] text-muted-foreground">Any one of these fails the level, however high the success rate.</p>
+          </Block>
+
+          <BaselineBlock lvl={lvl} suite={`${r.suite.id} ${r.suite.version}`} />
 
           <Block title="Failures" id="sc-fail">
             {Object.keys(card.failureTaxonomy).length === 0 ? (
