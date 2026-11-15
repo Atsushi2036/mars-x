@@ -60,6 +60,11 @@ Processed data (~60-80 MB) is not in git (`data/raw/`, `data/processed/` ignored
    - Commit `data/dataset.lock.json`: `{"jezero-v1": {"url": "https://github.com/<owner>/mars-x/releases/download/data-jezero-v1/jezero-v1.tar.gz", "sha256": "<hex>"}}`.
    - `just fetch-data` (used by the manual preview workflow) downloads, verifies sha256 and extracts.
 
+`scripts/copy-data.mjs` copies into `dist/data/<region>/`: the processed dataset (including `export/*.zip`),
+`models/<region>/` to `models/`, and `bench/<region>/baselines/` to `baselines/`.
+Set `MARSX_SKIP_EXPORT=1` to leave out `export/` (the ~53 MB of ZIPs) when the network cannot upload them,
+for example `MARSX_SKIP_EXPORT=1 just build` (PowerShell: `$env:MARSX_SKIP_EXPORT=1; just build`). The app then has no export downloads.
+
 Cloudflare Pages limits enforced by `scripts/copy-data.mjs`: < 25 MiB per file, <= 20,000 files.
 
 ## CI (`.github/workflows/ci.yml`)

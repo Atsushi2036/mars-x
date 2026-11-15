@@ -2,7 +2,7 @@
 // Cloudflare Pages limits (25 MiB per file, 20,000 files per deployment).
 // Usage: node scripts/copy-data.mjs [region]   (default: jezero-v1)
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
-import { join, resolve, relative } from "node:path";
+import { join, resolve, relative, sep } from "node:path";
 
 const region = process.argv[2] ?? "jezero-v1";
 if (!/^[a-z0-9][a-z0-9-]*$/.test(region)) {
@@ -33,17 +33,26 @@ function* walk(dir) {
   }
 }
 
-// Sources: processed dataset (includes export/*.zip) and the versioned reference models (models/<region>).
-const modelsSrc = join(root, "models", region);
-const sources = [{ src, dest, required: true }];
-if (existsSync(modelsSrc)) sources.push({ src: modelsSrc, dest: join(dest, "models"), required: false });
-else console.warn(`WARNING: ${relative(root, modelsSrc)} not found; policy model files will be missing from dist.`);
+// Sources: processed dataset (includes export/*.zip), versioned reference models (models/<region>) and baseline
+// scorecards (bench/<region>/baselines). MARSX_SKIP_EXPORT=1 leaves out data/<region>/export/ (large ZIPs).
+const skipExport = process.env.MARSX_SKIP_EXPORT === "1";
+const excludeExport = (p) => skipExport && relative(src, p).split(sep)[0] === "export";
+const sources = [{ src, dest, filter: (p) => !excludeExport(p) }];
+for (const [from, to, label] of [
+  [join(root, "models", region), join(dest, "models"), "policy model files"],
+  [join(root, "bench", region, "baselines"), join(dest, "baselines"), "baseline scorecards"],
+]) {
+  if (existsSync(from)) sources.push({ src: from, dest: to, filter: () => true });
+  else console.warn(`WARNING: ${relative(root, from)} not found; ${label} will be missing from dist.`);
+}
+if (skipExport) console.warn("MARSX_SKIP_EXPORT=1: data/<region>/export/ is NOT copied.");
 
 let total = 0;
 let count = 0;
 const tooBig = [];
 for (const s of sources) {
   for (const f of walk(s.src)) {
+    if (!s.filter(f)) continue;
     const size = statSync(f).size;
     total += size;
     count += 1;
@@ -57,7 +66,7 @@ if (tooBig.length) {
 
 rmSync(dest, { recursive: true, force: true });
 mkdirSync(dest, { recursive: true });
-for (const s of sources) cpSync(s.src, s.dest, { recursive: true });
+for (const s of sources) cpSync(s.src, s.dest, { recursive: true, filter: s.filter });
 
 let distFiles = 0;
 for (const _ of walk(distDir)) distFiles += 1;

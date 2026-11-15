@@ -8,7 +8,10 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    serveData({ '/data/jezero-v1': path.resolve(import.meta.dirname, '../../data/processed/jezero-v1') }),
+    serveData({
+      '/data/jezero-v1/baselines': path.resolve(import.meta.dirname, '../../bench/jezero-v1/baselines'),
+      '/data/jezero-v1': path.resolve(import.meta.dirname, '../../data/processed/jezero-v1'),
+    }),
   ],
   resolve: { alias: { '@': path.resolve(import.meta.dirname, './src') } },
   worker: { format: 'es' },
