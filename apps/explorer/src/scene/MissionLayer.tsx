@@ -1,22 +1,24 @@
+import { Line } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
-import { BufferAttribute, BufferGeometry, Color, DoubleSide, Mesh, MeshBasicMaterial, Raycaster, Vector2, type Group } from 'three'
+import { BufferAttribute, BufferGeometry, Color, DoubleSide, MeshBasicMaterial, Raycaster, Vector2, Vector3, type Group } from 'three'
 import type { Dataset } from '@/core/data/loader'
-import { raycastTerrain, worldToCell, type XZ } from '@/core/mission/geometry'
+import { raycastTerrain, type XZ } from '@/core/mission/geometry'
 import { marswalkReport } from '@/core/mission/marswalk'
 import { useApp } from '@/store/app'
 import { useMission } from '@/store/mission'
+import { usePlayback } from '@/store/playback'
 
-const CASING = new Color('#f3efe6')
 const UNSAFE = new Color('#ff5d4d')
-const VIRIDIS = ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'].map((c) => new Color(c))
-
-/** viridis-like colour for a slope in degrees (0..30+). */
-function slopeColor(deg: number, out: Color): Color {
-  const t = Math.min(1, Math.max(0, deg / 30)) * (VIRIDIS.length - 1)
-  const i = Math.min(VIRIDIS.length - 2, Math.floor(t))
-  return out.copy(VIRIDIS[i]!).lerp(VIRIDIS[i + 1]!, t - i)
-}
+/** the planner's route: cyan core on a dark casing (screen-space width, so it stays readable from 2 km up) */
+const ROUTE_CORE = '#5cc8e6'
+const ROUTE_CASING = '#0b0e14'
+/** stretch already driven during Watch: quieter, so what is left stands out */
+const ROUTE_DONE = '#4f7480'
+/** metres above the ground: enough to clear the render mesh without floating (depth-tested, so models hide the line) */
+const ROUTE_LIFT = 0.25
+const AMBER = '#ffb81f'
+const DRAW_MS = 700
 
 function Marker({ at, kind, hf }: { at: XZ; kind: 'origin' | 'destination'; hf: Dataset['heightfield'] }) {
   const g = useRef<Group>(null)
@@ -78,8 +80,8 @@ function ShelterLimitMarker({ at, hf }: { at: XZ; hf: Dataset['heightfield'] }) 
   )
 }
 
-/** Flat ribbon draped over the terrain, coloured by the slope under each vertex. */
-function buildRibbon(path: XZ[], hf: Dataset['heightfield'], slopeAt: (x: number, z: number) => number, halfWidth: number, flat?: Color, lift = 0.45) {
+/** Flat ribbon draped over the terrain in one colour (used for the shelter-limit stretch). */
+function buildRibbon(path: XZ[], hf: Dataset['heightfield'], halfWidth: number, flat: Color, lift = 0.45) {
   const n = path.length
   const pos = new Float32Array(n * 2 * 3)
   const col = new Float32Array(n * 2 * 3)
@@ -103,8 +105,7 @@ function buildRibbon(path: XZ[], hf: Dataset['heightfield'], slopeAt: (x: number
       pos[k] = x
       pos[k + 1] = hf.sampleHeight(x, z) + lift
       pos[k + 2] = z
-      if (flat) c.copy(flat)
-      else slopeColor(slopeAt(p.x, p.z), c)
+      c.copy(flat)
       col[k] = c.r
       col[k + 1] = c.g
       col[k + 2] = c.b
@@ -123,6 +124,77 @@ function buildRibbon(path: XZ[], hf: Dataset['heightfield'], slopeAt: (x: number
   return g
 }
 
+
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
+const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+/**
+ * The planned route as screen-space fat lines (always readable, whatever the zoom): a dark casing under a cyan core.
+ * Appearing draws it from the origin to the goal in 700 ms with a leading amber dot; reduced motion shows it at once.
+ * The reveal runs on refs in the frame loop (no React state per frame).
+ */
+function RouteLine({ path, hf }: { path: XZ[]; hf: Dataset['heightfield'] }) {
+  const pts = useMemo(() => path.map((p) => new Vector3(p.x, hf.sampleHeight(p.x, p.z) + ROUTE_LIFT, p.z)), [path, hf])
+  const cum = useMemo(() => {
+    const c = [0]
+    for (let i = 1; i < pts.length; i++) c.push(c[i - 1]! + Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.z - pts[i - 1]!.z))
+    return c
+  }, [pts])
+  const casing = useRef<{ geometry: { instanceCount: number } } | null>(null)
+  const core = useRef<{ geometry: { instanceCount: number } } | null>(null)
+  const done = useRef<{ geometry: { instanceCount: number } } | null>(null)
+  const head = useRef<Group>(null)
+  const t0 = useRef(0)
+  const skip = useRef(false)
+  useEffect(() => {
+    t0.current = performance.now()
+    skip.current = reducedMotion()
+  }, [pts])
+  useFrame(({ camera }) => {
+    const n = pts.length - 1
+    if (n < 1) return
+    const k = skip.current ? 1 : easeOut(Math.min(1, (performance.now() - t0.current) / DRAW_MS))
+    const segs = k >= 1 ? n : Math.max(1, Math.ceil(n * k))
+    if (casing.current) casing.current.geometry.instanceCount = segs
+    if (core.current) core.current.geometry.instanceCount = segs
+    if (done.current) {
+      // Watch: how far along the route the agent is (playback time / duration), as a segment count
+      const pb = usePlayback.getState()
+      const frac = pb.source === 'route' && pb.duration > 0 ? Math.min(1, pb.t / pb.duration) : 0
+      let idx = 0
+      const target = frac * (cum[n] ?? 0)
+      while (idx < n && (cum[idx + 1] ?? 0) <= target) idx++
+      done.current.geometry.instanceCount = Math.min(segs, idx)
+    }
+    const h = head.current
+    if (h) {
+      h.visible = k < 1
+      if (k < 1) {
+        const p = pts[Math.min(n, Math.floor(n * k))]!
+        h.position.copy(p)
+        h.scale.setScalar(Math.max(1, camera.position.distanceTo(p) * 0.012))
+      }
+    }
+  })
+  return (
+    <>
+      <Line ref={casing as never} points={pts} color={ROUTE_CASING} lineWidth={7.5} transparent opacity={0.55} polygonOffset polygonOffsetFactor={-4} polygonOffsetUnits={-4} renderOrder={4} />
+      <Line ref={core as never} points={pts} color={ROUTE_CORE} lineWidth={4.5} transparent opacity={1} polygonOffset polygonOffsetFactor={-5} polygonOffsetUnits={-5} renderOrder={5} />
+      <Line ref={done as never} points={pts} color={ROUTE_DONE} lineWidth={4.5} transparent opacity={1} polygonOffset polygonOffsetFactor={-6} polygonOffsetUnits={-6} renderOrder={6} />
+      <group ref={head} visible={false} renderOrder={6}>
+        <mesh>
+          <sphereGeometry args={[1.6, 16, 12]} />
+          <meshBasicMaterial color={AMBER} depthTest={false} toneMapped={false} />
+        </mesh>
+        <mesh>
+          <sphereGeometry args={[3.2, 16, 12]} />
+          <meshBasicMaterial color={AMBER} transparent opacity={0.3} depthTest={false} toneMapped={false} />
+        </mesh>
+      </group>
+    </>
+  )
+}
+
 /** Origin/destination markers, click-to-place on the terrain, and the planned route. */
 export function MissionLayer({ ds }: { ds: Dataset }) {
   const hf = ds.heightfield
@@ -131,7 +203,6 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
   const destination = useMission((s) => s.destination)
   const outcomes = useMission((s) => s.outcomes)
   const profile = useMission((s) => s.profile)
-  const layers = useMission((s) => s.layers)
   const walk = useMission((s) => s.walk)
   const outcome = outcomes[profile]
   const ray = useMemo(() => new Raycaster(), [])
@@ -162,31 +233,12 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
     }
   }, [gl, camera, ray, hf, ds])
 
-  const ribbon = useMemo(() => {
-    if (!outcome || outcome.status !== 'ok' || !layers) return null
-    const slopeAt = (x: number, z: number) => {
-      const c = worldToCell(layers.grid, x, z)
-      return c < 0 ? 0 : layers.slope[c]!
-    }
-    return {
-      core: buildRibbon(outcome.path, hf, slopeAt, 2.0, undefined, 0.6),
-      casing: buildRibbon(outcome.path, hf, slopeAt, 3.3, CASING, 0.5),
-    }
-  }, [outcome, layers, hf])
-  useEffect(
-    () => () => {
-      ribbon?.core.dispose()
-      ribbon?.casing.dispose()
-    },
-    [ribbon],
-  )
-
   // Marswalk shelter rule: the part of the route that is more than the shelter window from the start is outlined in red
   const unsafe = useMemo(() => {
     if (profile !== 'astronaut' || !outcome || outcome.status !== 'ok') return null
     const r = marswalkReport(outcome.path, (x, z) => hf.sampleHeight(x, z), walk).shelter
     if (r.unsafePath.length < 2 || !r.boundary) return null
-    return { geo: buildRibbon(r.unsafePath, hf, () => 0, 4.8, UNSAFE, 0.35), boundary: r.boundary }
+    return { geo: buildRibbon(r.unsafePath, hf, 4.8, UNSAFE, 0.35), boundary: r.boundary }
   }, [profile, outcome, walk, hf])
   useEffect(() => () => unsafe?.geo.dispose(), [unsafe])
 
@@ -194,7 +246,6 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
     () => new MeshBasicMaterial({ vertexColors: true, side: DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, toneMapped: false }),
     [],
   )
-  const meshRef = useRef<Mesh>(null)
 
   return (
     <>
@@ -206,12 +257,7 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
           <ShelterLimitMarker at={unsafe.boundary} hf={hf} />
         </>
       )}
-      {ribbon && (
-        <>
-          <mesh geometry={ribbon.casing} material={mat} frustumCulled={false} renderOrder={4} />
-          <mesh ref={meshRef} geometry={ribbon.core} material={mat} frustumCulled={false} renderOrder={5} />
-        </>
-      )}
+      {outcome && outcome.status === 'ok' && <RouteLine path={outcome.path} hf={hf} />}
     </>
   )
 }

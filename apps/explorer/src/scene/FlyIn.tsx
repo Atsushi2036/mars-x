@@ -50,13 +50,18 @@ export function FlyIn() {
         return
       }
       flyTo({ x: home.x, z: home.z, ...START }, 0)
-      // let the instant jump land, then descend
-      timer = setTimeout(() => {
+      // the rig consumes one request per frame: wait until the jump has landed, then descend
+      const descend = (n: number) => {
         if (cancelled) return
+        if (cameraRig.flyRequest !== null && n < 80) {
+          timer = setTimeout(() => descend(n + 1), 50)
+          return
+        }
         setPhase('playing')
         flyTo({ ...home }, DURATION_MS)
         timer = setTimeout(() => setPhase('idle'), DURATION_MS + 200)
-      }, 80)
+      }
+      timer = setTimeout(() => descend(0), 50)
     }
     begin(0)
     const skip = () => {
