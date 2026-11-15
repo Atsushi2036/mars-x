@@ -68,9 +68,9 @@ test.describe('plan a route wizard', () => {
     await expect(page.getByText('Mission time').or(page.getByRole('alert')).first()).toBeVisible({ timeout: 90_000 })
 
     // 5. back through the steps, then a rover straight to Review (no options)
-    await page.getByRole('button', { name: 'Back', exact: true }).first().click({ force: true }) // options
+    await page.getByRole('button', { name: 'Back', exact: true }).first().dispatchEvent('click') // options
     await expect(page.getByRole('button', { name: 'Skip' })).toBeVisible()
-    await page.getByRole('button', { name: 'Back', exact: true }).first().click({ force: true }) // who
+    await page.getByRole('button', { name: 'Back', exact: true }).first().dispatchEvent('click') // who
     await expect(page.getByRole('radio', { name: /Rover RTG/ })).toBeVisible()
     await page.getByRole('radio', { name: /Rover RTG/ }).click()
     await cont.click()
