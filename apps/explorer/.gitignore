@@ -3,3 +3,6 @@ dist
 public/data/synthetic
 .shots
 *.tsbuildinfo
+e2e/__shots__
+test-results
+playwright-report
