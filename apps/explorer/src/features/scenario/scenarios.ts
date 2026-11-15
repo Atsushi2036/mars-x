@@ -60,3 +60,9 @@ export const COMM_LABEL: Record<CommMode, string> = {
   delayed: 'Delayed',
   one_plan_per_sol: '1 plan / sol',
 }
+
+/** Title without the level prefix: the level is shown once, as its own chip ("L1" + "Geometry, RTG rover"). */
+export function scenarioLabel(s: ScenarioDef): string {
+  const t = s.title.replace(/^L[123]\s+/, '')
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
