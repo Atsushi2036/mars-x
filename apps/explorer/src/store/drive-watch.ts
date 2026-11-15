@@ -3,13 +3,13 @@ import { loadSimTerrain } from '@/features/replay/sim-terrain'
 import { configFor } from '@/features/replay/verify'
 import { policyCardSchema } from '@/intelligence/contracts'
 import { loadCatalogModel } from '@/features/shared/model-catalog'
-import { LiveTrack, MAX_DRIVE_STEPS, runDrive, type DriveResult } from '@/intelligence/drive/drive-loop'
+import { LiveTrack, MAX_DRIVE_STEPS, runDrive, subGoals, type Cell, type DriveResult } from '@/intelligence/drive/drive-loop'
 import { markCatalogLoad, useUserModel } from '@/intelligence/drive/user-model'
 import { PolicyClient } from '@/intelligence/policy/policy-client'
 import { EnvLite } from '@/intelligence/sim/env-lite'
 import { useApp } from './app'
 import { agentLive } from './camera'
-import { catalogId, trainedRangeWarning, useDriver, type AiDriverKind, type DriveSummary } from './driver'
+import { catalogId, GUIDED_SPACING_M, trainedRangeWarning, useDriver, type AiDriverKind, type DriveSummary } from './driver'
 import { useMission, type MissionProfile } from './mission'
 import { pathLength, usePlayback, type PlaybackEvent } from './playback'
 import { roverLive, useRover } from './rover'
@@ -115,8 +115,20 @@ export async function startAiWatch(kind: AiDriverKind): Promise<boolean> {
   const si = worldToCell(grid, a.x, a.z)
   const gi = worldToCell(grid, b.x, b.z)
   if (si < 0 || gi < 0) return fallback('The route is outside the planning grid.')
-  const start: [number, number] = [Math.floor(si / grid.n), si % grid.n]
-  const goal: [number, number] = [Math.floor(gi / grid.n), gi % grid.n]
+  const start: Cell = [Math.floor(si / grid.n), si % grid.n]
+  const goal: Cell = [Math.floor(gi / grid.n), gi % grid.n]
+  const mode = useDriver.getState().mode
+  // guided: A* sub-goals along its own cells, one every ~25 m; free: only the real goal
+  const cells: Cell[] = []
+  for (const p of out.path) {
+    const ci = worldToCell(grid, p.x, p.z)
+    if (ci >= 0) {
+      const c: Cell = [Math.floor(ci / grid.n), ci % grid.n]
+      const l = cells[cells.length - 1]
+      if (!l || l[0] !== c[0] || l[1] !== c[1]) cells.push(c)
+    }
+  }
+  const goals: Cell[] = mode === 'guided' && cells.length > 2 ? subGoals(cells, GUIDED_SPACING_M / grid.res) : [goal]
   const straightM = Math.hypot(b.x - a.x, b.z - a.z)
 
   useDriver.setState({ phase: 'loading', notice: null, summary: null })
@@ -130,7 +142,7 @@ export async function startAiWatch(kind: AiDriverKind): Promise<boolean> {
     await loadModel(kind, client)
     const fam = FAMILY[m.profile]
     const cfg = configFor(fam.id)!
-    const cap = Math.min(MAX_DRIVE_STEPS, Math.max(600, Math.ceil((straightM / grid.res) * 4)))
+    const cap = Math.min(MAX_DRIVE_STEPS, Math.max(600, Math.ceil((straightM / grid.res) * 6)))
     env = new EnvLite(terrain, { ...cfg, ...(fam.kind ? { kind: fam.kind } : {}), maxSteps: cap })
   } catch (e) {
     stopAiDrive()
@@ -169,13 +181,13 @@ export async function startAiWatch(kind: AiDriverKind): Promise<boolean> {
   void runDrive({
     env,
     start,
-    goal,
+    goals,
     track,
     signal: ctl.signal,
     infer: async (obs) => (await client.infer(obs, 1)).actions[0]!,
   }).then((res: DriveResult) => {
     if (ctl.signal.aborted && res.outcome === 'aborted') return
-    const summary: DriveSummary = { kind, outcome: res.outcome, steps: res.steps, pathM: res.pathM, astarM, blockedAttempts: res.blockedAttempts, ...(res.error ? { error: res.error } : {}) }
+    const summary: DriveSummary = { kind, outcome: res.outcome, steps: res.steps, pathM: res.pathM, astarM, mode, reached: res.reached, total: res.total, blockedAttempts: res.blockedAttempts, ...(res.error ? { error: res.error } : {}) }
     stopAiDrive()
     if (res.outcome === 'error') {
       usePlayback.getState().exit()

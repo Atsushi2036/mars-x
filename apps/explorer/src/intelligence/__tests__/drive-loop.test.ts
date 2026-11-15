@@ -34,7 +34,7 @@ describe('live drive loop', () => {
   it('a goal-seeking policy reaches the goal, deterministically', async () => {
     const run = async () => {
       const t = new LiveTrack(200)
-      const r = await runDrive({ env: new EnvLite(flat(), cfg()), start: [2, 2], goal: [18, 15], infer: greedy, track: t })
+      const r = await runDrive({ env: new EnvLite(flat(), cfg()), start: [2, 2], goals: [[18, 15]], infer: greedy, track: t })
       return { r, t }
     }
     const a = await run()
@@ -48,16 +48,16 @@ describe('live drive loop', () => {
     expect(a.t.events.at(-1)).toMatchObject({ kind: 'end' })
   })
 
-  it('a policy that keeps waiting times out at the step cap', async () => {
+  it('a policy that keeps waiting is stuck (it never gets closer), not a silent timeout', async () => {
     const t = new LiveTrack(200)
-    const r = await runDrive({ env: new EnvLite(flat(), cfg()), start: [2, 2], goal: [18, 15], infer: async () => 8, track: t })
-    expect(r.outcome).toBe('timeout')
-    expect(r.steps).toBe(120)
+    const r = await runDrive({ env: new EnvLite(flat(), cfg()), start: [2, 2], goals: [[18, 15]], infer: async () => 8, track: t })
+    expect(r.outcome).toBe('stuck')
+    expect(r.steps).toBeLessThanOrEqual(61)
   })
 
   it('walking into a wall is a blocked attempt with a marker, not a crash of the loop', async () => {
     const t = new LiveTrack(200)
-    const r = await runDrive({ env: new EnvLite(flat(), cfg()), start: [0, 5], goal: [18, 15], infer: async () => 0, track: t })
+    const r = await runDrive({ env: new EnvLite(flat(), cfg()), start: [0, 5], goals: [[18, 15]], infer: async () => 0, track: t })
     expect(r.blockedAttempts).toBeGreaterThan(0)
     expect(t.events.some((e) => e.kind === 'blocked')).toBe(true)
   })
@@ -67,7 +67,7 @@ describe('live drive loop', () => {
     const r = await runDrive({
       env: new EnvLite(flat(), cfg()),
       start: [2, 2],
-      goal: [18, 15],
+      goals: [[18, 15]],
       infer: async () => {
         throw new Error('worker died')
       },
@@ -85,7 +85,7 @@ describe('live drive loop', () => {
     const r = await runDrive({
       env: new EnvLite(flat(), cfg()),
       start: [2, 2],
-      goal: [18, 15],
+      goals: [[18, 15]],
       infer: async (o) => {
         if (++n === 5) ctl.abort()
         return greedy(o)
@@ -105,9 +105,40 @@ describe('live drive loop', () => {
     const m = gemmModel()
     await client.load(m.buffer.slice(m.byteOffset, m.byteOffset + m.byteLength) as ArrayBuffer)
     const t = new LiveTrack(200)
-    const r = await runDrive({ env: new EnvLite(flat(), cfg()), start: [2, 10], goal: [18, 15], infer: async (o) => (await client.infer(o, 1)).actions[0]!, track: t })
-    expect(['success', 'collision', 'battery', 'timeout']).toContain(r.outcome)
+    const r = await runDrive({ env: new EnvLite(flat(), cfg()), start: [2, 10], goals: [[18, 15]], infer: async (o) => (await client.infer(o, 1)).actions[0]!, track: t })
+    expect(['success', 'collision', 'battery', 'timeout', 'stuck']).toContain(r.outcome)
     expect(r.steps).toBeGreaterThan(0)
     client.terminate()
   }, 60_000)
+})
+
+describe('guided drive and stuck detection', () => {
+  it('subGoals puts a waypoint every ~spacing cells and always ends on the real goal', async () => {
+    const { subGoals } = await import('../drive/drive-loop')
+    const path = Array.from({ length: 41 }, (_, i) => [i, 0] as const)
+    const g = subGoals(path, 12)
+    expect(g.at(-1)).toEqual([40, 0])
+    expect(g.length).toBeGreaterThanOrEqual(3)
+    for (let i = 1; i < g.length - 1; i++) expect(g[i]![0] - g[i - 1]![0]).toBeGreaterThanOrEqual(12)
+  })
+
+  it('guided: the policy drives from sub-goal to sub-goal and reaches the goal', async () => {
+    const t = new LiveTrack(400)
+    const goals = [[10, 4], [4, 12], [18, 18]] as const
+    const r = await runDrive({ env: new EnvLite(flat(), { ...cfg(), maxSteps: 300 }), start: [2, 2], goals, infer: greedy, track: t })
+    expect(r.outcome).toBe('success')
+    expect(r.reached).toBe(3)
+    expect(r.total).toBe(3)
+    // it really visits the intermediate sub-goals
+    const cells = Array.from({ length: t.count }, (_, i) => `${t.rows[i]},${t.cols[i]}`)
+    expect(cells).toContain('10,4')
+    expect(cells).toContain('4,12')
+  })
+
+  it('a policy that stops making progress is declared stuck after about 60 steps, not after the whole step budget', async () => {
+    const t = new LiveTrack(400)
+    const r = await runDrive({ env: new EnvLite(flat(), { ...cfg(), maxSteps: 300 }), start: [2, 2], goals: [[18, 15]], infer: async () => 8, track: t })
+    expect(r.outcome).toBe('stuck')
+    expect(r.steps).toBeLessThan(80)
+  })
 })

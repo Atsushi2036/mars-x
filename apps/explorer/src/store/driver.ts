@@ -12,6 +12,10 @@ export const DRIVER_ENABLED = true
 export type DriverKind = 'astar' | 'user' | 'reference' | `catalog:${string}`
 export type AiDriverKind = Exclude<DriverKind, 'astar'>
 
+/** guided: A* gives sub-goals every ~25 m and the AI drives between them (how a rover team works); free: only start and goal */
+export type DriveMode = 'guided' | 'free'
+export const GUIDED_SPACING_M = 25
+
 export const catalogId = (k: DriverKind): string | null => (k.startsWith('catalog:') ? k.slice(8) : null)
 
 /** start/goal distance band the reference policy was trained on (policy card: 40-700 m) */
@@ -19,7 +23,11 @@ export const TRAINED_RANGE_M = [40, 700] as const
 
 export interface DriveSummary {
   kind: AiDriverKind
-  outcome: 'success' | 'collision' | 'battery' | 'spe_violation' | 'timeout' | 'error' | 'aborted'
+  outcome: 'success' | 'collision' | 'battery' | 'spe_violation' | 'timeout' | 'stuck' | 'error' | 'aborted'
+  mode: DriveMode
+  /** sub-goals reached out of the total (a free drive has one) */
+  reached: number
+  total: number
   steps: number
   /** metres the AI covered (env-lite path length) */
   pathM: number
@@ -31,6 +39,7 @@ export interface DriveSummary {
 
 export interface DriverState {
   kind: DriverKind
+  mode: DriveMode
   /** loading the model, driving live, or finished (summary set) */
   phase: 'idle' | 'loading' | 'driving' | 'done'
   /** a one-line message for the UI (fallback to A*, long-route warning) */
@@ -42,7 +51,11 @@ export interface DriverState {
   catalog: CatalogEntry[]
 }
 
-export const useDriver = create<DriverState>(() => ({ kind: 'astar', phase: 'idle', notice: null, summary: null, referenceStatus: 'unknown', catalog: [] }))
+export const useDriver = create<DriverState>(() => ({ kind: 'astar', mode: 'guided', phase: 'idle', notice: null, summary: null, referenceStatus: 'unknown', catalog: [] }))
+
+export function setDriveMode(mode: DriveMode): void {
+  useDriver.setState({ mode, notice: null, summary: null })
+}
 
 export function setDriver(kind: DriverKind): void {
   if (!DRIVER_ENABLED && kind !== 'astar') return
@@ -71,6 +84,8 @@ export function outcomeText(o: DriveSummary['outcome']): string {
       return 'Missed the shelter window'
     case 'timeout':
       return 'Ran out of steps'
+    case 'stuck':
+      return 'Got stuck'
     case 'aborted':
       return 'Stopped'
     default:

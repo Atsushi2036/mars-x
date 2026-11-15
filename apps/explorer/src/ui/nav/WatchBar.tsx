@@ -7,7 +7,6 @@ import { useReplay } from '@/features/replay/store'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 import { DriverChip } from './DriverChip'
-import { DriverPicker } from './DriverPicker'
 import { DriveSummaryCard } from './DriveSummaryCard'
 import { useDriver } from '@/store/driver'
 import { BatteryLow, Flag, Mountain, OctagonX, Pause, Play, SkipBack, Sun, X, type LucideIcon } from '@/ui/icons'
@@ -31,18 +30,10 @@ export function WatchButton() {
   useRover((s) => s.status)
   const target = currentWatchTarget(mode)
   const phase = useDriver((s) => s.phase)
-  const notice = useDriver((s) => s.notice)
   if (!target) return null
   const loading = phase === 'loading'
   return (
     <div className="flex flex-col items-center gap-1.5">
-      {target.kind === 'route' && notice && (
-        <p role="status" className="glass pointer-events-auto max-w-[min(26rem,calc(100vw-2rem))] rounded-2xl px-3 py-1.5 text-center text-xs text-foreground">
-          {notice}
-        </p>
-      )}
-      {target.kind === 'route' && <DriverPicker />}
-      {target.kind === 'route' && <DriverChip className="glass pointer-events-auto max-w-[calc(100vw-1.5rem)] rounded-full px-3 py-1 text-foreground/80" />}
       <button
       type="button"
       disabled={loading}

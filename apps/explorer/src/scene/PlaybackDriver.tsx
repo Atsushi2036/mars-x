@@ -62,7 +62,7 @@ export function PlaybackDriver() {
       // test hook for Playwright (Probes creates window.__marsx after this component mounts): the live agent pose and the stores
       const w = window as unknown as { __marsx?: Record<string, unknown> }
       if (w.__marsx) {
-        w.__marsx.agent = { roverLive, agentLive, rover: useRover, playback: usePlayback }
+        w.__marsx.agent = { roverLive, agentLive, rover: useRover, playback: usePlayback, driver: useDriver }
         hooked.current = true
       }
     }

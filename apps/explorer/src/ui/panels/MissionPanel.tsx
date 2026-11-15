@@ -13,6 +13,7 @@ import { Chip, Details, EmptyState, Metric, PanelSection, Segmented, StatCard } 
 import { MarswalkReport, MarswalkSetup } from './MarswalkPanel'
 import { pickSampleRoute } from './sample-route'
 import { beginJourney } from '../wizard/journey'
+import { DriverPicker } from '../nav/DriverPicker'
 import { useWizard } from '../wizard/store'
 import { WizardPanel } from '../wizard/WizardPanel'
 
@@ -212,6 +213,7 @@ function MissionPanelClassic() {
                 <StatCard label="Climb" value={fmtInt(outcome.stats.climbM)} unit="m" provenance="derived" />
                 <StatCard label="Mean slope" value={outcome.stats.meanSlopeDeg.toFixed(1)} unit="°" provenance="derived" />
               </div>
+              <DriverPicker />
               <Button className="h-12 w-full bg-brand text-base font-semibold text-brand-foreground hover:bg-brand/90" onClick={() => beginJourney()}>
                 <Play className="size-5" aria-hidden="true" />
                 Watch the journey
