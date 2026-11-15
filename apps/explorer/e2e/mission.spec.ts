@@ -1,0 +1,48 @@
+import { expect, test } from '@playwright/test'
+import { dismissTips, expectClean, isMobile, modeButton, open, watch } from './helpers'
+
+test.describe('mission flow', () => {
+  test('click origin and destination -> route stats, or "No route" with a cause', async ({ page, baseURL }, info) => {
+    const issues = watch(page, baseURL!)
+    await open(page)
+    await dismissTips(page)
+    await modeButton(page, info, 'Mission').click()
+    const box = (await page.locator('canvas').first().boundingBox())!
+    // keep clear of the inspector (right on desktop, bottom sheet on mobile)
+    const pts = isMobile(info)
+      ? [[0.25, 0.4], [0.7, 0.45]]
+      : [[0.25, 0.55], [0.5, 0.35]]
+    for (const [fx, fy] of pts) {
+      await page.mouse.click(box.x + box.width * fx!, box.y + box.height * fy!)
+      await page.waitForTimeout(500)
+    }
+    const ok = page.getByText('Nodes expanded')
+    const none = page.getByRole('alert').filter({ hasText: 'No route for this profile' })
+    const err = page.getByText('Planner error')
+    const result = ok.or(none).or(err).first()
+    await expect(result).toBeAttached({ timeout: 60_000 })
+    await result.scrollIntoViewIfNeeded() // mobile: the bottom sheet opens at its lowest height (UX note in the QA report)
+    await expect(result).toBeVisible()
+    await expect(err, 'planner must not crash').toHaveCount(0)
+    if (await none.count()) {
+      const cause = (await none.first().innerText()).replace('No route for this profile', '').trim()
+      expect(cause.length, 'a "no route" outcome must state its cause').toBeGreaterThan(10)
+    } else {
+      await expect(page.getByText('Distance').first()).toBeVisible()
+      await expect(page.getByText('Max slope').first()).toBeVisible()
+    }
+    expectClean(issues)
+  })
+
+  test('Clear endpoints is disabled until a point is placed', async ({ page }, info) => {
+    await open(page)
+    await modeButton(page, info, 'Mission').click()
+    await expect(page.getByRole('button', { name: 'Clear endpoints' })).toBeDisabled()
+  })
+})
+
+test.describe('not built yet', () => {
+  test.fixme('AI Lab: drop a run.json and see the scorecard', async () => {})
+  test.fixme('Compare A* vs agent route overlay', async () => {})
+  test.fixme('Guided mission (4 steps) completes', async () => {})
+})
