@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "policyCard/1",
+  "contract": "policy/1",
+  "obsSpec": "obs/1",
+  "actSpec": "act/1",
+  "obsDim": 505,
+  "nActions": 9,
+  "inputName": "obs",
+  "outputName": "logits",
+  "name": "my-team/my-first-model",
+  "version": "0.1.0",
+  "onnxSha256": "ad8cd057223c1e44c5a78370434a63ea99b7cdb4e3d85b2aae2f32047f9f8bc2",
+  "onnxBytes": 341506,
+  "opset": 20,
+  "ops": [
+    "Gemm",
+    "Tanh"
+  ],
+  "training": {
+    "algorithm": "PPO",
+    "library": "stable-baselines3 2.9.2",
+    "timesteps": 1500000,
+    "wallClockS": 323.5,
+    "seed": 7,
+    "split": "train"
+  },
+  "metrics": {
+    "successTest": 0.94,
+    "successTestCi95Low": 0.8752318448839114,
+    "splCostTest": 0.8550576615469134,
+    "medianCostRatioTest": 1.0920923917067942,
+    "testEpisodes": 100.0,
+    "suiteL1Success": 0.53,
+    "suiteL2Success": 0.539,
+    "suiteL2Violations": 90.0
+  },
+  "intendedUse": "Reference local-navigation policy for MARS-X, trained on scenario jezero-v1/l1/rtg-geometry on the Jezero 2 m planning grid: a baseline to compare user models against, and a demo of real learning.",
+  "limitations": "Trained on random start/goal pairs 40-700 m apart in the north part of the grid (rows < 768); test metrics are on the unseen south part with the same distance band. Sees only an 11x11 local window (22 m): dead ends larger than that cause failures; long routes need global waypoints (A*). Other agents/conditions than the training scenario are out of distribution. Not a flight-ready controller. Official jezero-v1 suite (verified by re-simulation): L1 0.530, L2 0.539 success (90 L2 violations).",
+  "license": "MIT",
+  "authors": [
+    "MARS-X team"
+  ]
+}
