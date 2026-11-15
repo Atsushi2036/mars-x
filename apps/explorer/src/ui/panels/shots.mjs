@@ -26,7 +26,7 @@ const VIEWPORTS = {
   mobile: { width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
 }
 
-async function openMode(page, vp, label, mobileLabel) {
+async function openMode(page, vp, label, mobileLabel, full = false) {
   const name = vp === 'mobile' ? mobileLabel : label
   await page.locator('nav button:visible').filter({ hasText: new RegExp(`^\\s*${name}\\s*$`) }).first().click()
   await page.waitForTimeout(1100)
@@ -34,6 +34,17 @@ async function openMode(page, vp, label, mobileLabel) {
     const h = page.getByRole('button', { name: 'Expand panel' })
     for (let i = 0; i < 2; i++) if (await h.count()) await h.first().click({ force: true }).catch(() => {})
     await page.waitForTimeout(400)
+    if (full) {
+      // swipe the sheet handle up to the full snap
+      const hb = await page.getByRole('button', { name: /Expand panel|Collapse panel/ }).first().boundingBox()
+      if (hb) {
+        await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(hb.x + hb.width / 2, hb.y - 200, { steps: 6 })
+        await page.mouse.up()
+        await page.waitForTimeout(500)
+      }
+    }
   }
 }
 
@@ -76,7 +87,7 @@ export const SCENARIOS = {
     await scrollPanel(page, vp === 'mobile' ? 380 : 330)
   },
   train: async (page, vp, _theme, shot) => {
-    await openMode(page, vp, 'Test your AI', 'Test AI')
+    await openMode(page, vp, 'Test your AI', 'Test AI', true)
     const cv = page.locator('canvas[aria-label^="Learning grid"]')
     // the 3D scene makes full-page screenshots slow, so the instant states (banner, hazard cross) are read straight from the 2D canvas
     const grab = async (name, cond, tries = 400) => {

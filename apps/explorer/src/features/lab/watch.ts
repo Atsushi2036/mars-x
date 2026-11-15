@@ -80,7 +80,7 @@ export function frameAt(s: SampleLike, elapsedMs: number, stepMs: number, o: { t
   const shown = trail.slice(-(trailLen + 1))
 
   const floaters: Floater[] = []
-  for (let i = Math.max(0, step - 3); i < step; i++) {
+  for (let i = Math.max(0, step - 2); i < step; i++) {
     const age = (elapsedMs - (i + 1) * stepMs) / floatMs
     if (age < 0 || age >= 1) continue
     const r = s.reward[i] as number
