@@ -29,14 +29,14 @@ ROOT = Path(__file__).resolve().parents[3]
 GOLDEN = ROOT / "fixtures" / "golden"
 sys.path.insert(0, str(ROOT / "python" / "src"))
 
-from marsx.bench.metrics import alert_compliance, compute_metrics, failure_taxonomy  # noqa: E402
-from marsx.conditions import comms, mars24  # noqa: E402
-from marsx.contracts import obs as spec  # noqa: E402
-from marsx.contracts.run import EpisodeResult  # noqa: E402
-from marsx.env import scenarios  # noqa: E402
-from marsx.env.core import DEFAULT_ROCK_SEED, NavBatch, rock_mask  # noqa: E402
-from marsx.env.terrain import Terrain, synthetic_terrain  # noqa: E402
-from marsx.nav import fixtures as nav_fixtures  # noqa: E402
+from marsx.bench.metrics import alert_compliance, compute_metrics, failure_taxonomy
+from marsx.conditions import comms, mars24
+from marsx.contracts import obs as spec
+from marsx.contracts.run import EpisodeResult
+from marsx.env import scenarios
+from marsx.env.core import DEFAULT_ROCK_SEED, NavBatch, rock_mask
+from marsx.env.terrain import Terrain, synthetic_terrain
+from marsx.nav import fixtures as nav_fixtures
 
 GENERATOR = "python/tests/parity/golden_gen.py"
 F32_KEYS = {"slope", "step", "height"}  # base64 float32 payloads compared with tolerance by the freshness test

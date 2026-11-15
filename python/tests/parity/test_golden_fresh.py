@@ -11,10 +11,9 @@ import hashlib
 import json
 import math
 
+import golden_gen as gen
 import numpy as np
 import pytest
-
-import golden_gen as gen
 
 REGEN = "fixtures changed: regenerate with `uv run --project python python python/tests/parity/golden_gen.py` and review the diff"
 
