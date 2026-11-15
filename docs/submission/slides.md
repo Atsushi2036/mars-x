@@ -60,7 +60,7 @@ not real Mars data". If a guided-tour image is wanted, re-capture it on the live
 - **Image:** `D/data__desktop__dark.png` (Dataset and Validation cards)
 - **Text:**
   - **Built on NASA data, checked against the rover**
-  - HiRISE DTM 1 m and 25 cm orthomosaic (USGS, NASA/JPL/UArizona) · Perseverance traverse and waypoints (MMGIS) ·
+  - HiRISE DTM 1 m and 25 cm orthomosaic (USGS, NASA/JPL/University of Arizona) · Perseverance traverse and waypoints (MMGIS) ·
     MEDA weather sols (PDS) · Mars24 sun · CRISM minerals (ML-derived) · THEMIS thermal inertia.
   - DEM vs rover elevation at 147 waypoints: r = 0.99999, error 2.7 cm.
 

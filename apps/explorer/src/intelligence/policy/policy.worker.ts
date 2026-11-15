@@ -1,3 +1,4 @@
+import '@/zod-config' // first import: zod jitless, so the worker never trips the CSP eval check
 /// <reference lib="webworker" />
 import * as Comlink from 'comlink'
 import { PolicyService } from './policy-service'
