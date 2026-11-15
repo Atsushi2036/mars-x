@@ -33,14 +33,22 @@ function* walk(dir) {
   }
 }
 
+// Sources: processed dataset (includes export/*.zip) and the versioned reference models (models/<region>).
+const modelsSrc = join(root, "models", region);
+const sources = [{ src, dest, required: true }];
+if (existsSync(modelsSrc)) sources.push({ src: modelsSrc, dest: join(dest, "models"), required: false });
+else console.warn(`WARNING: ${relative(root, modelsSrc)} not found; policy model files will be missing from dist.`);
+
 let total = 0;
 let count = 0;
 const tooBig = [];
-for (const f of walk(src)) {
-  const size = statSync(f).size;
-  total += size;
-  count += 1;
-  if (size >= MAX_FILE) tooBig.push(`${relative(root, f)} (${(size / 1048576).toFixed(1)} MiB)`);
+for (const s of sources) {
+  for (const f of walk(s.src)) {
+    const size = statSync(f).size;
+    total += size;
+    count += 1;
+    if (size >= MAX_FILE) tooBig.push(`${relative(root, f)} (${(size / 1048576).toFixed(1)} MiB)`);
+  }
 }
 if (tooBig.length) {
   console.error(`Files over the 25 MiB Cloudflare Pages limit:\n  ${tooBig.join("\n  ")}\nSplit them into tiles in the pipeline.`);
@@ -49,7 +57,7 @@ if (tooBig.length) {
 
 rmSync(dest, { recursive: true, force: true });
 mkdirSync(dest, { recursive: true });
-cpSync(src, dest, { recursive: true });
+for (const s of sources) cpSync(s.src, s.dest, { recursive: true });
 
 let distFiles = 0;
 for (const _ of walk(distDir)) distFiles += 1;
