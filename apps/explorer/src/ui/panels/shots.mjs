@@ -158,7 +158,7 @@ export const SCENARIOS = {
       }
     }
     await page.getByRole('button', { name: 'Follow the learner' }).click()
-    await page.waitForTimeout(2500)
+    await page.waitForTimeout(vp === 'mobile' ? 8000 : 2500) // software GL renders about 1 frame per second: give the camera flight time to finish
     await shot('7-3d-ghost')
     await page.waitForTimeout(1500)
     await shot('7b-3d-ghost')
