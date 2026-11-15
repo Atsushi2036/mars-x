@@ -43,7 +43,5 @@ test.describe('mission flow', () => {
 })
 
 test.describe('not built yet', () => {
-  test.fixme('AI Lab: drop a run.json and see the scorecard', async () => {})
   test.fixme('Compare A* vs agent route overlay', async () => {})
-  test.fixme('Guided mission (4 steps) completes', async () => {})
 })

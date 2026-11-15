@@ -19,6 +19,12 @@ export function watch(page: Page, baseURL: string): Issues {
     if (m.type() === 'error') issues.console.push(m.text())
   })
   page.on('pageerror', (e) => issues.page.push(e.message))
+  void page.addInitScript(() => {
+    document.addEventListener('securitypolicyviolation', (e) => {
+      const w = window as unknown as { __csp?: string[] }
+      ;(w.__csp ??= []).push(e.violatedDirective + ' ' + e.blockedURI)
+    })
+  })
   page.on('response', (r) => {
     if (r.status() >= 400) issues.http.push(`${r.status()} ${r.url()}`)
   })
@@ -31,7 +37,7 @@ export function watch(page: Page, baseURL: string): Issues {
   return issues
 }
 
-export async function open(page: Page, theme: Theme = 'dark') {
+export async function open(page: Page, theme: Theme = 'dark', extraQuery = '') {
   await page.addInitScript((t) => {
     try {
       localStorage.setItem('marsx.theme', t)
@@ -39,7 +45,7 @@ export async function open(page: Page, theme: Theme = 'dark') {
       /* storage unavailable */
     }
   }, theme)
-  await page.goto(`/${QUERY}`, { waitUntil: 'domcontentloaded' })
+  await page.goto(`/${extraQuery ? (QUERY ? QUERY + '&' : '?') + extraQuery : QUERY}`, { waitUntil: 'domcontentloaded' })
   await page.waitForFunction(() => window.__marsx?.ready === true, null, { timeout: 300_000 })
 }
 
@@ -85,6 +91,10 @@ export async function canvasStats(page: Page) {
     const mean = sum / n
     return { litFraction: lit / n, mean, std: Math.sqrt(Math.max(0, sum2 / n - mean * mean)), w: img.width, h: img.height }
   }, png.toString('base64'))
+}
+
+export async function cspViolations(page: Page): Promise<string[]> {
+  return page.evaluate(() => (window as unknown as { __csp?: string[] }).__csp ?? [])
 }
 
 export function expectClean(issues: Issues) {

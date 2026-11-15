@@ -24,8 +24,8 @@ test.describe('app shell', () => {
   test('shows the non-affiliation disclaimer and a USGS attribution (Data & Sources)', async ({ page }, info) => {
     await open(page)
     await modeButton(page, info, 'Data & Sources').click()
-    const disc = page.getByText(/Not affiliated with or endorsed by NASA, JPL or Caltech/i).last()
-    await disc.scrollIntoViewIfNeeded()
+    const disc = page.getByText(/Not affiliated with or endorsed by NASA, JPL or Caltech/i).locator('visible=true').first()
+    await disc.evaluate((el) => el.scrollIntoView({ block: 'center' }))
     await expect(disc).toBeVisible()
     await expect(page.getByText(/USGS/).first()).toBeAttached()
   })
