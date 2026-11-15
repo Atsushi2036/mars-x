@@ -39,6 +39,19 @@ function Block({ title, children, id }: { title: string; children: ReactNode; id
   )
 }
 
+/** "84.0%" with its interval on a second line, so the column stays narrow on phones. */
+function CiCell({ p, ci }: { p: number | null; ci: readonly [number, number] | null }) {
+  if (p === null || !ci) return <>{NO_DATA}</>
+  return (
+    <>
+      {fmtPct(p)}
+      <span className="block text-[11px] text-muted-foreground">
+        {fmtPct(ci[0])} to {fmtPct(ci[1])}
+      </span>
+    </>
+  )
+}
+
 function KV({ k, v, mono = true }: { k: string; v: ReactNode; mono?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border py-1.5 text-xs last:border-b-0">
@@ -96,11 +109,11 @@ function LevelTable({ levels, runLevel }: { levels: LevelRow[]; runLevel: string
               <td className="px-3 py-2">
                 <StatusMark status={l.status} />
               </td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums">{l.status === 'not-run' ? NO_DATA : l.n}</td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums">{l.status === 'not-run' ? NO_DATA : fmtCi(l.success, l.ci)}</td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums">{l.status === 'not-run' ? NO_DATA : fmtNum(l.spl, 3)}</td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums">{l.status === 'not-run' ? NO_DATA : l.energyRatio === null ? NO_DATA : `${fmtNum(l.energyRatio, 2)}×`}</td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums">{l.status === 'not-run' ? NO_DATA : l.violations}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums">{l.status === 'not-run' ? NO_DATA : l.n}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums">{l.status === 'not-run' ? NO_DATA : <CiCell p={l.success} ci={l.ci} />}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums">{l.status === 'not-run' ? NO_DATA : fmtNum(l.spl, 3)}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums">{l.status === 'not-run' ? NO_DATA : l.energyRatio === null ? NO_DATA : `${fmtNum(l.energyRatio, 2)}×`}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums">{l.status === 'not-run' ? NO_DATA : l.violations}</td>
             </tr>
           ))}
         </tbody>
@@ -130,14 +143,14 @@ function BaselineBlock({ lvl, suite }: { lvl: LevelRow; suite: string }) {
       ) : (
         <>
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full min-w-[30rem] text-xs">
+            <table className="w-full min-w-0 sm:min-w-[26rem] text-xs">
               <caption className="sr-only">Your run against the verified baselines on the same level</caption>
               <thead className="bg-surface text-left text-muted-foreground">
                 <tr>
                   <th scope="col" className="px-3 py-2 font-medium">
                     Agent
                   </th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                  <th scope="col" className="hidden px-3 py-2 text-right font-medium sm:table-cell">
                     Episodes
                   </th>
                   <th scope="col" className="px-3 py-2 text-right font-medium">
@@ -156,8 +169,8 @@ function BaselineBlock({ lvl, suite }: { lvl: LevelRow; suite: string }) {
                   <th scope="row" className="px-3 py-2 text-left font-medium">
                     Your run
                   </th>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{lvl.n}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtCi(lvl.success, lvl.ci)}</td>
+                  <td className="hidden px-3 py-2 text-right font-mono tabular-nums sm:table-cell">{lvl.n}</td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums"><CiCell p={lvl.success} ci={lvl.ci} /></td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtNum(lvl.spl, 3)}</td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">{lvl.violations}</td>
                 </tr>
@@ -165,10 +178,10 @@ function BaselineBlock({ lvl, suite }: { lvl: LevelRow; suite: string }) {
                   <tr key={b.id}>
                     <th scope="row" className="px-3 py-2 text-left font-medium">
                       {b.label}
-                      <span className="block font-normal text-muted-foreground">{b.note}</span>
+                      <span className="hidden font-normal text-muted-foreground sm:block">{b.note}</span>
                     </th>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums">{b.n}</td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtCi(b.success, b.ci)}</td>
+                    <td className="hidden px-3 py-2 text-right font-mono tabular-nums sm:table-cell">{b.n}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums"><CiCell p={b.success} ci={b.ci} /></td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtNum(b.spl, 3)}</td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums">{b.violations}</td>
                   </tr>

@@ -24,6 +24,8 @@ export default function ReplayLayer() {
   const layers = useMission((s) => s.layers)
   const hf = useApp((s) => s.dataset?.heightfield)
   const cursor = useRef<Group>(null)
+  const startRef = useRef<Group>(null)
+  const endRef = useRef<Group>(null)
   const acc = useRef({ step: 0, last: 0 })
 
   const outcome = useMemo(() => result?.run.episodes.find((e) => e.index === episodeIndex)?.outcome ?? null, [result, episodeIndex])
@@ -69,6 +71,8 @@ export default function ReplayLayer() {
     cursor.current.position.set(p0.x + (p1.x - p0.x) * f, p0.y + (p1.y - p0.y) * f, p0.z + (p1.z - p0.z) * f)
     const d = camera.position.distanceTo(cursor.current.position)
     cursor.current.scale.setScalar(Math.max(1, d * 0.012))
+    // markers keep a readable size on screen, from far away as well as close up
+    for (const g of [startRef.current, endRef.current]) if (g) g.scale.setScalar(Math.max(1, camera.position.distanceTo(g.position) * 0.014))
   })
 
   if (!pts || !donePts || pts.length < 2) return null
@@ -78,15 +82,19 @@ export default function ReplayLayer() {
   return (
     <group>
       <Line points={pts} color={failed ? FAIL : OK} lineWidth={2} transparent opacity={0.35} depthTest={false} renderOrder={5} />
-      <Line points={donePts} color={failed ? FAIL : OK} lineWidth={4} depthTest={false} renderOrder={6} />
-      <mesh position={start}>
-        <sphereGeometry args={[1.1, 16, 12]} />
-        <meshBasicMaterial color={AMBER} depthTest={false} />
-      </mesh>
-      <mesh position={end}>
-        {failed ? <octahedronGeometry args={[1.5, 0]} /> : <boxGeometry args={[1.6, 1.6, 1.6]} />}
-        <meshBasicMaterial color={failed ? RED : AMBER} depthTest={false} side={DoubleSide} />
-      </mesh>
+      <Line points={donePts} color={failed ? FAIL : OK} lineWidth={5} depthTest={false} renderOrder={6} />
+      <group ref={startRef} position={start}>
+        <mesh renderOrder={7}>
+          <sphereGeometry args={[1.1, 16, 12]} />
+          <meshBasicMaterial color={AMBER} depthTest={false} />
+        </mesh>
+      </group>
+      <group ref={endRef} position={end}>
+        <mesh renderOrder={7}>
+          {failed ? <octahedronGeometry args={[1.5, 0]} /> : <boxGeometry args={[1.6, 1.6, 1.6]} />}
+          <meshBasicMaterial color={failed ? RED : AMBER} depthTest={false} side={DoubleSide} />
+        </mesh>
+      </group>
       <group ref={cursor}>
         <mesh renderOrder={7}>
           <sphereGeometry args={[0.9, 16, 12]} />

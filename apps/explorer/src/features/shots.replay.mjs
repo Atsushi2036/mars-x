@@ -31,6 +31,7 @@ async function loadRun(page, vp, h, file, done = /Verified by re-simulation|Not 
   await openLab(page, vp, h)
   await page.locator('input[type=file][accept^=".json"]').setInputFiles(file)
   await page.getByText(done).first().waitFor({ timeout: 90000 })
+  await page.getByText('Re-simulating the episodes').first().waitFor({ state: 'detached', timeout: 90000 })
   await page.waitForTimeout(500)
 }
 

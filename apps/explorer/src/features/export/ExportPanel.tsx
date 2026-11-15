@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { fmtClock } from '../shared/fmt'
 import { useApp } from '@/store/app'
 import { Section } from '@/ui/panels/Section'
 import { CONTENTS, fmtSize, packageUrl, parseExportIndex, scenarioName, type ExportIndex, type ExportPackage } from './packages'
@@ -67,7 +68,7 @@ function PackageCard({ p, base }: { p: ExportPackage; base: string }) {
       </div>
       <p className="text-[11px] text-muted-foreground">
         g = {p.gravity.toFixed(3)} m/s²
-        {p.sunElevationDeg != null && p.ltstH != null ? ` · Sun ${p.sunElevationDeg.toFixed(1)}° at ${String(Math.floor(p.ltstH)).padStart(2, '0')}:${String(Math.round((p.ltstH % 1) * 60)).padStart(2, '0')} LTST` : ''}
+        {p.sunElevationDeg != null && p.ltstH != null ? ` · Sun ${p.sunElevationDeg.toFixed(1)}° at ${fmtClock(p.ltstH)} LTST` : ''}
         {p.meshVsDem ? ` · mesh vs DEM: rms ${p.meshVsDem.rmsM.toFixed(2)} m, p95 ${p.meshVsDem.p95M.toFixed(2)} m, max ${p.meshVsDem.maxM.toFixed(2)} m` : ''}
       </p>
       <div className="flex items-start gap-1 rounded-md bg-surface px-2 py-1.5">
