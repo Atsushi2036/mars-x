@@ -59,6 +59,7 @@ export function ModeRail() {
                   type="button"
                   aria-current={m.id === lit ? 'page' : undefined}
                   aria-pressed={active}
+                  data-mode={m.id}
                   data-lit={m.id === lit}
                   onClick={() => choose(m.id)}
                   className={cn(
@@ -86,6 +87,7 @@ export function ModeRail() {
             <button
               key={m.id}
               type="button"
+              data-mode={m.id}
               aria-current={m.id === lit ? 'page' : undefined}
               aria-pressed={active}
               onClick={() => choose(m.id)}

@@ -25,8 +25,10 @@ const VIEWPORTS = {
   mobile: { width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
 }
 
+const MODE_IDS = { Explore: 'explore', Layers: 'layers', Mission: 'mission', 'Plan a route': 'mission', 'AI Lab': 'lab', 'Test your AI': 'lab', 'Data & Sources': 'data', Data: 'data' }
+
 async function openMode(page, vp, desktopLabel, mobileText) {
-  await page.locator(vp === 'mobile' ? `nav >> text=${mobileText}` : `button[aria-label="${desktopLabel}"]`).first().click()
+  await page.locator(`nav button[data-mode="${MODE_IDS[desktopLabel] ?? desktopLabel}"]:visible`).first().click()
   await page.waitForTimeout(400)
   if (vp === 'mobile') {
     const h = page.getByRole('button', { name: 'Expand panel' })

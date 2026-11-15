@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { canvasStats, expectClean, isMobile, modeButton, open, watch } from './helpers'
+import { canvasStats, expectClean, isMobile, modeButton, open, openMode, watch } from './helpers'
 
 test.describe('app shell', () => {
   test('loads, scene becomes ready and keeps rendering, console and network clean', async ({ page, baseURL }) => {
@@ -38,8 +38,8 @@ test.describe('app shell', () => {
   test('mode switching: every mode opens the inspector without errors', async ({ page, baseURL }, info) => {
     const issues = watch(page, baseURL!)
     await open(page)
-    for (const label of ['Layers', 'Mission', 'Data & Sources', 'Explore']) {
-      await modeButton(page, info, label).click()
+    for (const label of ['Layers', 'Plan a route', 'Data', 'Explore']) {
+      await openMode(page, info, label)
       await expect(page.getByRole('heading', { name: label, exact: true }).or(page.getByText(label, { exact: true }).locator('visible=true')).first()).toBeVisible()
     }
     expectClean(issues)
@@ -47,7 +47,7 @@ test.describe('app shell', () => {
 
   test('layers: choosing Slope keeps the scene rendering', async ({ page }, info) => {
     await open(page)
-    await modeButton(page, info, 'Layers').click()
+    await openMode(page, info, 'Layers')
     await page.getByRole('radio', { name: 'Slope' }).click()
     await page.waitForTimeout(800)
     const s = await canvasStats(page)

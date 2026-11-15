@@ -57,12 +57,29 @@ export async function dismissTips(page: Page) {
 
 export const isMobile = (info: TestInfo) => info.project.name === 'mobile'
 
-/** Rail button on desktop, bottom-nav item on mobile. */
-export function modeButton(page: Page, info: TestInfo, label: string) {
-  if (isMobile(info)) {
-    return page.locator('nav[aria-label="Modes"] button', { hasText: label === 'Data & Sources' ? 'Data' : label }).last()
-  }
-  return page.getByRole('button', { name: label, exact: true })
+/** Stable mode ids (rail buttons carry `data-mode`); legacy visible names map onto them. */
+const MODE_IDS: Record<string, string> = {
+  Explore: 'explore',
+  Layers: 'layers',
+  Mission: 'mission',
+  'Plan a route': 'mission',
+  'AI Lab': 'lab',
+  'Test your AI': 'lab',
+  'Data & Sources': 'data',
+  Data: 'data',
+}
+
+/** Rail button (desktop) or bottom-nav item (mobile) of a mode, found by `data-mode`, not by visible text. Layers is not on the rail: use openMode. */
+export function modeButton(page: Page, _info: TestInfo, label: string) {
+  const id = MODE_IDS[label] ?? label
+  return page.locator(`nav[aria-label="Modes"] button[data-mode="${id}"]`).locator('visible=true').first()
+}
+
+/** Opens any mode panel, including Layers (reached from the map, not the rail), through the UI test hook. */
+export async function openMode(page: Page, info: TestInfo, label: string) {
+  const id = MODE_IDS[label] ?? label
+  if (id === 'layers') await page.evaluate(() => window.__marsxUi?.setMode('layers'))
+  else await modeButton(page, info, label).click()
 }
 
 /** Fraction of canvas pixels that are not near-black, and the luma spread (a flat fill has none). */

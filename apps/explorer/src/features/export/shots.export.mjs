@@ -42,7 +42,7 @@ for (const [vpName, vp] of Object.entries(VIEWPORTS)) {
       }
       await page.goto(`${URL_BASE}/`, { waitUntil: 'domcontentloaded' })
       await page.waitForFunction(() => window.__marsx?.ready === true, null, { timeout: 120000 })
-      await page.locator(vpName === 'mobile' ? 'nav >> text=Data' : 'button[aria-label="Data & Sources"]').first().click()
+      await page.locator('nav button[data-mode="data"]:visible').first().click()
       await page.waitForTimeout(2500)
       await page.evaluate(() => {
         const h = [...document.querySelectorAll('aside[aria-label="Inspector"] h3')].find((e) => e.textContent?.startsWith('Export to Gazebo'))

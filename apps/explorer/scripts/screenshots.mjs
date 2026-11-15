@@ -32,11 +32,11 @@ const SCENARIOS = {
     await page.getByRole('button', { name: 'Explore' }).first().click().catch(() => {})
   },
   layers_slope: async (page, vp) => {
-    await page.locator(vp === 'mobile' ? 'nav >> text=Layers' : 'button[aria-label="Layers"]').first().click()
+    await page.evaluate(() => window.__marsxUi?.setMode('layers'))
     await page.getByRole('radio', { name: 'Slope' }).click()
   },
   data: async (page, vp) => {
-    await page.locator(vp === 'mobile' ? 'nav >> text=Data' : 'button[aria-label="Data & Sources"]').first().click()
+    await page.locator('nav button[data-mode="data"]:visible').first().click()
   },
   fpv: async (page, vp) => {
     await page.keyboard.press('Digit2')
@@ -48,7 +48,7 @@ const SCENARIOS = {
     await page.waitForTimeout(1500)
   },
   mission_route: async (page, vp) => {
-    await page.locator(vp === 'mobile' ? 'nav >> text=Mission' : 'button[aria-label="Mission"]').first().click()
+    await page.locator('nav button[data-mode="mission"]:visible').first().click()
     const pts = vp === 'mobile' ? [[110, 440], [290, 340]] : [[420, 640], [840, 470]]
     for (const [x, y] of pts) {
       await page.mouse.click(x, y)
@@ -58,7 +58,7 @@ const SCENARIOS = {
     await page.waitForTimeout(1500)
   },
   mission: async (page, vp) => {
-    await page.locator(vp === 'mobile' ? 'nav >> text=Mission' : 'button[aria-label="Mission"]').first().click()
+    await page.locator('nav button[data-mode="mission"]:visible').first().click()
   },
 }
 

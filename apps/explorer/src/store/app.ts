@@ -182,3 +182,11 @@ export function sunDirection(azimuthDeg: number, elevationDeg: number): [number,
   const el = (elevationDeg * Math.PI) / 180
   return [Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)]
 }
+
+declare global {
+  interface Window {
+    /** test hook: lets e2e/capture scripts open a panel that has no rail entry (Layers) */
+    __marsxUi?: { setMode: (m: Mode) => void }
+  }
+}
+if (typeof window !== 'undefined') window.__marsxUi = { setMode: (m) => useApp.getState().setMode(m) }
