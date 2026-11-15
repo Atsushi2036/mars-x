@@ -7,6 +7,9 @@ import { useReplay } from '@/features/replay/store'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 import { DriverChip } from './DriverChip'
+import { DriverPicker } from './DriverPicker'
+import { DriveSummaryCard } from './DriveSummaryCard'
+import { useDriver } from '@/store/driver'
 import { BatteryLow, Flag, Mountain, OctagonX, Pause, Play, SkipBack, Sun, X, type LucideIcon } from '@/ui/icons'
 
 const MARK: Record<EventKind, { icon: LucideIcon; tone: string }> = {
@@ -27,17 +30,27 @@ export function WatchButton() {
   useReplay((s) => s.status)
   useRover((s) => s.status)
   const target = currentWatchTarget(mode)
+  const phase = useDriver((s) => s.phase)
+  const notice = useDriver((s) => s.notice)
   if (!target) return null
+  const loading = phase === 'loading'
   return (
     <div className="flex flex-col items-center gap-1.5">
-      {target.kind === 'route' && <DriverChip className="glass pointer-events-auto rounded-full px-3 py-1 text-foreground/80" />}
+      {target.kind === 'route' && notice && (
+        <p role="status" className="glass pointer-events-auto max-w-[min(26rem,calc(100vw-2rem))] rounded-2xl px-3 py-1.5 text-center text-xs text-foreground">
+          {notice}
+        </p>
+      )}
+      {target.kind === 'route' && <DriverPicker />}
+      {target.kind === 'route' && <DriverChip className="glass pointer-events-auto max-w-[calc(100vw-1.5rem)] rounded-full px-3 py-1 text-foreground/80" />}
       <button
       type="button"
+      disabled={loading}
       onClick={() => startWatch(mode)}
       className="pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full bg-brand px-4 text-sm font-semibold text-brand-foreground shadow-float outline-none transition-transform duration-[var(--dur-fast)] hover:brightness-105 focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
     >
       <Play className="size-5" strokeWidth={2} fill="currentColor" aria-hidden="true" />
-      {target.label}
+      {loading ? 'Loading the model…' : target.label}
       </button>
     </div>
   )
@@ -81,7 +94,7 @@ export function WatchBar() {
             </button>
           ))}
         </div>
-        {s.source === 'route' && s.timeScale * s.speed > 1.05 && (
+        {s.source === 'route' && !s.ai && s.timeScale * s.speed > 1.05 && (
           <span className="hidden text-xs font-medium text-muted-foreground sm:inline" title="Playback runs faster than the real mission">
             {Math.round(s.timeScale * s.speed)}× sped up
           </span>
@@ -114,15 +127,16 @@ export function WatchBar() {
           aria-label="Playback position"
           min={0}
           max={Math.max(1, s.duration)}
-          step={s.source === 'run' ? 0.5 : 0.1}
+          step={s.source === 'run' || s.ai ? 0.5 : 0.1}
           value={[Math.min(s.t, Math.max(1, s.duration))]}
           onValueChange={([v]) => v !== undefined && s.seek(v)}
           className="touch-none py-2.5"
         />
         {s.source === 'route' && <DriverChip className="mt-1" />}
+        {s.ai && <DriveSummaryCard />}
         <p className="mt-0.5 flex justify-between font-mono text-xs tabular-nums text-muted-foreground" aria-live="off">
           <span>{s.label(s.t)}</span>
-          <span>{s.source === 'route' ? `of ${s.label(s.duration)} mission time` : s.events.at(-1)?.label}</span>
+          <span>{s.ai ? `of ${Math.round(s.duration)} steps` : s.source === 'route' ? `of ${s.label(s.duration)} mission time` : s.events.at(-1)?.label}</span>
         </p>
       </div>
     </div>

@@ -9,6 +9,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     serveData({
+      '/data/jezero-v1/models/examples': path.resolve(import.meta.dirname, '../../examples'),
+      '/data/jezero-v1/models': path.resolve(import.meta.dirname, '../../models/jezero-v1'),
       '/data/jezero-v1/baselines': path.resolve(import.meta.dirname, '../../bench/jezero-v1/baselines'),
       '/data/jezero-v1': path.resolve(import.meta.dirname, '../../data/processed/jezero-v1'),
     }),

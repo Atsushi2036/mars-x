@@ -1,7 +1,9 @@
-import { cellToWorld, type XZ } from '@/core/mission/geometry'
+import { cellToWorld, type PlanGrid, type XZ } from '@/core/mission/geometry'
+import type { LiveTrack } from '@/intelligence/drive/drive-loop'
 import { useByo } from '@/features/shared/byo-store'
 import { EVENT_LABEL, fmtElapsed, stepAtTime, useReplay } from '@/features/replay/store'
 import { agentLive } from './camera'
+import { DRIVER_ENABLED, useDriver } from './driver'
 import { useMission } from './mission'
 import { eventKind, fmtMission, pathLength, playbackLive, usePlayback, type PlaybackEvent } from './playback'
 import { roverLive, useRover } from './rover'
@@ -55,6 +57,15 @@ export interface RunCtx {
   last: number
   step: number
   yaw: number
+  /** AI drive: the buffers fill while the policy runs (see store/drive-watch.ts) */
+  live?: LiveDrive
+}
+export interface LiveDrive {
+  track: LiveTrack
+  grid: PlanGrid
+  /** track points already converted to world metres */
+  filled: number
+  abort: () => void
 }
 export const watchCtx: { current: RouteCtx | RunCtx | null } = { current: null }
 
@@ -126,15 +137,27 @@ export function startRunWatch(): boolean {
   return true
 }
 
-/** Starts the Watch for whatever the button offers. */
+/** Starts the Watch for whatever the button offers; a route Watch honours the chosen driver (A* plan, reference AI, the user's model). */
 export function startWatch(appMode: string): boolean {
   const t = currentWatchTarget(appMode)
   if (!t) return false
-  return t.kind === 'route' ? startRouteWatch() : startRunWatch()
+  if (t.kind === 'run') return startRunWatch()
+  return startJourney()
 }
 
-/** The journey entry point for the Plan a route wizard (): the same as the Watch button on a route. */
-export const startJourney = startRouteWatch
+/**
+ * Starts the route Watch with the chosen driver (see setDriver in store/driver): the A* plan, the reference AI or the user's model.
+ * The wizard's "Start the journey" should call this instead of startRouteWatch.
+ */
+export function startJourney(): boolean {
+  const d = useDriver.getState().kind
+  if (DRIVER_ENABLED && d !== 'astar') {
+    // lazy: the live drive (policy client, env-lite) stays out of the first load
+    void import('./drive-watch').then((m) => m.startAiWatch(d))
+    return true
+  }
+  return startRouteWatch()
+}
 
 /** Parks the active agent (rover or astronaut) on the origin of the profile's route, facing the first leg, and stops any rover route. */
 export function placeAgentAtOrigin(): boolean {
@@ -162,6 +185,12 @@ export function installAgentSync(): () => void {
     const src = usePlayback.getState().source
     if (src === 'run') return
     if (src === 'route') {
+      // a live AI drive belongs to the plan it started from: a new plan or profile ends it (the user presses Watch again)
+      if (usePlayback.getState().ai) {
+        usePlayback.getState().exit()
+        placeAgentAtOrigin()
+        return
+      }
       if (!startRouteWatch()) usePlayback.getState().exit()
       return
     }

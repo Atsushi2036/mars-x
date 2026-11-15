@@ -9,6 +9,7 @@ import { ConditionsDriver } from './ConditionsDriver'
 import { TraverseLayer } from './TraverseLayer'
 import { ChunkManager } from './chunk-manager'
 import { CameraRig } from './CameraRig'
+import { DriveTrail } from './DriveTrail'
 import { PlaybackDriver } from './PlaybackDriver'
 import { Slot } from '@/ui/slots'
 import { MissionLayer } from './MissionLayer'
@@ -208,6 +209,7 @@ export default function Scene({ dataset }: { dataset: Dataset }) {
       <Astronaut hf={dataset.heightfield} />
       <MissionLayer ds={dataset} />
       <PlaybackDriver />
+      <DriveTrail hf={dataset.heightfield} />
       <CameraRig hf={dataset.heightfield} />
       <Probes ds={dataset} />
       <Slot name="scene" />

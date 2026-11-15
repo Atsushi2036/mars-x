@@ -26,6 +26,8 @@ export interface BeginOptions {
   noun?: string
   /** mission seconds per second of playback at 1x (a rover is shown ~36x faster than it drives); default 1 */
   timeScale?: number
+  /** driven live by an AI policy rather than the A* plan */
+  ai?: boolean
 }
 
 interface PlaybackState {
@@ -36,6 +38,8 @@ interface PlaybackState {
   duration: number
   /** how much faster than real time the 1x playback is (1 = real time) */
   timeScale: number
+  /** driven live by an AI policy rather than the A* plan */
+  ai: boolean
   events: PlaybackEvent[]
   label: (t: number) => string
   /** camera to return to on Exit */
@@ -58,7 +62,7 @@ interface PlaybackState {
 /** Mutable flags the scene reads every frame (no re-renders): the rover pauses and runs fast through these. */
 export const playbackLive = { paused: false, rate: 1, travelled: 0 }
 
-const IDLE = { source: null, playing: false, speed: 1 as PlaybackSpeed, t: 0, duration: 0, timeScale: 1, events: [] as PlaybackEvent[], label: (t: number) => String(t) }
+const IDLE = { source: null, playing: false, speed: 1 as PlaybackSpeed, t: 0, duration: 0, timeScale: 1, ai: false, events: [] as PlaybackEvent[], label: (t: number) => String(t) }
 
 const sync = (s: Pick<PlaybackState, 'playing' | 'speed'>) => {
   playbackLive.paused = !s.playing
@@ -72,7 +76,7 @@ export const usePlayback = create<PlaybackState>((set, get) => ({
   begin: (o) => {
     const cur = useCamera.getState().mode
     const prev = get().source ? get().prevMode : cur === 'chase' ? 'orbit' : cur
-    set({ ...IDLE, source: o.source, playing: true, duration: Math.max(0, o.duration), timeScale: Math.max(1, o.timeScale ?? 1), events: o.events ?? [], label: o.label, prevMode: prev, seekNonce: get().seekNonce + 1 })
+    set({ ...IDLE, source: o.source, playing: true, duration: Math.max(0, o.duration), timeScale: Math.max(1, o.timeScale ?? 1), ai: !!o.ai, events: o.events ?? [], label: o.label, prevMode: prev, seekNonce: get().seekNonce + 1 })
     sync({ playing: true, speed: 1 })
     useCamera.getState().setMode('chase')
   },

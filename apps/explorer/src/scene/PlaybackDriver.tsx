@@ -5,12 +5,16 @@ import { lerpAngle } from '@/store/camera-math'
 import { pointAlong, playbackLive, usePlayback } from '@/store/playback'
 import { useMission } from '@/store/mission'
 import { roverLive, useRover } from '@/store/rover'
+import { cellToWorld } from '@/core/mission/geometry'
+import { useDriver } from '@/store/driver'
+import { DRIVE_RATE, liveEvents, stopAiDrive } from '@/store/drive-watch'
 import { installAgentSync, RUN_RATE, watchCtx, type RouteCtx, type RunCtx } from '@/store/watch'
 import { useReplay } from '@/features/replay/store'
+import { captureUserModel } from '@/intelligence/drive/user-model'
 
 const TICK_S = 0.1
 
-type Acc = { tick: number; nonce: number; store: number }
+type Acc = { tick: number; nonce: number; store: number; count: number }
 type PB = ReturnType<typeof usePlayback.getState>
 
 /**
@@ -22,9 +26,12 @@ type PB = ReturnType<typeof usePlayback.getState>
  */
 export function PlaybackDriver() {
   const hooked = useRef(false)
-  const acc = useRef<Acc>({ tick: 0, nonce: -1, store: 0 })
+  const acc = useRef<Acc>({ tick: 0, nonce: -1, store: 0, count: -1 })
 
   useEffect(() => installAgentSync(), [])
+
+  // remember the ONNX file the user drops in Test your AI, so Watch can run it (see intelligence/drive/user-model)
+  useEffect(() => captureUserModel(), [])
 
 
   useEffect(() => {
@@ -32,6 +39,10 @@ export function PlaybackDriver() {
     const unsub = usePlayback.subscribe((s, prev) => {
       if (prev.source && !s.source) {
         if (prev.source === 'route') useRover.getState().stop()
+        if (prev.ai) {
+          stopAiDrive()
+          useDriver.setState({ phase: 'idle', summary: null })
+        }
         watchCtx.current = null
         agentLive.kind = 'rover'
       }
@@ -115,19 +126,42 @@ function driveRoute(ctx: RouteCtx, pb: PB, a: Acc, dt: number) {
 
 function driveRun(ctx: RunCtx, pb: PB, a: Acc, dt: number) {
   const rep = useReplay.getState()
-  // the AI Lab panel's own play button takes over from the bar's: same intent, one clock
-  if (rep.playing) {
+  const live = ctx.live
+  if (live) {
+    // AI drive: convert the steps the policy has produced so far, keep the bar's length and markers current
+    const t = live.track
+    while (live.filled < t.count) {
+      const i = live.filled
+      const w = cellToWorld(live.grid, t.rows[i]! * live.grid.n + t.cols[i]!)
+      ctx.x[i] = w.x
+      ctx.z[i] = w.z
+      live.filled++
+    }
+    ctx.last = live.filled - 1
+    const sig = ctx.last + (t.done ? 0.5 : 0)
+    if (sig !== a.count && a.store >= TICK_S) {
+      a.store = 0
+      a.count = sig
+      usePlayback.setState({ duration: Math.max(1, ctx.last), events: liveEvents(t, useDriver.getState().summary) })
+    }
+  } else if (rep.playing) {
+    // the AI Lab panel's own play button takes over from the bar's: same intent, one clock
     rep.setPlaying(false)
     pb.play()
   }
   if (a.nonce !== pb.seekNonce) {
     a.nonce = pb.seekNonce
     ctx.step = Math.min(ctx.last, Math.max(0, pb.t))
-    rep.setStep(ctx.step)
+    if (!live) rep.setStep(ctx.step)
+  }
+  if (ctx.last < 1) {
+    agentLive.x = ctx.x[0]!
+    agentLive.z = ctx.z[0]!
+    return
   }
   if (usePlayback.getState().playing) {
-    ctx.step = Math.min(ctx.last, ctx.step + dt * RUN_RATE * pb.speed)
-    if (ctx.step >= ctx.last) pb.finish()
+    ctx.step = Math.min(ctx.last, ctx.step + dt * (live ? DRIVE_RATE : RUN_RATE) * pb.speed)
+    if (ctx.step >= ctx.last && (!live || live.track.done)) pb.finish()
   }
   const i = Math.min(ctx.last - 1, Math.floor(ctx.step))
   const f = ctx.step - i
@@ -142,13 +176,19 @@ function driveRun(ctx: RunCtx, pb: PB, a: Acc, dt: number) {
   if (Math.hypot(dx, dz) > 0.5) ctx.yaw = lerpAngle(ctx.yaw, Math.atan2(dz, dx), 1 - Math.exp(-6 * dt))
   agentLive.yaw = ctx.yaw
   agentLive.ready = true
+  if (live) {
+    // the rover or astronaut model stands where the policy has taken it
+    roverLive.x = agentLive.x
+    roverLive.z = agentLive.z
+    roverLive.yaw = ctx.yaw
+  }
   a.tick += dt
   a.store += dt
   if (a.tick >= TICK_S) {
     a.tick = 0
     pb.tick(ctx.step)
   }
-  if (a.store >= 1 / 15) {
+  if (!live && a.store >= 1 / 15) {
     a.store = 0
     rep.setStep(ctx.step)
   }
