@@ -1,6 +1,8 @@
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useMemo, useRef } from 'react'
-import { CylinderGeometry, Group, Matrix4, MeshStandardMaterial, Quaternion, Vector3 } from 'three'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { CylinderGeometry, Group, Matrix4, Mesh, MeshStandardMaterial, Quaternion, Vector3, type Object3D } from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import type { Heightfield } from '@/core/terrain/heightfield'
 import { PathFollower } from '@/core/rover/path-follower'
 import { roverPose } from '@/core/rover/pose'
@@ -9,6 +11,39 @@ import { roverLive, useRover } from '@/store/rover'
 const WHEEL_R = 0.26
 const WHEEL_X = 1.0
 const WHEEL_Z = [-1.0, 0.0, 1.0]
+
+/** NASA/JPL-Caltech Perseverance model (NASA 3D Resources), simplified and meshopt-compressed to ~1 MB: see public/models/CREDITS.txt. */
+const MODEL_URL = `${import.meta.env.BASE_URL}models/perseverance.glb`
+/** the model's nose points to +z in its own axes; the rover rig drives towards -z */
+const MODEL_YAW = Math.PI
+
+/** Loads the Perseverance GLB once; null while loading or if it fails (the procedural rover stays on screen). */
+function usePerseveranceModel(): Object3D | null {
+  const [model, setModel] = useState<Object3D | null>(null)
+  useEffect(() => {
+    let live = true
+    const loader = new GLTFLoader()
+    loader.setMeshoptDecoder(MeshoptDecoder)
+    loader.load(
+      MODEL_URL,
+      (gltf) => {
+        gltf.scene.traverse((o) => {
+          if (o instanceof Mesh) {
+            o.castShadow = true
+            o.receiveShadow = true
+          }
+        })
+        if (live) setModel(gltf.scene)
+      },
+      undefined,
+      (e) => console.warn('Perseverance model failed to load, using the placeholder', e),
+    )
+    return () => {
+      live = false
+    }
+  }, [])
+  return model
+}
 
 /** Finds a gentle, central spot to park the rover (lowest slope within 160 m of the centre). */
 export function findSpawn(hf: Heightfield): { x: number; z: number } {
@@ -32,7 +67,7 @@ const _right = new Vector3()
 const _up = new Vector3()
 const _back = new Vector3()
 
-/** Procedural rover placeholder (chassis, deck, mast, RTG, six wheels). The NASA GLB replaces it later. */
+/** Rover: the NASA Perseverance model once loaded; until then (or if it fails) a procedural placeholder (chassis, mast, RTG, six wheels). */
 export function Rover({ hf }: { hf: Heightfield }) {
   const root = useRef<Group>(null)
   const wheels = useRef<Group[]>([])
@@ -40,6 +75,7 @@ export function Rover({ hf }: { hf: Heightfield }) {
   const quat = useRef(new Quaternion())
   const first = useRef(true)
   const route = useRover((s) => s.route)
+  const model = usePerseveranceModel()
 
   const mats = useMemo(
     () => ({
@@ -99,7 +135,7 @@ export function Rover({ hf }: { hf: Heightfield }) {
     } else quat.current.slerp(_q, 1 - Math.exp(-dt * 8))
     g.quaternion.copy(quat.current)
     g.position.set(pose.position.x, pose.position.y + WHEEL_R, pose.position.z)
-    for (const w of wheels.current) if (w) w.rotation.x -= (moving * dt) / WHEEL_R
+    if (!model) for (const w of wheels.current) if (w) w.rotation.x -= (moving * dt) / WHEEL_R
   })
 
   const setWheel = (i: number) => (el: Group | null) => {
@@ -108,6 +144,8 @@ export function Rover({ hf }: { hf: Heightfield }) {
 
   return (
     <group ref={root} name="rover">
+      {model && <primitive object={model} position={[0, -WHEEL_R, 0]} rotation={[0, MODEL_YAW, 0]} />}
+      <group visible={!model}>
       {/* chassis (warm electronics box) and deck */}
       <mesh castShadow material={mats.body} position={[0, 0.62, 0]}>
         <boxGeometry args={[1.5, 0.5, 2.3]} />
@@ -141,6 +179,7 @@ export function Rover({ hf }: { hf: Heightfield }) {
           </group>
         )),
       )}
+      </group>
     </group>
   )
 }

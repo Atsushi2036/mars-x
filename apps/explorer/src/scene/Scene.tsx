@@ -16,7 +16,7 @@ import { Sky } from './Sky'
 import { Sun } from './Sun'
 import { sunLive, useApp } from '@/store/app'
 import { disposeMissionPlanner } from '@/store/mission'
-import { cameraRig, useCamera } from '@/store/camera'
+import { cameraRig, focusBounds, useCamera } from '@/store/camera'
 import { roverLive } from '@/store/rover'
 
 declare global {
@@ -105,10 +105,8 @@ function Probes({ ds }: { ds: Dataset }) {
   const gl = useThree((s) => s.gl)
   useEffect(() => {
     window.__marsx = { ready: false, fps: 0, frameCount: 0, chunks: 0, triangles: 0, mode: 'orbit', drawCalls: 0, renderedTriangles: 0, geometries: 0, textures: 0 }
-    // test hook: re-centres the orbit target on a world position (x east, z south)
-    window.__marsx.jumpTo = (x, z) => {
-      cameraRig.jumpTo = { x, z }
-    }
+    // test hook: frames a 60 m box around a world position (x east, z south) with the orbit camera
+    window.__marsx.jumpTo = (x, z) => focusBounds({ minX: x - 30, maxX: x + 30, minZ: z - 30, maxZ: z + 30 })
     return () => {
       delete window.__marsx
       disposeMissionPlanner()

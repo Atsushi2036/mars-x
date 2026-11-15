@@ -1,0 +1,5 @@
+perseverance.glb
+3D model: NASA/JPL-Caltech (Mars 2020 Perseverance Rover), from the NASA 3D Resources collection
+https://github.com/nasa/NASA-3D-Resources (assets are free and without copyright per the collection's README).
+Modified by MARS-X: geometry simplified, textures resized to 512 px WebP, meshopt-compressed (gltf-transform 4.5.1).
+Not affiliated with or endorsed by NASA, JPL or Caltech.

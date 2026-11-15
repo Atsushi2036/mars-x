@@ -71,6 +71,12 @@ export function DataPanel() {
         </ul>
       </Section>
 
+      <Section title="Rover model">
+        <p className="text-xs leading-5 text-muted-foreground">
+          3D model: NASA/JPL-Caltech (Mars 2020 Perseverance, NASA 3D Resources), simplified for the web.
+        </p>
+      </Section>
+
       <Section title="Notice">
         <p className="text-xs leading-5 text-muted-foreground">
           Not affiliated with or endorsed by NASA, JPL or Caltech. Imagery colours are a false-colour tint of a single monochrome band.

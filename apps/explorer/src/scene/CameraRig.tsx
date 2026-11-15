@@ -1,7 +1,7 @@
 import { OrbitControls } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef, type ComponentRef } from 'react'
-import { Vector3 } from 'three'
+import { Vector3, type PerspectiveCamera } from 'three'
 import type { Heightfield } from '@/core/terrain/heightfield'
 import { cameraRig, FPV, useCamera } from '@/store/camera'
 import { roverLive } from '@/store/rover'
@@ -170,6 +170,25 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
     }
 
     if (c) c.enabled = mode === 'orbit'
+
+    // focusBounds(): centre the orbit target on the box and back off until it fits
+    if (cameraRig.focusRequest && mode === 'orbit' && c) {
+      const b = cameraRig.focusRequest
+      cameraRig.focusRequest = null
+      const cx = clampX((b.minX + b.maxX) / 2)
+      const cz = clampZ((b.minZ + b.maxZ) / 2)
+      const radius = Math.max(12, Math.hypot(b.maxX - b.minX, b.maxZ - b.minZ) / 2)
+      const persp = camera as PerspectiveCamera
+      const halfV = (persp.fov * Math.PI) / 360
+      const halfH = Math.atan(Math.tan(halfV) * persp.aspect)
+      const dist = Math.min(half * 2.2, Math.max(30, (radius * 1.25) / Math.sin(Math.min(halfV, halfH))))
+      const az = Math.atan2(camera.position.z - c.target.z, camera.position.x - c.target.x)
+      const pitch = (50 * Math.PI) / 180
+      const ty = hf.sampleHeight(cx, cz)
+      c.target.set(cx, ty, cz)
+      camera.position.set(cx + Math.cos(az) * Math.cos(pitch) * dist, ty + Math.sin(pitch) * dist, cz + Math.sin(az) * Math.cos(pitch) * dist)
+      c.update()
+    }
 
     // ---- per mode -----------------------------------------------------------------------------
     if (mode === 'orbit' && c) {
