@@ -78,26 +78,42 @@ export const SCENARIOS = {
   train: async (page, vp, _theme, shot) => {
     await openMode(page, vp, 'Test your AI', 'Test AI')
     const cv = page.locator('canvas[aria-label^="Learning grid"]')
+    // the 3D scene makes full-page screenshots slow, so the instant states (banner, hazard cross) are read straight from the 2D canvas
+    const grab = async (name, cond, tries = 400) => {
+      for (let i = 0; i < tries; i++) {
+        const url = await page.evaluate((c) => {
+          const el = document.querySelector('canvas[data-banner]')
+          if (!el) return null
+          const hit = c === 'goal' ? (el.dataset.banner || '').includes('Goal') : c === 'timeout' ? (el.dataset.banner || '').includes('Out of time') : (el.dataset.tones || '').includes('hazard')
+          return hit ? el.toDataURL('image/png') : null
+        }, cond)
+        if (url) {
+          fs.mkdirSync(path.join(out, 'train'), { recursive: true })
+          fs.writeFileSync(path.join(out, 'train', name + '__' + vp + '__' + _theme + '.png'), Buffer.from(url.split(',')[1], 'base64'))
+          return true
+        }
+        await page.waitForTimeout(40)
+      }
+      return false
+    }
     const snap = async (n) => {
       await scrollPanel(page, 0)
       await shot(n)
     }
     await cv.scrollIntoViewIfNeeded()
     await snap('0-before')
-    await page.getByRole('button', { name: 'Train', exact: true }).click()
-    // 1. Fast: agent wandering, floating numbers
-    await page.waitForTimeout(3500)
-    await cv.scrollIntoViewIfNeeded()
-    await snap('1-fast-wandering')
-    // 2. Slow: agent half way, then a hazard (bump) and the timeout banner
+    // 1. Slow from the very first episode: an untrained agent wanders, bumps into walls and runs out of time
     await page.getByRole('radio', { name: 'Slow' }).click()
-    const seen = new Set()
-    for (let i = 0; i < 80 && seen.size < 2; i++) {
-      await page.waitForTimeout(250)
-      const b = await cv.getAttribute('data-banner')
-      if (!seen.has('mid') && i === 6) { seen.add('mid'); await snap('2-slow-mid-episode') }
-      if (b && !seen.has(b.split(' ')[0])) { seen.add(b.split(' ')[0]); await snap('3-banner-' + b.split(' ')[0].replace(/[^a-z]/gi, '')) }
-    }
+    await page.getByRole('button', { name: 'Train', exact: true }).click()
+    await page.waitForTimeout(2500)
+    await snap('1-slow-mid-episode')
+    await grab('3-hazard-cross', 'hazard', 300)
+    await grab('3-out-of-time', 'timeout', 400)
+    // 1b. Fast: batches, only 1 of N episodes is animated
+    await page.getByRole('radio', { name: 'Fast' }).click()
+    await page.waitForTimeout(3000)
+    await snap('2-fast')
+    await page.getByRole('radio', { name: 'Slow' }).click()
     // 2b. the same episode in 3D with a ghost rover on the real terrain, camera framed on the learning area
     await page.getByRole('switch', { name: 'Show in 3D' }).click()
     await page.getByRole('button', { name: 'Follow the learner' }).click()
@@ -121,7 +137,7 @@ export const SCENARIOS = {
     for (let i = 0; i < 120; i++) {
       await page.waitForTimeout(250)
       const b = await cv.getAttribute('data-banner')
-      if (b && b.includes('Goal')) { await snap('6-goal-reached'); break }
+      if (b && b.includes('Goal')) { await grab('6-goal-reached', 'goal', 40); await shot('6-goal-reached-page'); break }
     }
     await page.waitForTimeout(500)
   },

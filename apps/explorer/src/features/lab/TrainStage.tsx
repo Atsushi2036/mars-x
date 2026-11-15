@@ -260,8 +260,10 @@ export function TrainStage({
               g.lineTo(fx - 7, fy + 7)
               g.stroke()
             }
-            const ty = Math.max(16, fy - 18 - fl.age * 40)
-            const tx = Math.min(cv.width - 40, Math.max(40, fx + (fl.step % 2 ? 18 : -18)))
+            // near the top edge the number goes below the cell; it never leaves the canvas sideways
+            const ty = fy < 50 ? fy + 26 + fl.age * 40 : fy - 18 - fl.age * 40
+            const half = g.measureText(fl.text).width / 2 + 8
+            const tx = Math.min(cv.width - half, Math.max(half, fx + (fl.step % 2 ? 18 : -18)))
             g.lineWidth = 5
             g.strokeStyle = p.dark ? 'rgba(8,11,16,0.9)' : 'rgba(255,255,255,0.95)'
             g.strokeText(fl.text, tx, ty)
@@ -276,12 +278,15 @@ export function TrainStage({
           g.font = '700 34px Geist Variable, system-ui, sans-serif'
           g.lineWidth = 7
           g.strokeStyle = p.dark ? 'rgba(8,11,16,0.92)' : 'rgba(255,255,255,0.95)'
-          g.strokeText(f.banner, cv.width / 2, 40)
+          const by = y < cv.height / 2 ? cv.height - 40 : 40 // opposite side of the agent, so it never hides it
+          g.strokeText(f.banner, cv.width / 2, by)
           g.fillStyle = col
-          g.fillText(f.banner, cv.width / 2, 40)
+          g.fillText(f.banner, cv.width / 2, by)
         }
         const b = f.flash && f.flash.age < 1 ? f.banner ?? '' : ''
         if (cv.dataset.banner !== b) cv.dataset.banner = b // read by the capture harness
+        const tones = f.floaters.map((x) => x.tone).join(',')
+        if (cv.dataset.tones !== tones) cv.dataset.tones = tones
         if (f.done && !finished.current) {
           finished.current = true
           live.current.onPlaybackDone()

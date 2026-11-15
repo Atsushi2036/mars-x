@@ -13,26 +13,22 @@ const SPEEDS: Array<{ id: WatchSpeed; label: string }> = [
   { id: 'turbo', label: 'Turbo' },
 ]
 
-/** "Watch training" switch and its speed. Off = train at full speed with no animation. */
+/** "Watch training" switch and its speed on one row. Off = train at full speed with no animation. */
 export function WatchSwitch({ on, onChange, speed, onSpeed }: { on: boolean; onChange: (v: boolean) => void; speed: WatchSpeed; onSpeed: (s: WatchSpeed) => void }) {
   return (
-    <div className="space-y-2.5">
-      <div className="flex items-center justify-between gap-3">
-        <label htmlFor="watch-training" className="flex items-center gap-2 text-sm font-medium">
-          <Eye className="size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
-          Watch training
-        </label>
-        <Switch id="watch-training" checked={on} onCheckedChange={onChange} />
-      </div>
-      {on && (
-        <ToggleGroup type="single" value={speed} onValueChange={(v) => v && onSpeed(v as WatchSpeed)} variant="outline" spacing={0} className="w-full" aria-label="Watch speed">
-          {SPEEDS.map((s) => (
-            <ToggleGroupItem key={s.id} value={s.id} className="h-10 flex-1 text-sm data-[state=on]:bg-primary! data-[state=on]:text-primary-foreground!">
-              {s.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      )}
+    <div className="flex items-center gap-3">
+      <label htmlFor="watch-training" className="flex shrink-0 items-center gap-1.5 text-sm font-medium">
+        <Eye className="size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+        Watch
+      </label>
+      <Switch id="watch-training" aria-label="Watch training" checked={on} onCheckedChange={onChange} />
+      <ToggleGroup type="single" value={speed} onValueChange={(v) => v && onSpeed(v as WatchSpeed)} variant="outline" spacing={0} className="min-w-0 flex-1" aria-label="Watch speed" disabled={!on}>
+        {SPEEDS.map((s) => (
+          <ToggleGroupItem key={s.id} value={s.id} className="h-10 flex-1 px-1 text-sm data-[state=on]:bg-primary! data-[state=on]:text-primary-foreground!">
+            {s.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
     </div>
   )
 }

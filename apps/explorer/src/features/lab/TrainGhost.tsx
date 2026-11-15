@@ -52,7 +52,7 @@ export default function TrainGhost() {
     const q = pts[Math.min(pts.length - 1, idx + 1)]!
     g.position.copy(p)
     if (!q.equals(p)) g.rotation.y = Math.atan2(q.x - p.x, q.z - p.z)
-    g.scale.setScalar(Math.max(1, camera.position.distanceTo(p) * 0.01))
+    g.scale.setScalar(Math.max(1, camera.position.distanceTo(p) * 0.016))
     const now = performance.now()
     if (now - lastReport.current > 160) {
       lastReport.current = now
@@ -87,7 +87,7 @@ export default function TrainGhost() {
         {/* ghost rover: translucent body, mast and six wheels */}
         <mesh position={[0, 0.9, 0]} renderOrder={7}>
           <boxGeometry args={[1.8, 0.8, 2.8]} />
-          <meshBasicMaterial color="#ffb81f" transparent opacity={0.55} depthTest={false} />
+          <meshBasicMaterial color="#ffb81f" transparent opacity={0.8} depthTest={false} />
         </mesh>
         <mesh position={[0.4, 1.9, 0.9]} renderOrder={7}>
           <boxGeometry args={[0.35, 1.4, 0.35]} />

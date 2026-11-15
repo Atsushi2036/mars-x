@@ -168,15 +168,7 @@ export function QLab() {
 
   return (
     <div>
-      <PanelSection
-        title="Q-learning, live"
-        action={
-          <Learn title="What this shows">
-            <p>Tabular Q-learning on a downsampled grid. A* plans on the known map and is optimal on it, so on a known map the learner can only match A*, not beat it.</p>
-            <p>Learning pays off when the map is unknown, which is what the benchmark levels L2 and L3 test.</p>
-          </Learn>
-        }
-      >
+      <PanelSection>
         {layersStatus === 'error' && (
           <Alert variant="destructive" role="alert">
             <CircleAlert />
@@ -238,8 +230,9 @@ export function QLab() {
             <ViewSwitch view={view} onView={setView} />
             <p className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
               <span>{shown.endpoints === 'mission' ? 'Your origin and destination.' : 'Default endpoints; set yours in Plan a route.'}</span>
-              <span className="shrink-0 tabular-nums">
+              <span className="flex shrink-0 items-center gap-1 tabular-nums">
                 {shown.cols}×{shown.rows} · {fmtNum(shown.cellM, 0)} m
+                <Learn title="What this shows"> <p>Tabular Q-learning on a downsampled grid. A* plans on the known map and is optimal on it, so on a known map the learner can only match A*, not beat it.</p> <p>Learning pays off when the map is unknown, which is what the benchmark levels L2 and L3 test.</p> </Learn>
               </span>
             </p>
           </div>
