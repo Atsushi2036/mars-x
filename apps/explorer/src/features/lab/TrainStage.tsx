@@ -261,7 +261,8 @@ export function TrainStage({
               g.stroke()
             }
             // near the top edge the number goes below the cell; it never leaves the canvas sideways
-            const ty = fy < 50 ? fy + 26 + fl.age * 40 : fy - 18 - fl.age * 40
+            const stagger = (fl.step % 2) * 24 // consecutive numbers on the same cell sit on two rows
+            const ty = fy < 50 ? fy + 26 + fl.age * 40 + stagger : fy - 18 - fl.age * 40 - stagger
             const half = g.measureText(fl.text).width / 2 + 8
             const tx = Math.min(cv.width - half, Math.max(half, fx + (fl.step % 2 ? 18 : -18)))
             g.lineWidth = 5
@@ -311,5 +312,5 @@ export function TrainStage({
     wake.current()
   }, [sample])
 
-  return <canvas ref={ref} role="img" aria-label={label} className="mx-auto block aspect-square w-full rounded-xl border border-border md:max-w-[300px]" />
+  return <canvas ref={ref} role="img" aria-label={label} className="mx-auto block aspect-square w-full rounded-xl border border-border max-w-[250px] md:max-w-[300px]" />
 }
