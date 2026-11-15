@@ -3,6 +3,7 @@ import layout from '../../../../packages/schemas/obs-v1.layout.json'
 import policyExample from '../../../../packages/schemas/examples/policy.example.json'
 import runExample from '../../../../packages/schemas/examples/run.example.json'
 import realRun from '../../../../packages/schemas/examples/run.real-l1-astar.json'
+import guidedRun from '../../../../bench/jezero-v1/baselines/example.run.json'
 import { ACTIONS, OBS_BLOCKS, OBS_DIM, PATCH_K, decodeTrajectory, halfToFloat, policyCardSchema, runSchema } from './contracts'
 
 describe('contracts mirror the Python models', () => {
@@ -46,5 +47,13 @@ describe('contracts mirror the Python models', () => {
     expect(runSchema.safeParse(bad).success).toBe(false)
     const t = await decodeTrajectory(runSchema.parse(realRun).episodes[0]!.trajectory!)
     expect(t.row.length).toBe(realRun.episodes[0]!.steps + 1)
+  })
+
+  it('accepts the guided-mission example run (A*-replan, L2 test split) with its speAlert events', () => {
+    const r = runSchema.parse(guidedRun)
+    expect(r.suite.level).toBe('L2')
+    expect(r.episodes.length).toBe(800)
+    expect(r.episodes.every((e) => Number.isSafeInteger(e.seed))).toBe(true)
+    expect(r.episodes.some((e) => e.events.some((ev) => ev.type === 'speAlert'))).toBe(true)
   })
 })
