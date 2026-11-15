@@ -272,6 +272,9 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
         const gz = camera.position.z + dir.z * 40
         c.target.set(gx, hf.sampleHeight(gx, gz), gz)
         c.update()
+        // coming back from Walk or Follow: rise to a readable view above the spot (the rover when following it)
+        const from = prevMode.current === 'chase' ? agent : prevMode.current === 'fpv' ? { x: f.x, z: f.z } : null
+        if (from) flyTo({ x: from.x, z: from.z, dist: 90, pitch: 0.75 }, 900)
       }
       prevMode.current = mode
     }
