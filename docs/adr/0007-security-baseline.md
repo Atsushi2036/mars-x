@@ -15,3 +15,9 @@
 
 ## Accepted risks
 `style-src 'unsafe-inline'` (Radix), single-thread ONNX (no COEP).
+
+## Amendment (2026-11-14): `connect-src 'self' blob:` on the page CSP
+- Cause: three.js `GLTFLoader` (r187) decodes embedded GLB textures with `ImageBitmapLoader`, which creates a `blob:` URL per image and reads it with `fetch()` (`GLTFLoader.js:3445`, `ImageBitmapLoader.js:175`); under `connect-src 'self'` the rover rendered untextured with CSP violations.
+- Decision (security-senior): add exactly `blob:` to `connect-src` of the page policy — no `data:`, `https:` or wildcards. `blob:` is not network egress and a document can only read blobs created by its own origin, so no exfiltration or third-party contact is opened. Residual risk: negligible (accepted).
+- The ONNX policy worker keeps its own CSP with `connect-src 'none'` (no `blob:`).
+- Preferred follow-up after the hackathon: externalise GLB textures with gltf-transform (same-origin `.webp`) and remove `blob:` again.
