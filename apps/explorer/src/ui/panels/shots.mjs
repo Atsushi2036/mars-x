@@ -125,14 +125,6 @@ export const SCENARIOS = {
     await page.waitForTimeout(3000)
     await snap('2-fast')
     await page.getByRole('radio', { name: 'Slow' }).click()
-    // 2b. the same episode in 3D with a ghost rover on the real terrain, camera framed on the learning area
-    await page.getByRole('switch', { name: 'Show in 3D' }).click()
-    await page.getByRole('button', { name: 'Follow the learner' }).click()
-    await page.waitForTimeout(2500)
-    await snap('7-3d-ghost')
-    await page.waitForTimeout(1500)
-    await snap('7b-3d-ghost')
-    await page.getByRole('switch', { name: 'Show in 3D' }).click()
     // 3. learn for a while at Turbo, then show what it learned
     await page.getByRole('radio', { name: 'Turbo' }).click()
     await page.waitForTimeout(25000)
@@ -151,6 +143,25 @@ export const SCENARIOS = {
       if (b && b.includes('Goal')) { await grab('6-goal-reached', 'goal', 40); await shot('6-goal-reached-page'); break }
     }
     await page.waitForTimeout(500)
+    // 5. the same episodes in 3D: a ghost rover on the real terrain, camera framed on the learning area
+    await page.getByRole('radio', { name: 'Slow' }).click()
+    await page.getByRole('switch', { name: 'Show in 3D' }).click()
+    if (vp === 'mobile') {
+      // lower the sheet to half height so the terrain above it is what "Follow the learner" frames
+      const hb = await page.getByRole('button', { name: /Expand panel|Collapse panel/ }).first().boundingBox()
+      if (hb) {
+        await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(hb.x + hb.width / 2, hb.y + 220, { steps: 6 })
+        await page.mouse.up()
+        await page.waitForTimeout(600)
+      }
+    }
+    await page.getByRole('button', { name: 'Follow the learner' }).click()
+    await page.waitForTimeout(2500)
+    await shot('7-3d-ghost')
+    await page.waitForTimeout(1500)
+    await shot('7b-3d-ghost')
   },
   'lab-byo': async (page, vp) => {
     await openMode(page, vp, 'Test your AI', 'Test AI')
