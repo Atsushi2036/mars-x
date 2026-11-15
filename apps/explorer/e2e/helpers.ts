@@ -47,6 +47,8 @@ export async function open(page: Page, theme: Theme = 'dark', extraQuery = '') {
   }, theme)
   await page.goto(`/${extraQuery ? (QUERY ? QUERY + '&' : '?') + extraQuery : QUERY}`, { waitUntil: 'domcontentloaded' })
   await page.waitForFunction(() => window.__marsx?.ready === true, null, { timeout: 300_000 })
+  // the loading screen zooms out for about a second after ready: wait for it to leave so it never sits over what a test looks at
+  await page.locator('[data-progress]').waitFor({ state: 'detached', timeout: 60_000 }).catch(() => {})
 }
 
 /** The onboarding card sits over the canvas; dismiss it for tests that click the terrain. */

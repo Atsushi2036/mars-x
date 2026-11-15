@@ -8,11 +8,12 @@ import { useMission, type MissionProfile } from '@/store/mission'
 import { ROVER_REAL_SPEED } from '@/store/watch'
 import { beginJourney } from './journey'
 import { DriverPicker } from '../nav/DriverPicker'
-import { AstronautIcon, CircleAlert, Play, RoverIcon, type LucideIcon } from '../icons'
+import { setDriveMode, useDriver, GUIDED_SPACING_M, type DriveMode } from '@/store/driver'
+import { AstronautIcon, CircleAlert, Flag, Play, Route, RoverIcon, type LucideIcon } from '../icons'
 import { Segmented, StatCard } from '../kit'
 import { MarswalkSetup } from '../panels/MarswalkPanel'
 import { WizardStepper } from './PlanWizard'
-import { missionTimeParts } from './machine'
+import { driverSummary, missionTimeParts } from './machine'
 import { useWizard } from './store'
 
 const PROFILE_LABEL: Record<MissionProfile, string> = { astronaut: 'Astronaut', 'rover-rtg': 'Rover RTG', 'rover-solar': 'Rover solar' }
@@ -36,7 +37,6 @@ function Who() {
   const setProfile = useMission((s) => s.setProfile)
   const limit = useMission((s) => s.astronautSlopeLimit)
   const dispatch = useWizard((s) => s.dispatch)
-  const { outcome, planning } = useOutcome()
   return (
     <>
       <div className="space-y-4 px-4 py-4 max-md:px-3.5">
@@ -52,9 +52,57 @@ function Who() {
             sub: `Limit ${id === 'astronaut' ? limit : PROFILES[id].maxSlope}°`,
           }))}
         />
-        <p className="min-h-6 text-sm text-muted-foreground" role="status">
-          {planning && !outcome ? 'Planning the route…' : outcome?.status === 'ok' ? `Route ready: ${fmtInt(outcome.stats.lengthM)} m` : outcome ? 'No safe route for this profile' : ''}
-        </p>
+      </div>
+      <Actions>
+        <Button variant="outline" className="h-12 flex-1" onClick={() => dispatch({ type: 'back' })}>
+          Back
+        </Button>
+        <Button className="h-12 flex-[2] text-base" onClick={() => dispatch({ type: 'next' })}>
+          Continue
+        </Button>
+      </Actions>
+    </>
+  )
+}
+
+function Driver() {
+  const dispatch = useWizard((s) => s.dispatch)
+  return (
+    <>
+      <div className="space-y-3 px-4 py-4 max-md:px-3.5">
+        <p className="text-lg font-semibold">Who drives?</p>
+        <DriverPicker part="drivers" />
+      </div>
+      <Actions>
+        <Button variant="outline" className="h-12 flex-1" onClick={() => dispatch({ type: 'back' })}>
+          Back
+        </Button>
+        <Button className="h-12 flex-[2] text-base" onClick={() => dispatch({ type: 'next' })}>
+          Continue
+        </Button>
+      </Actions>
+    </>
+  )
+}
+
+/** Only for an AI driver: follow the planned waypoints, or find its own way to the goal. */
+function How() {
+  const dispatch = useWizard((s) => s.dispatch)
+  const mode = useDriver((s) => s.mode)
+  return (
+    <>
+      <div className="space-y-3 px-4 py-4 max-md:px-3.5">
+        <p className="text-lg font-semibold">How does it drive?</p>
+        <Segmented<DriveMode>
+          label="How the AI drives"
+          columns={2}
+          value={mode}
+          onChange={setDriveMode}
+          options={[
+            { value: 'guided', label: 'Guided', sub: `Follows the planned route's waypoints (every ~${GUIDED_SPACING_M} m)`, icon: Route },
+            { value: 'free', label: 'Free', sub: 'You only set the goal; the AI finds its own way', icon: Flag },
+          ]}
+        />
       </div>
       <Actions>
         <Button variant="outline" className="h-12 flex-1" onClick={() => dispatch({ type: 'back' })}>
@@ -101,6 +149,10 @@ function Review() {
   // mission time is the real one (distance over the real speed), not the sped-up playback
   const speed = profile === 'astronaut' ? walkSpeed : ROVER_REAL_SPEED
   const missionTime = missionTimeParts(ok ? ok.stats.lengthM / speed : 0)
+  const driverKind = useDriver((s) => s.kind)
+  const driveMode = useDriver((s) => s.mode)
+  const catalog = useDriver((s) => s.catalog)
+  const summary = driverSummary(driverKind, driveMode, PROFILE_LABEL[profile], catalog)
   const go = () => {
     if (!ok || !beginJourney()) return
     dispatch({ type: 'go' })
@@ -130,8 +182,15 @@ function Review() {
             <AlertDescription>{outcome.message}</AlertDescription>
           </Alert>
         )}
-        <p className="text-sm text-muted-foreground">{PROFILE_LABEL[profile]} · you will see the journey through its eyes.</p>
-        {ok && <DriverPicker />}
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'goto', step: 'driver' })}
+          className="w-full rounded-xl border border-border px-3 py-2.5 text-left text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`${summary}. Change the driver`}
+        >
+          <span className="block font-medium">{summary}</span>
+          <span className="block text-xs text-muted-foreground">Tap to change; your points stay</span>
+        </button>
       </div>
       <Actions>
         <Button variant="outline" className="h-12 flex-1" onClick={() => dispatch({ type: 'back' })}>
@@ -150,6 +209,7 @@ function Review() {
 export function WizardPanel() {
   const step = useWizard((s) => s.step)
   const dispatch = useWizard((s) => s.dispatch)
+  const free = useDriver((s) => s.kind !== 'astar' && s.mode === 'free')
   return (
     <div className="flex min-h-full flex-col">
       <div className="px-4 pt-3 max-md:px-3.5">
@@ -160,7 +220,7 @@ export function WizardPanel() {
           <p className="text-lg font-semibold">
             Tap the map to set <span className="text-brand">{step === 'start' ? 'START' : 'GOAL'}</span>
           </p>
-          <p className="text-sm text-muted-foreground">The panel stays here on desktop; on a phone it steps aside.</p>
+          <p className="text-sm text-muted-foreground">{free ? 'Free drive: the AI finds its own way.' : 'The planned route shows its waypoints.'}</p>
           <div className="flex gap-2">
             <Button variant="outline" className="h-11 flex-1" onClick={() => dispatch({ type: 'back' })}>
               {step === 'start' ? 'Cancel' : 'Back'}
@@ -169,6 +229,8 @@ export function WizardPanel() {
         </div>
       )}
       {step === 'who' && <Who />}
+      {step === 'driver' && <Driver />}
+      {step === 'how' && <How />}
       {step === 'options' && <Options />}
       {step === 'review' && <Review />}
     </div>

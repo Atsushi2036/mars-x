@@ -1,13 +1,15 @@
 /**
  * "Plan a route" wizard: a pure state machine (no React, no stores).
  *
- *   start -> goal -> who -> (options, astronaut only, skippable) -> review -> journey (Watch, minimal UI)
+ *   who -> driver -> (how, only for an AI driver) -> start -> goal -> (options, astronaut only) -> review -> journey
  *
- * Start and goal are map taps; the others are panel steps. Back walks the same line in reverse until the journey begins;
- * Exit from the journey returns to review. A step that was already done can be revisited with `goto`.
+ * Who travels and who drives come first, because they decide what the map taps mean: with the A* plan or a Guided AI the
+ * route and its waypoints are previewed; with a Free AI only the goal matters. Start and goal are map taps; the others are
+ * panel steps. Back walks the same line in reverse until the journey begins; Exit from the journey returns to review.
+ * A step already done can be revisited with `goto` without losing the points.
  */
 
-export type WizardStep = 'start' | 'goal' | 'who' | 'options' | 'review'
+export type WizardStep = 'who' | 'driver' | 'how' | 'start' | 'goal' | 'options' | 'review'
 export type WizardProfile = 'astronaut' | 'rover-rtg' | 'rover-solar'
 
 export interface WizardState {
@@ -21,13 +23,15 @@ export interface WizardCtx {
   hasOrigin: boolean
   hasDestination: boolean
   profile: WizardProfile
+  /** an AI (not the A* plan) drives: adds the "how it drives" step */
+  ai: boolean
 }
 
 export type WizardEvent =
   | { type: 'begin' }
   | { type: 'originPlaced' }
   | { type: 'destinationPlaced' }
-  /** both endpoints appeared at once (sample route, science stop, guided tour) */
+  /** both endpoints appeared at once (sample route, science stop, "keep A and B") */
   | { type: 'endpointsSet' }
   | { type: 'next' }
   | { type: 'skip' }
@@ -37,19 +41,19 @@ export type WizardEvent =
   | { type: 'go' }
   | { type: 'exit' }
 
-export const INITIAL: WizardState = { active: false, step: 'start', journey: false }
+export const INITIAL: WizardState = { active: false, step: 'who', journey: false }
 
-/** Steps shown in the stepper: Options only exists for the astronaut. */
-export function stepsFor(profile: WizardProfile): WizardStep[] {
-  return profile === 'astronaut' ? ['start', 'goal', 'who', 'options', 'review'] : ['start', 'goal', 'who', 'review']
+/** Steps shown in the stepper: How only exists for an AI, Options only for the astronaut. */
+export function stepsFor(ctx: Pick<WizardCtx, 'profile' | 'ai'>): WizardStep[] {
+  return ['who', 'driver', ...(ctx.ai ? (['how'] as const) : []), 'start', 'goal', ...(ctx.profile === 'astronaut' ? (['options'] as const) : []), 'review']
 }
 
-export const STEP_LABEL: Record<WizardStep, string> = { start: 'Start', goal: 'Goal', who: 'Who', options: 'Options', review: 'Review' }
+export const STEP_LABEL: Record<WizardStep, string> = { who: 'Who', driver: 'Driver', how: 'How', start: 'Start', goal: 'Goal', options: 'Options', review: 'Review' }
 
-/** A step can be opened when the data it needs exists (start always; goal needs a start; the rest need both). */
+/** A step can be opened when the data it needs exists (the first ones always; goal needs a start; the rest need both). */
 export function canGoto(step: WizardStep, ctx: WizardCtx): boolean {
-  if (!stepsFor(ctx.profile).includes(step)) return false
-  if (step === 'start') return true
+  if (!stepsFor(ctx).includes(step)) return false
+  if (step === 'who' || step === 'driver' || step === 'how' || step === 'start') return true
   if (step === 'goal') return ctx.hasOrigin
   return ctx.hasOrigin && ctx.hasDestination
 }
@@ -59,8 +63,11 @@ export function isPicking(s: WizardState): boolean {
   return s.active && !s.journey && (s.step === 'start' || s.step === 'goal')
 }
 
+/** What follows the goal: options for the astronaut, otherwise the review. */
+const afterGoal = (ctx: WizardCtx): WizardStep => (ctx.profile === 'astronaut' ? 'options' : 'review')
+
 export function reduce(s: WizardState, e: WizardEvent, ctx: WizardCtx): WizardState {
-  if (e.type === 'begin') return { active: true, step: 'start', journey: false }
+  if (e.type === 'begin') return { active: true, step: 'who', journey: false }
   if (!s.active) return s
   if (e.type === 'cancel') return INITIAL
   if (s.journey) {
@@ -71,27 +78,33 @@ export function reduce(s: WizardState, e: WizardEvent, ctx: WizardCtx): WizardSt
     case 'originPlaced':
       return s.step === 'start' ? { ...s, step: 'goal' } : s
     case 'destinationPlaced':
-      return s.step === 'goal' ? { ...s, step: 'who' } : s
+      return s.step === 'goal' ? { ...s, step: afterGoal(ctx) } : s
     case 'endpointsSet':
-      return s.step === 'start' || s.step === 'goal' ? { ...s, step: 'who' } : s
+      return s.step === 'start' || s.step === 'goal' ? { ...s, step: afterGoal(ctx) } : s
     case 'next':
-      if (s.step === 'who') return { ...s, step: ctx.profile === 'astronaut' ? 'options' : 'review' }
+      if (s.step === 'who') return { ...s, step: 'driver' }
+      if (s.step === 'driver') return { ...s, step: ctx.ai ? 'how' : 'start' }
+      if (s.step === 'how') return { ...s, step: 'start' }
       if (s.step === 'options') return { ...s, step: 'review' }
       return s
     case 'skip':
       return s.step === 'options' ? { ...s, step: 'review' } : s
     case 'back':
       switch (s.step) {
-        case 'start':
+        case 'who':
           return INITIAL
+        case 'driver':
+          return { ...s, step: 'who' }
+        case 'how':
+          return { ...s, step: 'driver' }
+        case 'start':
+          return { ...s, step: ctx.ai ? 'how' : 'driver' }
         case 'goal':
           return { ...s, step: 'start' }
-        case 'who':
-          return { ...s, step: 'goal' }
         case 'options':
-          return { ...s, step: 'who' }
+          return { ...s, step: 'goal' }
         case 'review':
-          return { ...s, step: ctx.profile === 'astronaut' ? 'options' : 'who' }
+          return { ...s, step: ctx.profile === 'astronaut' ? 'options' : 'goal' }
       }
       return s
     case 'goto':
@@ -108,4 +121,16 @@ export function missionTimeParts(seconds: number): { value: string; unit: string
   const min = seconds / 60
   if (min < 90) return { value: String(Math.max(1, Math.round(min))), unit: 'min' }
   return { value: (min / 60).toFixed(1), unit: 'h' }
+}
+
+/** One line for Review: "Reference AI · Guided · Rover RTG" (A* plan has no mode). */
+export function driverSummary(kind: string, mode: 'guided' | 'free', profileLabel: string, catalog: readonly { id: string; kind: string; name: string }[] = []): string {
+  let who = 'A* plan'
+  if (kind === 'user') who = 'Your model'
+  else if (kind === 'reference') who = 'Reference AI'
+  else if (kind.startsWith('catalog:')) {
+    const e = catalog.find((m) => m.id === kind.slice(8))
+    who = e ? (e.kind === 'reference' ? 'Reference AI' : 'Example model') : 'AI model'
+  }
+  return [who, ...(kind === 'astar' ? [] : [mode === 'guided' ? 'Guided' : 'Free']), profileLabel].join(' · ')
 }

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useDriver } from '@/store/driver'
 import { useMission } from '@/store/mission'
 import { INITIAL, isPicking, reduce, type WizardCtx, type WizardEvent, type WizardState } from './machine'
 
@@ -8,7 +9,7 @@ interface WizardStore extends WizardState {
 
 function ctx(): WizardCtx {
   const m = useMission.getState()
-  return { hasOrigin: !!m.origin, hasDestination: !!m.destination, profile: m.profile }
+  return { hasOrigin: !!m.origin, hasDestination: !!m.destination, profile: m.profile, ai: useDriver.getState().kind !== 'astar' }
 }
 
 /** Plan-a-route wizard state (the transitions live in ./machine.ts). */

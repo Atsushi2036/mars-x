@@ -7,6 +7,7 @@ import { cameraRig, flyTo, useCamera } from '@/store/camera'
 import { useMission } from '@/store/mission'
 import { usePlayback } from '@/store/playback'
 import { Hand } from '../icons'
+import { useDriver } from '@/store/driver'
 import { canGoto, isPicking, stepsFor, STEP_LABEL, type WizardStep } from './machine'
 import { selectPicking, useWizard } from './store'
 
@@ -109,6 +110,12 @@ function useWizardSync() {
     if (picking && !isDesktop() && open) useApp.getState().setInspectorOpen(false)
   }, [picking, open, step])
 
+  // phones: the panel steps (who, driver, how, options, review) want the sheet at half height, not peeking
+  useEffect(() => {
+    if (!active || picking || journey || isDesktop()) return
+    if (useApp.getState().inspectorOpen && useApp.getState().sheetSnap === 'peek') useApp.getState().setSheetSnap('half')
+  }, [active, picking, journey, step])
+
   // overhead view once per picking step; back to the usual view when the panel steps come back
   useEffect(() => {
     if (picking) frameWholeTile()
@@ -147,9 +154,10 @@ export function WizardStepper({ className }: { className?: string }) {
   const origin = useMission((s) => s.origin)
   const destination = useMission((s) => s.destination)
   const dispatch = useWizard((s) => s.dispatch)
-  const steps = stepsFor(profile)
+  const ai = useDriver((s) => s.kind !== 'astar')
+  const ctx = { hasOrigin: !!origin, hasDestination: !!destination, profile, ai }
+  const steps = stepsFor(ctx)
   const cur = steps.indexOf(step)
-  const ctx = { hasOrigin: !!origin, hasDestination: !!destination, profile }
   return (
     <ol className={cn('flex items-center', className)} aria-label="Route steps">
       {steps.map((s: WizardStep, i) => {
@@ -189,6 +197,8 @@ function PickBanner() {
   const dispatch = useWizard((s) => s.dispatch)
   const destination = useMission((s) => s.destination)
   const notice = useMission((s) => s.placeNotice)
+  const origin = useMission((s) => s.origin)
+  const free = useDriver((s) => s.kind !== 'astar' && s.mode === 'free')
   const start = step === 'start'
   return (
     <div
@@ -206,6 +216,9 @@ function PickBanner() {
           Tap the map to set <span className="text-brand">{start ? 'START' : 'GOAL'}</span>
         </p>
       </div>
+      <p className="px-1 text-sm text-muted-foreground">
+        {free ? (start ? 'Free drive: you only set the two points.' : 'The AI finds its own way to the goal.') : 'The planned route shows its waypoints.'}
+      </p>
       {notice && (
         <p role="alert" className="rounded-lg bg-warning/15 px-3 py-2 text-sm font-medium text-foreground">
           {notice}
@@ -215,6 +228,11 @@ function PickBanner() {
         <Button variant="outline" className="h-11 flex-1" onClick={() => dispatch({ type: 'back' })}>
           {start ? 'Cancel' : 'Back'}
         </Button>
+        {start && origin && destination && (
+          <Button variant="secondary" className="h-11 flex-1" onClick={() => dispatch({ type: 'endpointsSet' })}>
+            Keep A and B
+          </Button>
+        )}
         {!start && destination && (
           <Button variant="secondary" className="h-11 flex-1" onClick={() => dispatch({ type: 'destinationPlaced' })}>
             Keep goal

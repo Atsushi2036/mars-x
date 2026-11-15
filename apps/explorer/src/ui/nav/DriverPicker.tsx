@@ -43,7 +43,7 @@ function useProbeReference(enabled: boolean) {
  * catalog model and "Your model" (the ONNX dropped in Test your AI), then how the AI drives (Guided or Free) and the distance warning.
  * An option that cannot be picked is disabled and says why. The canvas only keeps the Watch button.
  */
-export function DriverPicker({ className }: { className?: string }) {
+export function DriverPicker({ className, part = 'all' }: { className?: string; /** 'drivers': only the cards (the wizard asks how the AI drives in its own step) */ part?: 'all' | 'drivers' }) {
   const kind = useDriver((s) => s.kind)
   const mode = useDriver((s) => s.mode)
   const phase = useDriver((s) => s.phase)
@@ -85,7 +85,7 @@ export function DriverPicker({ className }: { className?: string }) {
   const rover = profile !== 'astronaut'
   return (
     <section aria-label="Who drives?" className={cn('space-y-2.5', className)}>
-      <h3 className="text-sm font-semibold">Who drives?</h3>
+      {part === 'all' && <h3 className="text-sm font-semibold">Who drives?</h3>}
       <div role="radiogroup" aria-label="Who drives?" className="grid grid-cols-2 gap-1.5">
         {options.map((o) => {
           const on = kind === o.kind
@@ -123,7 +123,7 @@ export function DriverPicker({ className }: { className?: string }) {
           .
         </p>
       )}
-      {ai && (
+      {ai && part === 'all' && (
         <div role="radiogroup" aria-label="How the AI drives" className="space-y-1.5">
           {MODES.map((m) => (
             <button

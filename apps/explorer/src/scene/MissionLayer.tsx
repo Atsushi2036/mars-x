@@ -9,6 +9,7 @@ import { useApp } from '@/store/app'
 import { useMission } from '@/store/mission'
 import { useCamera } from '@/store/camera'
 import { curveFor } from '@/core/rover/curve'
+import { GUIDED_SPACING_M, useDriver } from '@/store/driver'
 import { usePlayback } from '@/store/playback'
 import { isPicking } from '@/ui/wizard/machine'
 import { useWizard } from '@/ui/wizard/store'
@@ -148,7 +149,7 @@ const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia
  * Appearing draws it from the origin to the goal in 700 ms with a leading amber dot; reduced motion shows it at once.
  * The reveal runs on refs in the frame loop (no React state per frame).
  */
-function RouteLine({ path, hf }: { path: XZ[]; hf: Dataset['heightfield'] }) {
+function RouteLine({ path, hf, dim = false }: { path: XZ[]; hf: Dataset['heightfield']; dim?: boolean }) {
   const pts = useMemo(() => path.map((p) => new Vector3(p.x, hf.sampleHeight(p.x, p.z) + ROUTE_LIFT, p.z)), [path, hf])
   const cum = useMemo(() => {
     const c = [0]
@@ -193,8 +194,8 @@ function RouteLine({ path, hf }: { path: XZ[]; hf: Dataset['heightfield'] }) {
   })
   return (
     <>
-      <Line ref={casing as never} points={pts} color={ROUTE_CASING} lineWidth={7.5} transparent opacity={0.55} polygonOffset polygonOffsetFactor={-4} polygonOffsetUnits={-4} renderOrder={4} />
-      <Line ref={core as never} points={pts} color={ROUTE_CORE} lineWidth={4.5} transparent opacity={1} polygonOffset polygonOffsetFactor={-5} polygonOffsetUnits={-5} renderOrder={5} />
+      <Line ref={casing as never} points={pts} color={ROUTE_CASING} lineWidth={7.5} transparent opacity={dim ? 0.18 : 0.55} polygonOffset polygonOffsetFactor={-4} polygonOffsetUnits={-4} renderOrder={4} />
+      <Line ref={core as never} points={pts} color={ROUTE_CORE} lineWidth={dim ? 3 : 4.5} transparent opacity={dim ? 0.4 : 1} polygonOffset polygonOffsetFactor={-5} polygonOffsetUnits={-5} renderOrder={5} />
       <Line ref={done as never} points={pts} color={ROUTE_DONE} lineWidth={4.5} transparent opacity={1} polygonOffset polygonOffsetFactor={-6} polygonOffsetUnits={-6} renderOrder={6} />
       <group ref={head} visible={false} renderOrder={6}>
         <mesh>
@@ -210,6 +211,38 @@ function RouteLine({ path, hf }: { path: XZ[]; hf: Dataset['heightfield'] }) {
   )
 }
 
+/** Small dots every ~25 m along the planned route: the sub-goals a Guided AI drives from one to the next (constant screen size). */
+function Waypoints({ path, hf }: { path: XZ[]; hf: Dataset['heightfield'] }) {
+  const pts = useMemo(() => {
+    const out: XZ[] = []
+    let acc = 0
+    for (let i = 1; i < path.length; i++) {
+      acc += Math.hypot(path[i]!.x - path[i - 1]!.x, path[i]!.z - path[i - 1]!.z)
+      if (acc >= GUIDED_SPACING_M && i < path.length - 1) {
+        out.push(path[i]!)
+        acc = 0
+      }
+    }
+    return out
+  }, [path])
+  const group = useRef<Group>(null)
+  useFrame(({ camera }) => {
+    const g = group.current
+    if (!g) return
+    for (const m of g.children) m.scale.setScalar(Math.max(0.05, camera.position.distanceTo(m.position) * 0.0045))
+  })
+  return (
+    <group ref={group} renderOrder={6}>
+      {pts.map((p, i) => (
+        <mesh key={i} position={[p.x, hf.sampleHeight(p.x, p.z) + ROUTE_LIFT + 0.4, p.z]}>
+          <sphereGeometry args={[1, 10, 8]} />
+          <meshBasicMaterial color={AMBER} toneMapped={false} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 /** Origin/destination markers, click-to-place on the terrain, and the planned route. */
 export function MissionLayer({ ds }: { ds: Dataset }) {
   const hf = ds.heightfield
@@ -220,6 +253,8 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
   const profile = useMission((s) => s.profile)
   const walk = useMission((s) => s.walk)
   const outcome = outcomes[profile]
+  // a Free AI is told only the goal: the A* route is then a faint line for comparison, not a path to follow
+  const freeDrive = useDriver((s) => s.kind !== 'astar' && s.mode === 'free')
   const ray = useMemo(() => new Raycaster(), [])
 
   // click (not drag) on the terrain places the next endpoint while in Mission mode
@@ -299,7 +334,8 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
           <ShelterLimitMarker at={unsafe.boundary} hf={hf} />
         </>
       )}
-      {outcome && outcome.status === 'ok' && <RouteLine path={curveFor(outcome.path).pts} hf={hf} />}
+      {outcome && outcome.status === 'ok' && <RouteLine path={curveFor(outcome.path).pts} hf={hf} dim={freeDrive} />}
+      {outcome && outcome.status === 'ok' && !freeDrive && <Waypoints path={outcome.path} hf={hf} />}
     </>
   )
 }
