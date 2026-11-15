@@ -141,7 +141,7 @@ export default function GuidedCard() {
       role="region"
       aria-label="Guided mission"
       data-cover="top"
-      className="pointer-events-auto absolute inset-x-3 top-[3.25rem] z-40 rounded-xl border border-border bg-card/95 p-3 text-card-foreground shadow-lg backdrop-blur-md motion-safe:animate-in motion-safe:fade-in-0 md:inset-x-auto md:bottom-12 md:left-4 md:top-auto md:w-[25rem] md:p-4"
+      className="pointer-events-auto glass absolute inset-x-3 top-[calc(var(--cover-top)+8px)] z-40 rounded-2xl p-3 text-card-foreground motion-safe:animate-in motion-safe:fade-in-0 md:inset-x-auto md:left-1/2 md:top-[calc(var(--cover-top)+12px)] md:w-[25rem] md:-translate-x-1/2 md:p-4"
     >
       <div className="flex items-center gap-2">
         <Compass className="size-4 shrink-0 text-primary" aria-hidden="true" />
