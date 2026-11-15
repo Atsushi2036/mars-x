@@ -83,6 +83,23 @@ describe('AI drive in Watch', () => {
     expect(roverLive.x).toBeCloseTo(5, 0)
   })
 
+  it('the replay of an AI drive moves at the same visual speed as the A* route Watch, with the same clock', async () => {
+    const { curveFor } = await import('@/core/rover/curve')
+    const { visualSpeed, startRouteWatch } = await import('./watch')
+    setPolicyClientFactory(() => new Greedy())
+    await startAiWatch('user')
+    const ctx = watchCtx.current
+    const aiSpeed = ctx?.kind === 'run' ? ctx.live?.speed : undefined
+    const aiScale = usePlayback.getState().timeScale
+    expect(aiSpeed).toBe(visualSpeed(curveFor(route.path).length, false))
+    usePlayback.getState().exit()
+    useUserModel.setState({ file: null })
+    startRouteWatch()
+    const r = watchCtx.current
+    expect(r?.kind === 'route' && r.speed).toBe(aiSpeed)
+    expect(usePlayback.getState().timeScale).toBe(aiScale)
+  })
+
   it('falls back to the A* Watch, with a notice, when the model cannot be loaded', async () => {
     setPolicyClientFactory(() => new Broken())
     await startAiWatch('user')

@@ -11,9 +11,10 @@ import { useApp } from './app'
 import { agentLive } from './camera'
 import { catalogId, GUIDED_SPACING_M, trainedRangeWarning, useDriver, type AiDriverKind, type DriveSummary } from './driver'
 import { useMission, type MissionProfile } from './mission'
-import { pathLength, usePlayback, type PlaybackEvent } from './playback'
+import { fmtMission, pathLength, usePlayback, type PlaybackEvent } from './playback'
 import { roverLive, useRover } from './rover'
-import { startRouteWatch, watchCtx } from './watch'
+import { ROVER_REAL_SPEED, startRouteWatch, visualSpeed, watchCtx } from './watch'
+import { curveFor } from '@/core/rover/curve'
 
 /** Playback speed of a live drive at 1x, steps per second (the policy itself runs as fast as the worker answers). */
 export const DRIVE_RATE = 30
@@ -40,7 +41,8 @@ export function stopAiDrive(): void {
 }
 
 /** Marker list the playback bar shows for a (possibly still growing) drive. */
-export function liveEvents(track: LiveTrack, summary: DriveSummary | null): PlaybackEvent[] {
+export function liveEvents(track: LiveTrack, summary: DriveSummary | null, cum: ArrayLike<number>, speed: number): PlaybackEvent[] {
+  const at = (i: number) => (cum[Math.min(i, track.count - 1)] ?? 0) / speed
   const out: PlaybackEvent[] = []
   let blocked = 0
   let lastBlocked = -100
@@ -53,9 +55,9 @@ export function liveEvents(track: LiveTrack, summary: DriveSummary | null): Play
       }
       lastBlocked = e.at
       if (++blocked > 40) continue
-      out.push({ t: e.at, kind: 'stuck', label: 'Blocked move' })
-    } else if (e.kind === 'rock') out.push({ t: e.at, kind: 'rock', label: 'Hit an obstacle' })
-    else out.push({ t: e.at, kind: summary?.outcome === 'success' ? 'end' : 'stuck', label: summary ? (summary.outcome === 'success' ? 'Reached the goal' : 'Run ended') : 'End' })
+      out.push({ t: at(e.at), kind: 'stuck', label: 'Blocked move' })
+    } else if (e.kind === 'rock') out.push({ t: at(e.at), kind: 'rock', label: 'Hit an obstacle' })
+    else out.push({ t: at(e.at), kind: summary?.outcome === 'success' ? 'end' : 'stuck', label: summary ? (summary.outcome === 'success' ? 'Reached the goal' : 'Run ended') : 'End' })
   }
   return out
 }
@@ -155,6 +157,9 @@ export async function startAiWatch(kind: AiDriverKind): Promise<boolean> {
   const x = new Float32Array(cap + 2)
   const z = new Float32Array(cap + 2)
   const astro = m.profile === 'astronaut'
+  // the replay of the drive moves at the very pace of the A* route Watch, and the clock shows real mission time the same way
+  const speed = visualSpeed(curveFor(out.path).length, astro)
+  const timeScale = speed / (astro ? m.walk.speedMs : ROVER_REAL_SPEED)
   const w0 = cellToWorld(grid, start[0] * grid.n + start[1])
   x[0] = w0.x
   z[0] = w0.z
@@ -171,11 +176,11 @@ export async function startAiWatch(kind: AiDriverKind): Promise<boolean> {
     last: 0,
     step: 0,
     yaw: roverLive.yaw,
-    live: { track, grid, filled: 1, abort: () => ctl.abort() },
+    live: { track, grid, filled: 1, cum: new Float32Array(cap + 3), speed, abort: () => ctl.abort() },
   }
   const warn = trainedRangeWarning(straightM)
   useDriver.setState({ phase: 'driving', notice: warn })
-  usePlayback.getState().begin({ source: 'route', duration: 1, label: (t) => `Step ${Math.round(t)}`, events: [], ai: true })
+  usePlayback.getState().begin({ source: 'route', duration: 1, timeScale, label: (t) => fmtMission(t * timeScale), events: [], ai: true })
 
   const astarM = pathLength(out.path)
   void runDrive({

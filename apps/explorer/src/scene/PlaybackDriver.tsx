@@ -7,8 +7,9 @@ import { useMission } from '@/store/mission'
 import { roverLive, useRover } from '@/store/rover'
 import { cellToWorld } from '@/core/mission/geometry'
 import { curveAt, dampAngle, headingAhead } from '@/core/rover/curve'
+import { extendCum, poseAt } from '@/intelligence/drive/track-pose'
 import { useDriver } from '@/store/driver'
-import { DRIVE_RATE, liveEvents, stopAiDrive } from '@/store/drive-watch'
+import { liveEvents, stopAiDrive } from '@/store/drive-watch'
 import { installAgentSync, RUN_RATE, watchCtx, type RouteCtx, type RunCtx } from '@/store/watch'
 import { useReplay } from '@/features/replay/store'
 import { captureUserModel } from '@/intelligence/drive/user-model'
@@ -82,6 +83,7 @@ export function PlaybackDriver() {
     }
 
     if (ctx.kind === 'route') driveRoute(ctx, pb, a, dt)
+    else if (ctx.live) driveLive(ctx, ctx.live, pb, a, dt)
     else driveRun(ctx, pb, a, dt)
   }, -10)
 
@@ -125,42 +127,19 @@ const YAW_RATE = 6
 
 function driveRun(ctx: RunCtx, pb: PB, a: Acc, dt: number) {
   const rep = useReplay.getState()
-  const live = ctx.live
-  if (live) {
-    // AI drive: convert the steps the policy has produced so far, keep the bar's length and markers current
-    const t = live.track
-    while (live.filled < t.count) {
-      const i = live.filled
-      const w = cellToWorld(live.grid, t.rows[i]! * live.grid.n + t.cols[i]!)
-      ctx.x[i] = w.x
-      ctx.z[i] = w.z
-      live.filled++
-    }
-    ctx.last = live.filled - 1
-    const sig = ctx.last + (t.done ? 0.5 : 0)
-    if (sig !== a.count && a.store >= TICK_S) {
-      a.store = 0
-      a.count = sig
-      usePlayback.setState({ duration: Math.max(1, ctx.last), events: liveEvents(t, useDriver.getState().summary) })
-    }
-  } else if (rep.playing) {
-    // the AI Lab panel's own play button takes over from the bar's: same intent, one clock
+  // the AI Lab panel's own play button takes over from the bar's: same intent, one clock
+  if (rep.playing) {
     rep.setPlaying(false)
     pb.play()
   }
   if (a.nonce !== pb.seekNonce) {
     a.nonce = pb.seekNonce
     ctx.step = Math.min(ctx.last, Math.max(0, pb.t))
-    if (!live) rep.setStep(ctx.step)
-  }
-  if (ctx.last < 1) {
-    agentLive.x = ctx.x[0]!
-    agentLive.z = ctx.z[0]!
-    return
+    rep.setStep(ctx.step)
   }
   if (usePlayback.getState().playing) {
-    ctx.step = Math.min(ctx.last, ctx.step + dt * (live ? DRIVE_RATE : RUN_RATE) * pb.speed)
-    if (ctx.step >= ctx.last && (!live || live.track.done)) pb.finish()
+    ctx.step = Math.min(ctx.last, ctx.step + dt * RUN_RATE * pb.speed)
+    if (ctx.step >= ctx.last) pb.finish()
   }
   const i = Math.min(ctx.last - 1, Math.floor(ctx.step))
   const f = ctx.step - i
@@ -175,20 +154,74 @@ function driveRun(ctx: RunCtx, pb: PB, a: Acc, dt: number) {
   if (Math.hypot(dx, dz) > 0.5) ctx.yaw = lerpAngle(ctx.yaw, Math.atan2(dz, dx), 1 - Math.exp(-6 * dt))
   agentLive.yaw = ctx.yaw
   agentLive.ready = true
-  if (live) {
-    // the rover or astronaut model stands where the policy has taken it
-    roverLive.x = agentLive.x
-    roverLive.z = agentLive.z
-    roverLive.yaw = ctx.yaw
-  }
   a.tick += dt
   a.store += dt
   if (a.tick >= TICK_S) {
     a.tick = 0
     pb.tick(ctx.step)
   }
-  if (!live && a.store >= 1 / 15) {
+  if (a.store >= 1 / 15) {
     a.store = 0
     rep.setStep(ctx.step)
+  }
+}
+
+const LIVE_POINT = { x: 0, z: 0, i: 0 }
+
+/**
+ * AI drive replay: the agent covers DISTANCE along the track at the same visual pace as the A* route (rover 3 m/s, astronaut 2 m/s
+ * at 1x, times the bar's 0.5x-4x), however fast the policy produced the steps. The playback clock is in seconds like a route's.
+ */
+function driveLive(ctx: RunCtx, live: NonNullable<RunCtx['live']>, pb: PB, a: Acc, dt: number) {
+  const t = live.track
+  // convert the steps produced so far to metres
+  const from = live.filled
+  while (live.filled < t.count) {
+    const i = live.filled
+    const w = cellToWorld(live.grid, t.rows[i]! * live.grid.n + t.cols[i]!)
+    ctx.x[i] = w.x
+    ctx.z[i] = w.z
+    live.filled++
+  }
+  if (live.filled > from) extendCum(ctx.x, ctx.z, live.cum, from, live.filled)
+  ctx.last = live.filled - 1
+  const total = live.cum[ctx.last] ?? 0
+  a.store += dt
+  const sig = ctx.last + (t.done ? 0.5 : 0)
+  if (sig !== a.count && a.store >= TICK_S) {
+    a.store = 0
+    a.count = sig
+    usePlayback.setState({ duration: Math.max(1, total / live.speed), events: liveEvents(t, useDriver.getState().summary, live.cum, live.speed) })
+  }
+  if (a.nonce !== pb.seekNonce) {
+    a.nonce = pb.seekNonce
+    ctx.step = Math.min(total, Math.max(0, pb.t * live.speed))
+  }
+  if (ctx.last < 1) {
+    agentLive.x = ctx.x[0]!
+    agentLive.z = ctx.z[0]!
+    return
+  }
+  if (usePlayback.getState().playing) {
+    ctx.step = Math.min(total, ctx.step + dt * live.speed * pb.speed)
+    // at the head of a drive still being computed the agent waits for the next step
+    if (ctx.step >= total && t.done) pb.finish()
+  }
+  const p = poseAt(ctx.x, ctx.z, live.cum, ctx.last, ctx.step, LIVE_POINT)
+  // heading: a few metres ahead along the track, damped (cells are 2 m and single steps jitter)
+  const q = poseAt(ctx.x, ctx.z, live.cum, ctx.last, ctx.step + 4, { x: 0, z: 0, i: 0 })
+  if (Math.hypot(q.x - p.x, q.z - p.z) > 0.5) ctx.yaw = dampAngle(ctx.yaw, Math.atan2(q.z - p.z, q.x - p.x), dt, 6)
+  agentLive.x = p.x
+  agentLive.z = p.z
+  agentLive.yaw = ctx.yaw
+  agentLive.ready = true
+  // the rover or astronaut model stands where the policy has taken it
+  roverLive.x = p.x
+  roverLive.z = p.z
+  roverLive.yaw = ctx.yaw
+  a.tick += dt
+  if (a.tick >= TICK_S) {
+    a.tick = 0
+    pb.tick(ctx.step / live.speed)
   }
 }

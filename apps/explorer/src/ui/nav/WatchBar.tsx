@@ -85,7 +85,7 @@ export function WatchBar() {
             </button>
           ))}
         </div>
-        {s.source === 'route' && !s.ai && s.timeScale * s.speed > 1.05 && (
+        {s.source === 'route' && s.timeScale * s.speed > 1.05 && (
           <span className="hidden text-xs font-medium text-muted-foreground sm:inline" title="Playback runs faster than the real mission">
             {Math.round(s.timeScale * s.speed)}× sped up
           </span>
@@ -118,7 +118,7 @@ export function WatchBar() {
           aria-label="Playback position"
           min={0}
           max={Math.max(1, s.duration)}
-          step={s.source === 'run' || s.ai ? 0.5 : 0.1}
+          step={s.source === 'run' ? 0.5 : 0.1}
           value={[Math.min(s.t, Math.max(1, s.duration))]}
           onValueChange={([v]) => v !== undefined && s.seek(v)}
           className="touch-none py-2.5"
@@ -127,7 +127,7 @@ export function WatchBar() {
         {s.ai && <DriveSummaryCard />}
         <p className="mt-0.5 flex justify-between font-mono text-xs tabular-nums text-muted-foreground" aria-live="off">
           <span>{s.label(s.t)}</span>
-          <span>{s.ai ? `of ${Math.round(s.duration)} steps` : s.source === 'route' ? `of ${s.label(s.duration)} mission time` : s.events.at(-1)?.label}</span>
+          <span>{s.source === 'route' ? `of ${s.label(s.duration)} mission time` : s.events.at(-1)?.label}</span>
         </p>
       </div>
     </div>

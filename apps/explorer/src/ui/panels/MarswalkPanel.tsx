@@ -93,7 +93,7 @@ function ScienceStops() {
   }, [picked, sorted])
 
   return (
-    <PanelSection title="Science stop" caption="Pick the stop, or click a diamond on the map.">
+    <PanelSection title="Science stop" caption="Where the walk goes: a real Perseverance waypoint or a mineral patch; tap a diamond on the map.">
       {status === 'loading' && <p className="text-sm text-muted-foreground">Loading targets</p>}
       {status === 'ready' && targets.length === 0 && <p className="text-sm text-muted-foreground">No waypoints in this dataset.</p>}
       {sorted.length > 0 && (
@@ -257,6 +257,7 @@ export function MarswalkSetup() {
           <StatCard label="Walking speed" value={walk.speedMs} unit="m/s" provenance="assumption" />
         </div>
         <Choice label="Slope limit" value={limit} options={[10, 15, 20]} unit="°" onChange={setLimit} />
+        <p className="text-xs text-muted-foreground">Steepest ground the astronaut may walk. Higher = shorter but riskier route.</p>
       </PanelSection>
       <ScienceStops />
     </>

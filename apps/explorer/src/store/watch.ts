@@ -70,6 +70,10 @@ export interface LiveDrive {
   grid: PlanGrid
   /** track points already converted to world metres */
   filled: number
+  /** cumulative distance along the converted points, metres */
+  cum: Float32Array
+  /** on-screen speed at 1x, m/s: the SAME as the A* route Watch (visualSpeed of the A* route length) */
+  speed: number
   abort: () => void
 }
 export const watchCtx: { current: RouteCtx | RunCtx | null } = { current: null }
