@@ -23,6 +23,7 @@ export function TelemetryBar() {
     <div
       role="status"
       aria-label="Telemetry"
+      data-cover="bottom"
       className="pointer-events-auto absolute inset-x-0 bottom-16 z-20 flex h-[3.25rem] flex-col justify-center overflow-hidden border-t border-border/70 bg-background/80 px-3 font-mono text-xs tabular-nums backdrop-blur-md md:bottom-0 md:h-9 md:flex-row md:items-center md:gap-x-4 md:px-4"
     >
       <div className="flex min-w-0 items-center gap-x-4 md:contents">

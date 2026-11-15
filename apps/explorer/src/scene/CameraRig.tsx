@@ -15,6 +15,28 @@ const LOOK_SENS = 0.0022
  *  - fpv:   PointerLock + WASD on desktop, virtual joystick + drag on touch; eye 1.7 m above `sampleHeight`
  *  - chase: follows the rover from behind
  */
+/**
+ * Angle (radians) the view has to tilt up so the centre of the part of the canvas that is not covered by a full-width panel
+ * (elements marked `data-cover="top|bottom"`) lands on the aim point (positive when the bottom is more covered than the top),
+ * and the fraction of the canvas height that stays visible (the box has to fit in that band).
+ */
+function visibleBand(canvas: HTMLElement, fovDeg: number): { angle: number; fraction: number } {
+  const r = canvas.getBoundingClientRect()
+  if (r.height < 1) return { angle: 0, fraction: 1 }
+  let top = 0
+  let bottom = 0
+  for (const el of document.querySelectorAll<HTMLElement>('[data-cover]')) {
+    const b = el.getBoundingClientRect()
+    if (b.width < r.width * 0.6 || b.height < 1) continue
+    if (el.dataset.cover === 'top') top = Math.max(top, b.bottom - r.top)
+    else if (el.dataset.cover === 'bottom') bottom = Math.max(bottom, r.bottom - b.top)
+  }
+  const cap = r.height * 0.7
+  top = Math.min(top, cap)
+  bottom = Math.min(bottom, cap)
+  return { angle: (((bottom - top) / 2) / r.height) * ((fovDeg * Math.PI) / 180), fraction: Math.max(0.3, (r.height - top - bottom) / r.height) }
+}
+
 export function CameraRig({ hf }: { hf: Heightfield }) {
   const mode = useCamera((s) => s.mode)
   const camera = useThree((s) => s.camera)
@@ -181,12 +203,17 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
       const persp = camera as PerspectiveCamera
       const halfV = (persp.fov * Math.PI) / 360
       const halfH = Math.atan(Math.tan(halfV) * persp.aspect)
-      const dist = Math.min(half * 2.2, Math.max(30, (radius * 1.25) / Math.sin(Math.min(halfV, halfH))))
+      const band = visibleBand(gl.domElement, persp.fov)
+      const dist = Math.min(half * 3, Math.max(30, (radius * 1.25) / Math.sin(Math.min(halfV * band.fraction, halfH))))
       const az = Math.atan2(camera.position.z - c.target.z, camera.position.x - c.target.x)
       const pitch = (50 * Math.PI) / 180
-      const ty = hf.sampleHeight(cx, cz)
-      c.target.set(cx, ty, cz)
-      camera.position.set(cx + Math.cos(az) * Math.cos(pitch) * dist, ty + Math.sin(pitch) * dist, cz + Math.sin(az) * Math.cos(pitch) * dist)
+      // panels over the canvas (phone sheet at the bottom, tour card at the top) hide part of the view: aim so the box sits in the visible band
+      const shift = dist * band.angle * 0.5
+      const tx = clampX(cx + Math.cos(az) * shift)
+      const tz = clampZ(cz + Math.sin(az) * shift)
+      const ty = hf.sampleHeight(tx, tz)
+      c.target.set(tx, ty, tz)
+      camera.position.set(tx + Math.cos(az) * Math.cos(pitch) * dist, ty + Math.sin(pitch) * dist, tz + Math.sin(az) * Math.cos(pitch) * dist)
       c.update()
     }
 
@@ -259,7 +286,7 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
       enableDamping
       dampingFactor={0.08}
       minDistance={8}
-      maxDistance={half * 2.2}
+      maxDistance={half * 3}
       maxPolarAngle={1.5}
       screenSpacePanning={false}
       rotateSpeed={0.7}

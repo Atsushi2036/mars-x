@@ -9,7 +9,7 @@ import { pickWaypoints } from './machine'
 import { useTour } from './store'
 import { loadWaypoints } from './waypoints'
 
-export type ActionId = 'clear-sol' | 'storm-sol' | 'play-day' | 'open-scorecard'
+export type ActionId = 'clear-sol' | 'storm-sol' | 'play-day' | 'open-scorecard' | 'toggle-panel'
 
 export interface Step {
   id: string
@@ -34,6 +34,8 @@ export const SCENARIO = {
 export const SCIENCE_STOP = 'mineral-mg-carbonate-patch'
 
 export const EXAMPLE_RUN_FILE = 'example.run.json'
+
+export const isPhone = () => typeof window !== 'undefined' && !window.matchMedia('(min-width: 768px)').matches
 
 function show(mode: Mode) {
   const app = useApp.getState()
@@ -118,6 +120,7 @@ export const STEPS: readonly Step[] = [
     title: 'Marswalk',
     body: 'The astronaut profile walks to a science stop, the Mg-carbonate patch seen from orbit, under its own slope limit. The Mission panel shows the route, the walk budget and the shelter rule for a solar particle alert.',
     notes: ['Limits are team assumptions, labelled as such. A training rule, not a forecast.'],
+    actions: [{ id: 'toggle-panel', label: 'Walk budget' }],
     enter: async (cur) => {
       base()
       useScenario.getState().selectScenario(SCENARIO.astronaut)
@@ -136,7 +139,11 @@ export const STEPS: readonly Step[] = [
         if (cur()) await frameWaypoints(80, [pair.origin, pair.destination])
       }
       await waitFor(() => (useMission.getState().planning ? null : Object.keys(useMission.getState().outcomes).length > 0 || null), 8000)
-      if (cur()) await scrollInspectorTo('EVA budget')
+      if (!cur()) return
+      // the traverse diamonds helped to pick the stop; now the astronaut route is what matters, so the real traverse steps back
+      useApp.getState().setShowTraverse(false)
+      if (isPhone()) useApp.getState().setInspectorOpen(false) // phone: the route first, the numbers one tap away
+      else await scrollInspectorTo('EVA budget')
     },
   },
   {

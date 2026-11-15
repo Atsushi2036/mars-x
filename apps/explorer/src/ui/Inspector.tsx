@@ -123,6 +123,7 @@ export function Inspector() {
   return (
     <aside
       aria-label="Inspector"
+      data-cover="bottom"
       className={`pointer-events-auto fixed inset-x-0 bottom-[7.25rem] z-20 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 border-border bg-card/95 text-card-foreground shadow-lg backdrop-blur-md transition-[height] duration-200 ${expanded ? 'h-[52dvh]' : 'h-[14.5rem]'}`}
     >
       <SheetHandle />

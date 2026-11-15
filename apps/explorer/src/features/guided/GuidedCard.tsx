@@ -7,6 +7,7 @@ import { useDay } from '@/store/day'
 import { useScenario } from '../scenario/store'
 import { openScorecard } from '../replay/scorecard-ui'
 import { useByo } from '../shared/byo-store'
+import { scrollInspectorTo } from './dom'
 import { keyAction, tourRequested } from './machine'
 import { STEP_COUNT } from './step-count'
 import { SCENARIO, STEPS, type ActionId } from './steps'
@@ -37,6 +38,7 @@ function StepAction({ id, label }: { id: ActionId; label: string }) {
       </Button>
     )
   }
+  if (id === 'toggle-panel') return <PanelToggle label={label} btn={btn} />
   const ready = !!run.result && !run.loading
   return (
     <Button variant={ready ? 'default' : 'outline'} disabled={!ready} className={btn} onClick={openScorecard}>
@@ -47,6 +49,25 @@ function StepAction({ id, label }: { id: ActionId; label: string }) {
 }
 
 let seq = 0
+
+/** Phones only: the sheet is closed while the tour shows the route; this opens it on the numbers and closes it again. */
+function PanelToggle({ label, btn }: { label: string; btn: string }) {
+  const open = useApp((s) => s.inspectorOpen)
+  return (
+    <Button
+      variant="outline"
+      aria-pressed={open}
+      className={cn(btn, 'md:hidden')}
+      onClick={() => {
+        const app = useApp.getState()
+        app.setInspectorOpen(!open)
+        if (!open) void scrollInspectorTo('EVA budget')
+      }}
+    >
+      {open ? 'Hide' : 'Show'} {label.toLowerCase()}
+    </Button>
+  )
+}
 
 /** Floating, non-modal card of the guided mission. Also owns the tour's side effects (step setup, keyboard, ?tour=1). */
 export default function GuidedCard() {
@@ -119,6 +140,7 @@ export default function GuidedCard() {
     <section
       role="region"
       aria-label="Guided mission"
+      data-cover="top"
       className="pointer-events-auto absolute inset-x-3 top-[3.25rem] z-40 rounded-xl border border-border bg-card/95 p-3 text-card-foreground shadow-lg backdrop-blur-md motion-safe:animate-in motion-safe:fade-in-0 md:inset-x-auto md:bottom-12 md:left-4 md:top-auto md:w-[25rem] md:p-4"
     >
       <div className="flex items-center gap-2">
