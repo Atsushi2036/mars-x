@@ -2,10 +2,11 @@ import { cn } from '@/lib/utils'
 import { CircleDashed, Cpu, Ruler, Sigma, type LucideIcon } from '@/ui/icons'
 import { PROVENANCE_META, type Provenance } from './provenance'
 
+// text stays foreground (AA on every tint in both themes); border, tint and icon carry the kind
 const TONE: Record<Provenance, string> = {
-  measured: 'border-chart-1/40 bg-chart-1/10 text-chart-1',
-  derived: 'border-chart-3/40 bg-chart-3/10 text-chart-3',
-  modeled: 'border-chart-4/40 bg-chart-4/10 text-chart-4',
+  measured: 'border-chart-1/40 bg-chart-1/10 text-foreground [&>svg]:text-chart-1',
+  derived: 'border-chart-3/40 bg-chart-3/10 text-foreground [&>svg]:text-chart-3',
+  modeled: 'border-chart-4/40 bg-chart-4/10 text-foreground [&>svg]:text-chart-4',
   assumption: 'border-dashed border-muted-foreground/50 bg-transparent text-muted-foreground',
 }
 

@@ -4,13 +4,14 @@ import type { LucideIcon } from '../icons'
 
 export type ChipTone = 'neutral' | 'primary' | 'agent' | 'success' | 'warning' | 'danger'
 
+// text is always the foreground colour (AA in both themes on every tint); the tone lives in border, tint and icon
 const TONE: Record<ChipTone, string> = {
   neutral: 'border-border bg-surface text-foreground',
-  primary: 'border-primary/40 bg-primary/10 text-primary',
-  agent: 'border-brand/50 bg-brand/10 text-foreground',
-  success: 'border-success/40 bg-success/10 text-success',
-  warning: 'border-warning/40 bg-warning/10 text-warning',
-  danger: 'border-destructive/40 bg-destructive/10 text-destructive',
+  primary: 'border-primary/40 bg-primary/10 text-foreground [&>svg]:text-primary',
+  agent: 'border-brand/50 bg-brand/10 text-foreground [&>svg]:text-warning',
+  success: 'border-success/40 bg-success/10 text-foreground [&>svg]:text-success',
+  warning: 'border-warning/40 bg-warning/10 text-foreground [&>svg]:text-warning',
+  danger: 'border-destructive/40 bg-destructive/10 text-foreground [&>svg]:text-destructive',
 }
 
 /** Rounded pill, 28 px high, optional 16 px icon. Meaning lives in icon + word, colour is secondary. */
