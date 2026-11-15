@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useReducedMotion } from './use-reduced-motion'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,7 +13,9 @@ import { Details, Learn, PanelSection, StatCard } from '@/ui/kit'
 import { fmtNum } from '../shared/fmt'
 import { compareVerdict, summarizeCurve } from './curve'
 import { RewardChart } from './LineChart'
-import { PathMap } from './PathMap'
+import { TrainStage, type StageView } from './TrainStage'
+import { ConceptChips, ExploreBar, ViewSwitch, WatchSwitch } from './WatchControls'
+import { planBatch, successRate as recentSuccess, type WatchSpeed } from './watch'
 import { buildQProblem, DEFAULT_WEIGHTS, type QProblem, type RewardWeights } from './problem'
 
 const PROFILE = PROFILES['rover-rtg']
@@ -55,6 +58,10 @@ export function QLab() {
   const [greedy, setGreedy] = useState<Uint32Array | null>(null)
   const startedAt = useRef(0)
   const [elapsed, setElapsed] = useState(0)
+  const [watch, setWatch] = useState(true)
+  const [speed, setSpeed] = useState<WatchSpeed>('fast')
+  const [view, setView] = useState<StageView>('map')
+  const reduced = useReducedMotion()
 
   useEffect(() => {
     if (ds) void ensureLayers(ds)
@@ -73,6 +80,12 @@ export function QLab() {
     if (!shown) return null
     return timedAstar(shown)
   }, [shown])
+
+  // how the training loop feeds the Watch view: Slow plays every episode, Fast and Turbo train in batches and play 1 of N
+  const { setPlan } = q
+  useEffect(() => {
+    setPlan(watch ? { ...planBatch(speed), waitForPlayback: speed === 'slow' } : { batch: 25, sampleEvery: 0, waitForPlayback: false })
+  }, [watch, speed, setPlan])
 
   // keep the learner's alpha and gamma live while it trains
   const { setParams, status } = q
@@ -121,8 +134,8 @@ export function QLab() {
   const chart = useMemo(() => summarizeCurve(q.curve), [q.curve])
   const lastEval = q.evals.length ? q.evals[q.evals.length - 1]! : null
   const episodes = q.curve.length ? q.curve[q.curve.length - 1]!.episode : 0
-  const recent = q.curve.slice(-100)
-  const successRate = recent.length ? recent.filter((p) => p.reachedGoal).length / recent.length : null
+  const successRate = recentSuccess(q.curve)
+  const lastEps = q.curve.length ? q.curve[q.curve.length - 1]!.epsilon : null
   const astarPath = optimum?.result.status === 'ok' ? optimum.result.path : null
   const astarCost = optimum?.result.status === 'ok' ? optimum.result.cost : null
 
@@ -155,62 +168,66 @@ export function QLab() {
           </div>
         )}
         {shown && (
-          <div className="space-y-2">
-            <PathMap problem={shown} astarPath={astarPath} greedyPath={greedy} />
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="h-0.5 w-4 rounded bg-planner" aria-hidden="true" /> A* path
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-0.5 w-4 rounded bg-agent" aria-hidden="true" /> Learned policy
-              </span>
-              <span className="ml-auto tabular-nums">
-                {shown.cols}×{shown.rows} cells · {fmtNum(shown.cellM, 0)} m
-              </span>
+          <div className="space-y-2.5">
+            <TrainStage
+              problem={shown}
+              sample={watch ? q.sample : null}
+              speed={speed}
+              view={view}
+              snapshot={q.snapshot}
+              astarPath={astarPath}
+              greedyPath={greedy}
+              reducedMotion={reduced}
+              onPlaybackDone={q.playbackDone}
+              label="Learning grid. The agent is the amber dot, with its trail. A cross marks a move into a wall; green and red numbers are the reward of each step."
+            />
+          <div className="flex gap-2">
+            <Button className="h-11 flex-1 gap-2 text-base" disabled={!!reason || running} onClick={train} aria-describedby={reason ? 'train-why' : undefined}>
+              <Play className="size-5" /> {q.status === 'idle' ? 'Train' : 'Train again'}
+            </Button>
+            {running ? (
+              <Button variant="outline" className="h-11 gap-2" onClick={q.pause}>
+                <Pause className="size-5" /> Pause
+              </Button>
+            ) : (
+              <Button variant="outline" className="h-11 gap-2" disabled={q.status !== 'paused'} onClick={() => void q.resume()}>
+                <RotateCcw className="size-5" /> Resume
+              </Button>
+            )}
+          </div>
+          {reason && (
+            <p id="train-why" className="text-xs text-muted-foreground">
+              Disabled: {reason}
+            </p>
+          )}
+          {q.error && (
+            <Alert variant="destructive" role="alert">
+              <CircleAlert />
+              <AlertTitle>Training stopped</AlertTitle>
+              <AlertDescription>{q.error}</AlertDescription>
+            </Alert>
+          )}
+            <div className="space-y-2.5" aria-live="polite">
+              <div className="grid grid-cols-2 gap-2">
+                <StatCard label="Episode" value={q.status === 'idle' ? '—' : fmtNum(episodes, 0)} sub={q.status === 'idle' ? 'Press Train' : `${elapsed.toFixed(0)} s`} />
+                <StatCard label="Success, last 100" value={successRate === null ? '—' : Math.round(successRate * 100)} unit={successRate === null ? undefined : '%'} />
+              </div>
+              <ExploreBar epsilon={lastEps} />
             </div>
-            <p className="text-xs text-muted-foreground">
-              {shown.endpoints === 'mission' ? 'Using your origin and destination.' : 'Default endpoints. Set your own in Plan a route.'} {PROFILE.label}, {PROFILE.maxSlope}° limit.
+            <ViewSwitch view={view} onView={setView} />
+            <p className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>{shown.endpoints === 'mission' ? 'Your origin and destination.' : 'Default endpoints; set yours in Plan a route.'}</span>
+              <span className="shrink-0 tabular-nums">
+                {shown.cols}×{shown.rows} · {fmtNum(shown.cellM, 0)} m
+              </span>
             </p>
           </div>
         )}
       </PanelSection>
 
-      <PanelSection title="Train">
-        <div className="flex gap-2">
-          <Button className="h-11 flex-1 gap-2 text-base" disabled={!!reason || running} onClick={train} aria-describedby={reason ? 'train-why' : undefined}>
-            <Play className="size-5" /> {q.status === 'idle' ? 'Train' : 'Train again'}
-          </Button>
-          {running ? (
-            <Button variant="outline" className="h-11 gap-2" onClick={q.pause}>
-              <Pause className="size-5" /> Pause
-            </Button>
-          ) : (
-            <Button variant="outline" className="h-11 gap-2" disabled={q.status !== 'paused'} onClick={() => void q.resume()}>
-              <RotateCcw className="size-5" /> Resume
-            </Button>
-          )}
-        </div>
-        {reason && (
-          <p id="train-why" className="text-xs text-muted-foreground">
-            Disabled: {reason}
-          </p>
-        )}
-        {q.error && (
-          <Alert variant="destructive" role="alert">
-            <CircleAlert />
-            <AlertTitle>Training stopped</AlertTitle>
-            <AlertDescription>{q.error}</AlertDescription>
-          </Alert>
-        )}
-        {q.status === 'idle' ? (
-          <p className="text-sm text-muted-foreground">Nothing trained yet. Train to watch the policy approach A*.</p>
-        ) : (
-          <div className="grid grid-cols-3 gap-2" aria-live="polite">
-            <StatCard compact label="Goal reached" value={successRate === null ? '—' : Math.round(successRate * 100)} unit={successRate === null ? undefined : '%'} sub="last 100" />
-            <StatCard compact label="Episodes" value={fmtNum(episodes, 0)} />
-            <StatCard compact label="Time" value={elapsed.toFixed(0)} unit="s" />
-          </div>
-        )}
+      <PanelSection title="Watch it learn">
+        <WatchSwitch on={watch} onChange={setWatch} speed={speed} onSpeed={setSpeed} />
+        <ConceptChips />
       </PanelSection>
 
       <PanelSection title="Reward per episode">

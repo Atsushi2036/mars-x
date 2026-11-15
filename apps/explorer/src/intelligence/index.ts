@@ -5,7 +5,7 @@
 
 // React bindings
 export { usePlanner, useQLearning, usePolicy, useRunFile } from './hooks'
-export type { PlannerLayers, QStatus } from './hooks'
+export type { LearnerSnapshot, PlannerLayers, QStatus, WatchPlan } from './hooks'
 
 // Navigation (A*/Dijkstra, profiles, pool)
 export { PlannerPool } from './nav/planner-pool'
@@ -18,7 +18,8 @@ export type { Profile, ProfileId } from './nav/profiles'
 
 // Q-learning lab
 export { QLearner, DEFAULT_QPARAMS } from './lab/qlearn'
-export type { QParams, QSetup, EpisodePoint, GreedyEval } from './lab/qlearn'
+export { FLAG_BUMP, FLAG_EXPLORE, NO_ACTION } from './lab/qlearn'
+export type { QParams, QSetup, EpisodePoint, EpisodeSample, GreedyEval } from './lab/qlearn'
 
 // ONNX policy
 export { PolicyClient } from './policy/policy-client'

@@ -70,6 +70,36 @@ export interface EpisodePoint {
   epsilon: number
 }
 
+/** Step flags of a traced episode. */
+export const FLAG_BUMP = 1 // the move was not executed (blocked cell or map edge)
+export const FLAG_EXPLORE = 2 // the action was a random one (epsilon), not the greedy one
+/** Marker in policySnapshot().action for cells with no learned preference (blocked or never updated). */
+export const NO_ACTION = 255
+
+export type EpisodeOutcome = 'goal' | 'timeout'
+
+/** One episode, step by step, for the Watch training view. All arrays have one entry per step. */
+export interface EpisodeSample {
+  episode: number
+  /** epsilon used during this episode */
+  epsilon: number
+  outcome: EpisodeOutcome
+  /** cell where the episode began */
+  start: number
+  /** cell after each step (equal to the previous one when the move bumped) */
+  cells: Uint32Array
+  /** reward of each step (the goal reward is included in the last step) */
+  reward: Float32Array
+  /** FLAG_BUMP | FLAG_EXPLORE per step */
+  flags: Uint8Array
+  /** undiscounted return */
+  ret: number
+}
+
+export interface SampledBatch extends BatchResult {
+  samples: EpisodeSample[]
+}
+
 export interface GreedyEval {
   episode: number
   reached: boolean
@@ -96,6 +126,12 @@ function mulberry32(seed: number) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
+}
+
+interface Trace {
+  cells: number[]
+  reward: number[]
+  flags: number[]
 }
 
 const passable = (v: number) => Number.isFinite(v) && v > 0
@@ -188,9 +224,33 @@ export class QLearner {
   }
 
   runEpisode(): EpisodePoint {
+    return this.playEpisode(null).point
+  }
+
+  /** Same episode as runEpisode() (identical RNG stream and updates) while recording every step. */
+  runEpisodeTraced(): { point: EpisodePoint; sample: EpisodeSample } {
+    const t: Trace = { cells: [], reward: [], flags: [] }
+    const { point, start } = this.playEpisode(t)
+    return {
+      point,
+      sample: {
+        episode: point.episode,
+        epsilon: point.epsilon,
+        outcome: point.reachedGoal ? 'goal' : 'timeout',
+        start,
+        cells: Uint32Array.from(t.cells),
+        reward: Float32Array.from(t.reward),
+        flags: Uint8Array.from(t.flags),
+        ret: point.ret,
+      },
+    }
+  }
+
+  private playEpisode(trace: Trace | null): { point: EpisodePoint; start: number } {
     const { alpha, gamma, maxStepsPerEpisode, exploringStarts, reward } = this.params
     const q = this.q
     let u = exploringStarts ? this.free[(this.rnd() * this.free.length) | 0]! : this.start
+    const begin = u
     let ret = 0
     let steps = 0
     let reached = false
@@ -199,8 +259,9 @@ export class QLearner {
         reached = true
         break
       }
-      const a = this.rnd() < this.epsilon ? (this.rnd() * 8) | 0 : this.bestAction(u)
-      const [v, r0] = this.step(u, a)
+      const explore = this.rnd() < this.epsilon
+      const a = explore ? (this.rnd() * 8) | 0 : this.bestAction(u)
+      const [v, r0, , moved] = this.step(u, a)
       const done = v === this.goal
       const r = done ? r0 + reward.goalReward : r0
       let m = 0
@@ -213,13 +274,18 @@ export class QLearner {
       q[i] = q[i]! + alpha * (r + gamma * m - q[i]!)
       ret += r
       steps++
+      if (trace) {
+        trace.cells.push(v)
+        trace.reward.push(r)
+        trace.flags.push((moved ? 0 : FLAG_BUMP) | (explore ? FLAG_EXPLORE : 0))
+      }
       u = v
       if (done) reached = true
     }
     this.episode++
     const point = { episode: this.episode, ret, steps, reachedGoal: reached, epsilon: this.epsilon }
     this.epsilon = Math.max(this.params.epsilonMin, this.epsilon * this.params.epsilonDecay)
-    return point
+    return { point, start: begin }
   }
 
   /** Greedy rollout from the fixed start; path of flat cell indices (loops/blocks => not reached). */
@@ -259,6 +325,41 @@ export class QLearner {
       if (evalEvery > 0 && this.episode % evalEvery === 0) evals.push(this.evaluate())
     }
     return { curve, evals, episodes: this.episode }
+  }
+
+  /**
+   * Like runBatch, plus trajectories for the Watch view: every sampleEvery-th episode and always the last one of
+   * the batch (at most maxSamples, keeping the newest). Sampling never changes the learning.
+   */
+  runBatchSampled(n: number, opts: { evalEvery?: number; sampleEvery: number; maxSamples?: number }): SampledBatch {
+    const evalEvery = opts.evalEvery ?? 100
+    const curve: EpisodePoint[] = []
+    const evals: GreedyEval[] = []
+    let samples: EpisodeSample[] = []
+    for (let i = 0; i < n; i++) {
+      const next = this.episode + 1
+      const keep = opts.sampleEvery > 0 && (next % opts.sampleEvery === 0 || i === n - 1)
+      if (keep) {
+        const { point, sample } = this.runEpisodeTraced()
+        curve.push(point)
+        samples.push(sample)
+      } else curve.push(this.runEpisode())
+      if (evalEvery > 0 && this.episode % evalEvery === 0) evals.push(this.evaluate())
+    }
+    if (opts.maxSamples !== undefined && samples.length > opts.maxSamples) samples = samples.slice(-opts.maxSamples)
+    return { curve, evals, episodes: this.episode, samples }
+  }
+
+  /** What the agent has learned so far: V(s) = max_a Q and the best action per cell (NO_ACTION if none). */
+  policySnapshot(): { value: Float32Array; action: Uint8Array } {
+    const value = this.valueMap()
+    const action = new Uint8Array(this.rows * this.cols)
+    for (let i = 0; i < action.length; i++) {
+      let any = false
+      for (let k = 0; k < 8; k++) if (this.q[i * 8 + k] !== 0) any = true
+      action[i] = passable(this.cost[i]!) && any ? this.bestAction(i) : NO_ACTION
+    }
+    return { value, action }
   }
 
   /** State-value map max_a Q for the heat overlay (Float32, one per cell; -Infinity-free). */

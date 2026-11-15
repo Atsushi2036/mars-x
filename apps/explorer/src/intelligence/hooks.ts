@@ -1,6 +1,6 @@
 import * as Comlink from 'comlink'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { EpisodePoint, GreedyEval, QParams, QSetup } from './lab/qlearn'
+import type { EpisodePoint, EpisodeSample, GreedyEval, QParams, QSetup } from './lab/qlearn'
 import type { QLearnWorkerApi } from './lab/qlearn.worker'
 import { PlannerPool, type PlanAllResult, type PlanQuery } from './nav/planner-pool'
 import { PolicyClient, type LoadedPolicy } from './policy/policy-client'
@@ -70,20 +70,62 @@ export function usePlanner(layers: PlannerLayers | null) {
 
 export type QStatus = 'idle' | 'running' | 'paused'
 
+/** How the training loop talks to the Watch view: batch size, which episodes to trace, and whether to wait for the animation. */
+export interface WatchPlan {
+  batch: number
+  /** trace every N-th episode (0 = never; the last episode of a batch is always traced when > 0) */
+  sampleEvery: number
+  /** wait until the UI says it finished playing the traced episode before asking for the next batch */
+  waitForPlayback: boolean
+}
+
+export interface LearnerSnapshot {
+  value: Float32Array
+  action: Uint8Array
+  episode: number
+}
+
+const FLUSH_MS = 120
+const SNAPSHOT_MS = 450
+
 export function useQLearning(batchEpisodes = 25, evalEvery = 100) {
   const workerRef = useRef<Worker | null>(null)
   const apiRef = useRef<Comlink.Remote<QLearnWorkerApi> | null>(null)
   const loop = useRef(0)
+  const plan = useRef<WatchPlan>({ batch: batchEpisodes, sampleEvery: 0, waitForPlayback: false })
+  const playback = useRef<(() => void) | null>(null)
   const [status, setStatus] = useState<QStatus>('idle')
   const [curve, setCurve] = useState<EpisodePoint[]>([])
   const [evals, setEvals] = useState<GreedyEval[]>([])
   const [optimum, setOptimum] = useState<number | null>(null)
   const [params, setParamsState] = useState<QParams | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [sample, setSample] = useState<EpisodeSample | null>(null)
+  const [snapshot, setSnapshot] = useState<LearnerSnapshot | null>(null)
+
+  const releasePlayback = useCallback(() => {
+    const r = playback.current
+    playback.current = null
+    r?.()
+  }, [])
 
   const stop = useCallback(() => {
     loop.current++
+    releasePlayback()
     setStatus((s) => (s === 'running' ? 'paused' : s))
+  }, [releasePlayback])
+
+  /** The UI calls this when it has finished playing the traced episode (Slow mode waits for it). */
+  const playbackDone = useCallback(() => releasePlayback(), [releasePlayback])
+  const setPlan = useCallback((p: Partial<WatchPlan>) => {
+    plan.current = { ...plan.current, ...p }
+  }, [])
+
+  const refreshSnapshot = useCallback(async (episode: number) => {
+    const api = apiRef.current
+    if (!api) return
+    const s = await api.snapshot()
+    setSnapshot({ value: s.value, action: s.action, episode })
   }, [])
 
   const run = useCallback(async () => {
@@ -91,23 +133,66 @@ export function useQLearning(batchEpisodes = 25, evalEvery = 100) {
     if (!api) return
     const mine = ++loop.current
     setStatus('running')
+    let buf: EpisodePoint[] = []
+    let bufEvals: GreedyEval[] = []
+    let lastFlush = 0
+    let lastSnap = 0
+    let episodes = 0
+    const flush = () => {
+      if (buf.length) {
+        const add = buf
+        setCurve((c) => (c.length > 20_000 ? [...c.slice(-10_000), ...add] : [...c, ...add]))
+        buf = []
+      }
+      if (bufEvals.length) {
+        const add = bufEvals
+        setEvals((e) => [...e, ...add])
+        bufEvals = []
+      }
+    }
     try {
       while (mine === loop.current) {
-        const b = await api.runBatch(batchEpisodes, evalEvery)
+        const p = plan.current
+        const b = await api.runBatchSampled(p.sampleEvery > 0 ? p.batch : batchEpisodes, evalEvery, p.sampleEvery > 0 ? p.sampleEvery : 0, 1)
         if (mine !== loop.current) break
-        setCurve((c) => (c.length > 20_000 ? [...c.slice(-10_000), ...b.curve] : [...c, ...b.curve]))
-        if (b.evals.length) setEvals((e) => [...e, ...b.evals])
+        buf.push(...b.curve)
+        bufEvals.push(...b.evals)
+        episodes = b.episodes
+        const now = performance.now()
+        if (now - lastFlush > FLUSH_MS) {
+          flush()
+          lastFlush = now
+        }
+        if (p.sampleEvery > 0 && b.samples.length) {
+          const s = b.samples[b.samples.length - 1]!
+          flush()
+          lastFlush = now
+          setSample(s)
+          if (p.waitForPlayback) {
+            // the timer is a safety net: a hidden tab pauses requestAnimationFrame and the animation would never report back
+            await Promise.race([new Promise<void>((r) => (playback.current = r)), new Promise<void>((r) => setTimeout(r, 15_000))])
+            playback.current = null
+          }
+        }
+        if (now - lastSnap > SNAPSHOT_MS) {
+          lastSnap = now
+          await refreshSnapshot(episodes)
+        }
         await new Promise((r) => setTimeout(r, 0)) // let the UI breathe, keep the loop cancellable
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setStatus('idle')
+    } finally {
+      flush()
+      if (episodes > 0) void refreshSnapshot(episodes).catch(() => undefined)
     }
-  }, [batchEpisodes, evalEvery])
+  }, [batchEpisodes, evalEvery, refreshSnapshot])
 
   const start = useCallback(
     async (setup: QSetup) => {
       loop.current++
+      releasePlayback()
       workerRef.current?.terminate()
       const worker = new Worker(new URL('./lab/qlearn.worker.ts', import.meta.url), { type: 'module' })
       workerRef.current = worker
@@ -115,6 +200,8 @@ export function useQLearning(batchEpisodes = 25, evalEvery = 100) {
       apiRef.current = api
       setCurve([])
       setEvals([])
+      setSample(null)
+      setSnapshot(null)
       setError(null)
       try {
         const init = await api.init(setup)
@@ -126,7 +213,7 @@ export function useQLearning(batchEpisodes = 25, evalEvery = 100) {
         setStatus('idle')
       }
     },
-    [run],
+    [run, releasePlayback],
   )
 
   const setParams = useCallback(async (patch: Parameters<QLearnWorkerApi['setParams']>[0]) => {
@@ -145,12 +232,13 @@ export function useQLearning(batchEpisodes = 25, evalEvery = 100) {
   useEffect(
     () => () => {
       loop.current++
+      playback.current?.()
       workerRef.current?.terminate()
     },
     [],
   )
 
-  return { status, curve, evals, optimum, params, error, start, pause: stop, resume: run, setParams, greedyPath, valueMap }
+  return { status, curve, evals, optimum, params, error, sample, snapshot, start, pause: stop, resume: run, setParams, setPlan, playbackDone, greedyPath, valueMap }
 }
 
 // ---------------------------------------------------------------------------- ONNX policy

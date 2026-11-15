@@ -16,6 +16,19 @@ const api = {
   runBatch(n: number, evalEvery = 100) {
     return need().runBatch(n, evalEvery)
   },
+  /** Training batch plus step-by-step trajectories of the sampled episodes (buffers are transferred, not copied). */
+  runBatchSampled(n: number, evalEvery: number, sampleEvery: number, maxSamples = 4) {
+    const b = need().runBatchSampled(n, { evalEvery, sampleEvery, maxSamples })
+    return Comlink.transfer(
+      b,
+      b.samples.flatMap((s) => [s.cells.buffer, s.reward.buffer, s.flags.buffer]),
+    )
+  },
+  /** What the agent has learned so far: V(s) = max Q and the best action per cell. */
+  snapshot() {
+    const s = need().policySnapshot()
+    return Comlink.transfer(s, [s.value.buffer, s.action.buffer])
+  },
   greedyPath() {
     const g = need().greedyPath()
     return Comlink.transfer(g, [g.path.buffer])

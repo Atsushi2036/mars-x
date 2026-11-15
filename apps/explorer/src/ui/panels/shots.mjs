@@ -75,6 +75,44 @@ export const SCENARIOS = {
     await page.waitForTimeout(9000)
     await scrollPanel(page, vp === 'mobile' ? 380 : 330)
   },
+  train: async (page, vp, _theme, shot) => {
+    await openMode(page, vp, 'Test your AI', 'Test AI')
+    const cv = page.locator('canvas[aria-label^="Learning grid"]')
+    await cv.scrollIntoViewIfNeeded()
+    await shot('0-before')
+    await page.getByRole('button', { name: 'Train', exact: true }).click()
+    // 1. Fast: agent wandering, floating numbers
+    await page.waitForTimeout(3500)
+    await cv.scrollIntoViewIfNeeded()
+    await shot('1-fast-wandering')
+    // 2. Slow: agent half way, then a hazard (bump) and the timeout banner
+    await page.getByRole('radio', { name: 'Slow' }).click()
+    const seen = new Set()
+    for (let i = 0; i < 80 && seen.size < 2; i++) {
+      await page.waitForTimeout(250)
+      const b = await cv.getAttribute('data-banner')
+      if (!seen.has('mid') && i === 6) { seen.add('mid'); await shot('2-slow-mid-episode') }
+      if (b && !seen.has(b.split(' ')[0])) { seen.add(b.split(' ')[0]); await shot('3-banner-' + b.split(' ')[0].replace(/[^a-z]/gi, '')) }
+    }
+    // 3. learn for a while at Turbo, then show what it learned
+    await page.getByRole('radio', { name: 'Turbo' }).click()
+    await page.waitForTimeout(25000)
+    await page.getByRole('radio', { name: 'Value' }).click()
+    await page.waitForTimeout(1500)
+    await shot('4-value-map')
+    await page.getByRole('radio', { name: 'Best moves' }).click()
+    await page.waitForTimeout(1500)
+    await shot('5-best-moves')
+    // 4. Slow again with a trained agent: catch the goal banner
+    await page.getByRole('radio', { name: 'Paths' }).click()
+    await page.getByRole('radio', { name: 'Slow' }).click()
+    for (let i = 0; i < 120; i++) {
+      await page.waitForTimeout(250)
+      const b = await cv.getAttribute('data-banner')
+      if (b && b.includes('Goal')) { await shot('6-goal-reached'); break }
+    }
+    await page.waitForTimeout(500)
+  },
   'lab-byo': async (page, vp) => {
     await openMode(page, vp, 'Test your AI', 'Test AI')
     await page.getByRole('radio', { name: /Bring your model/ }).click()
@@ -115,7 +153,7 @@ for (const [name, drive] of Object.entries(SCENARIOS)) {
         await page.waitForFunction(() => window.__marsx?.ready === true, null, { timeout: 120000 }).catch(() => errors.push('[harness] scene not ready in 120 s'))
         await page.waitForTimeout(600)
         await page.getByRole('button', { name: /^(skip|got it)$/i }).first().click({ timeout: 800 }).catch(() => {})
-        await drive(page, vpName, theme)
+        await drive(page, vpName, theme, (n) => { fs.mkdirSync(path.join(out, 'train'), { recursive: true }); return page.screenshot({ path: path.join(out, 'train', n + '__' + vpName + '__' + theme + '.png') }) })
         await page.waitForTimeout(600)
         await page.screenshot({ path: path.join(out, `${name}__${vpName}__${theme}.png`) })
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
