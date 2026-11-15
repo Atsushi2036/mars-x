@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, Download, FileText, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/store/app'
@@ -8,6 +8,7 @@ import { fmtCi, fmtNum, short } from '../shared/fmt'
 import { EpisodeList, orderEpisodes, Player } from './Player'
 import { buildScorecard, DISCLAIMER, reportJson, STAMP, verificationLabel } from './scorecard'
 import { ScorecardDialog, StatusMark } from './ScorecardDialog'
+import { useScorecardUi } from './scorecard-ui'
 import { useReplay } from './store'
 import { useVerification } from './verification'
 
@@ -28,7 +29,8 @@ export function RunCard() {
   const ds = useApp((s) => s.dataset)
   const select = useReplay((s) => s.select)
   const session = useByo((s) => s.run.session)
-  const [open, setOpen] = useState(false)
+  const open = useScorecardUi((s) => s.open)
+  const setOpen = useScorecardUi((s) => s.setOpen)
   const ver = useVerification()
 
   const datasetMatches = result && ds ? ds.manifest.contentHash === result.run.dataset.sha256 : null
