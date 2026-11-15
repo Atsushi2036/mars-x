@@ -15,13 +15,13 @@ import { Rover } from './Rover'
 import { Sky } from './Sky'
 import { Sun } from './Sun'
 import { sunLive, useApp } from '@/store/app'
-import { disposeMissionPlanner } from '@/store/mission'
+import { disposeMissionPlanner, selectScienceTarget, setMissionEndpoints, setMissionProfile, useMission } from '@/store/mission'
 import { cameraRig, focusBounds, useCamera } from '@/store/camera'
 import { roverLive } from '@/store/rover'
 
 declare global {
   interface Window {
-    __marsx?: { ready: boolean; fps: number; frameCount: number; chunks: number; triangles: number; mode: string; drawCalls: number; renderedTriangles: number; geometries: number; textures: number; sunAz?: number; sunEl?: number; layer?: string; jumpTo?: (x: number, z: number) => void }
+    __marsx?: { ready: boolean; fps: number; frameCount: number; chunks: number; triangles: number; mode: string; drawCalls: number; renderedTriangles: number; geometries: number; textures: number; sunAz?: number; sunEl?: number; layer?: string; jumpTo?: (x: number, z: number) => void; mission?: unknown }
   }
 }
 
@@ -105,6 +105,8 @@ function Probes({ ds }: { ds: Dataset }) {
   const gl = useThree((s) => s.gl)
   useEffect(() => {
     window.__marsx = { ready: false, fps: 0, frameCount: 0, chunks: 0, triangles: 0, mode: 'orbit', drawCalls: 0, renderedTriangles: 0, geometries: 0, textures: 0 }
+    // test hook: the Mission API (profile, endpoints, science stop) and the planner state, for Playwright
+    window.__marsx.mission = { setMissionProfile, setMissionEndpoints, selectScienceTarget, state: () => useMission.getState() }
     // test hook: frames a 60 m box around a world position (x east, z south) with the orbit camera
     window.__marsx.jumpTo = (x, z) => focusBounds({ minX: x - 30, maxX: x + 30, minZ: z - 30, maxZ: z + 30 })
     return () => {

@@ -7,6 +7,8 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import type { Dataset } from '@/core/data/loader'
 import { registerSlot } from '@/ui/slots'
 import { useApp, type WaypointInfo } from '@/store/app'
+import { selectScienceTarget, useMission } from '@/store/mission'
+import { waypointTargets } from '@/core/mission/science-targets'
 import { parseTraverse, parseWaypoints, type TraverseData } from './traverse-data'
 import { WaypointCard } from './WaypointCard'
 
@@ -200,7 +202,15 @@ function Waypoints({ ds, points, selected }: { ds: Dataset; points: WaypointInfo
         frustumCulled={false}
         onClick={(e) => {
           e.stopPropagation()
-          if (e.instanceId !== undefined) useApp.getState().setSelectedWaypoint(points[e.instanceId] ?? null)
+          if (e.instanceId === undefined) return
+          const w = points[e.instanceId]
+          if (!w) return
+          // in Mission with the astronaut profile a diamond is a science stop; elsewhere it opens the details card
+          if (useApp.getState().mode === 'mission' && useMission.getState().profile === 'astronaut') {
+            const id = waypointTargets(points)[e.instanceId]?.id
+            if (id) void selectScienceTarget(id)
+          }
+          useApp.getState().setSelectedWaypoint(w)
         }}
         onPointerOver={() => (document.body.style.cursor = 'pointer')}
         onPointerOut={() => (document.body.style.cursor = '')}

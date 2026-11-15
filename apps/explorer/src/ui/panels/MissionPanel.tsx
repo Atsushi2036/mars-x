@@ -8,6 +8,7 @@ import { PROFILES } from '@/intelligence/nav/profiles'
 import { fmtDeg, fmtInt, fmtLat, fmtLon } from '@/lib/format'
 import { useApp } from '@/store/app'
 import { useMission, type MissionProfile } from '@/store/mission'
+import { MarswalkReport, MarswalkSetup } from './MarswalkPanel'
 import { Row, Section } from './Section'
 
 const PROFILE_LABEL: Record<MissionProfile, string> = { astronaut: 'Astronaut', 'rover-rtg': 'Rover RTG', 'rover-solar': 'Rover solar' }
@@ -94,10 +95,12 @@ export function MissionPanel() {
           ))}
         </ToggleGroup>
         <p className="text-xs text-muted-foreground">
-          Slope limit {PROFILES[m.profile].maxSlope}° ·{' '}
+          Slope limit {m.profile === 'astronaut' ? m.astronautSlopeLimit : PROFILES[m.profile].maxSlope}° ·{' '}
           {PROFILES[m.profile].provenance === 'sourced' ? 'sourced limit' : 'assumption, editable later in the lab'}
         </p>
       </Section>
+
+      {m.profile === 'astronaut' && <MarswalkSetup />}
 
       <Section title="Route">
         {m.layersStatus === 'loading' && (
@@ -151,6 +154,8 @@ export function MissionPanel() {
           </p>
         )}
       </Section>
+
+      {m.profile === 'astronaut' && <MarswalkReport />}
 
       {both && Object.keys(m.outcomes).length > 0 && (
         <Section title="All profiles">

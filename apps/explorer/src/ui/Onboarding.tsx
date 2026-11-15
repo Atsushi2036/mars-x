@@ -1,6 +1,7 @@
-import { Info, X } from 'lucide-react'
+import { Compass, Info, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
+import { startGuidedMission } from '@/features/guided/api'
 import { useApp } from '@/store/app'
 
 const KEY = 'marsx.onboarded'
@@ -65,6 +66,17 @@ export function Onboarding() {
             <li className="hidden md:list-item">Open Mission, then click the terrain to set an origin and a destination.</li>
             <li className="hidden md:list-item">Sources and the NASA/JPL/Caltech disclaimer are in Data &amp; Sources.</li>
           </ul>
+          <Button
+            size="sm"
+            className="h-9 gap-1.5"
+            onClick={() => {
+              close()
+              startGuidedMission()
+            }}
+          >
+            <Compass aria-hidden="true" />
+            Guided mission
+          </Button>
         </div>
         <Button variant="ghost" size="icon" aria-label="Dismiss tips" className="-mr-1.5 -mt-1.5 size-9 md:size-7" onClick={close}>
           <X />

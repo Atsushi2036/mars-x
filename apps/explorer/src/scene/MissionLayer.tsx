@@ -3,10 +3,12 @@ import { useEffect, useMemo, useRef } from 'react'
 import { BufferAttribute, BufferGeometry, Color, DoubleSide, Mesh, MeshBasicMaterial, Raycaster, Vector2, type Group } from 'three'
 import type { Dataset } from '@/core/data/loader'
 import { raycastTerrain, worldToCell, type XZ } from '@/core/mission/geometry'
+import { marswalkReport } from '@/core/mission/marswalk'
 import { useApp } from '@/store/app'
 import { useMission } from '@/store/mission'
 
 const CASING = new Color('#f3efe6')
+const UNSAFE = new Color('#ff5d4d')
 const VIRIDIS = ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'].map((c) => new Color(c))
 
 /** viridis-like colour for a slope in degrees (0..30+). */
@@ -46,6 +48,31 @@ function Marker({ at, kind, hf }: { at: XZ; kind: 'origin' | 'destination'; hf: 
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.7, 1.0, 32]} />
         <meshBasicMaterial color="#ffb81f" side={DoubleSide} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Red post where the shelter window runs out (constant size on screen). */
+function ShelterLimitMarker({ at, hf }: { at: XZ; hf: Dataset['heightfield'] }) {
+  const g = useRef<Group>(null)
+  useFrame(({ camera }) => {
+    const m = g.current
+    if (!m) return
+    const y = hf.sampleHeight(at.x, at.z)
+    m.position.set(at.x, y, at.z)
+    const d = Math.hypot(camera.position.x - at.x, camera.position.y - y, camera.position.z - at.z)
+    m.scale.setScalar(Math.max(1, d * 0.02))
+  })
+  return (
+    <group ref={g}>
+      <mesh position={[0, 2.5, 0]}>
+        <cylinderGeometry args={[0.08, 0.08, 5, 8]} />
+        <meshBasicMaterial color="#ff5d4d" />
+      </mesh>
+      <mesh position={[0, 5.4, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[1.1, 1.1, 0.2]} />
+        <meshBasicMaterial color="#ff5d4d" />
       </mesh>
     </group>
   )
@@ -105,6 +132,7 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
   const outcomes = useMission((s) => s.outcomes)
   const profile = useMission((s) => s.profile)
   const layers = useMission((s) => s.layers)
+  const walk = useMission((s) => s.walk)
   const outcome = outcomes[profile]
   const ray = useMemo(() => new Raycaster(), [])
 
@@ -153,6 +181,15 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
     [ribbon],
   )
 
+  // Marswalk shelter rule: the part of the route that is more than the shelter window from the start is outlined in red
+  const unsafe = useMemo(() => {
+    if (profile !== 'astronaut' || !outcome || outcome.status !== 'ok') return null
+    const r = marswalkReport(outcome.path, (x, z) => hf.sampleHeight(x, z), walk).shelter
+    if (r.unsafePath.length < 2 || !r.boundary) return null
+    return { geo: buildRibbon(r.unsafePath, hf, () => 0, 4.8, UNSAFE, 0.35), boundary: r.boundary }
+  }, [profile, outcome, walk, hf])
+  useEffect(() => () => unsafe?.geo.dispose(), [unsafe])
+
   const mat = useMemo(
     () => new MeshBasicMaterial({ vertexColors: true, side: DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, toneMapped: false }),
     [],
@@ -163,6 +200,12 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
     <>
       {origin && <Marker at={origin} kind="origin" hf={hf} />}
       {destination && <Marker at={destination} kind="destination" hf={hf} />}
+      {unsafe && (
+        <>
+          <mesh geometry={unsafe.geo} material={mat} frustumCulled={false} renderOrder={3} />
+          <ShelterLimitMarker at={unsafe.boundary} hf={hf} />
+        </>
+      )}
       {ribbon && (
         <>
           <mesh geometry={ribbon.casing} material={mat} frustumCulled={false} renderOrder={4} />
