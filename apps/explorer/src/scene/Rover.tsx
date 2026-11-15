@@ -6,6 +6,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import type { Heightfield } from '@/core/terrain/heightfield'
 import { PathFollower } from '@/core/rover/path-follower'
 import { roverPose } from '@/core/rover/pose'
+import { playbackLive } from '@/store/playback'
 import { roverLive, useRover } from '@/store/rover'
 
 const WHEEL_R = 0.26
@@ -104,6 +105,7 @@ export function Rover({ hf }: { hf: Heightfield }) {
     }
     const wps = [{ x: roverLive.x, z: roverLive.z }, ...route.waypoints]
     follower.current = new PathFollower(wps, { speed: route.speed, loop: route.loop })
+    playbackLive.travelled = 0
   }, [route])
 
   useFrame((_, dt) => {
@@ -111,8 +113,18 @@ export function Rover({ hf }: { hf: Heightfield }) {
     if (!g || !roverLive.ready) return
     const f = follower.current
     let moving = 0
-    if (f) {
-      const s = f.step(dt)
+    if (f && playbackLive.paused) {
+      moving = 0 // Watch paused: the rover holds still
+    } else if (f) {
+      // Watch speed (1x, 4x, 16x): fixed sub-steps, the follower clamps one step to 0.1 s
+      let s = f.state
+      let left = dt * playbackLive.rate
+      while (left > 1e-6 && !s.done) {
+        const h = Math.min(left, 0.1)
+        s = f.step(h)
+        left -= h
+      }
+      playbackLive.travelled = s.travelled
       roverLive.x = s.x
       roverLive.z = s.z
       roverLive.yaw = s.yaw

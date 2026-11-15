@@ -9,6 +9,7 @@ import { ConditionsDriver } from './ConditionsDriver'
 import { TraverseLayer } from './TraverseLayer'
 import { ChunkManager } from './chunk-manager'
 import { CameraRig } from './CameraRig'
+import { PlaybackDriver } from './PlaybackDriver'
 import { Slot } from '@/ui/slots'
 import { MissionLayer } from './MissionLayer'
 import { Rover } from './Rover'
@@ -204,6 +205,7 @@ export default function Scene({ dataset }: { dataset: Dataset }) {
       <Terrain ds={dataset} />
       <Rover hf={dataset.heightfield} />
       <MissionLayer ds={dataset} />
+      <PlaybackDriver />
       <CameraRig hf={dataset.heightfield} />
       <Probes ds={dataset} />
       <Slot name="scene" />
