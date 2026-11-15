@@ -70,9 +70,15 @@ test.describe('platform checks', () => {
     const html = await res.text()
     const entry = html.match(/assets\/index-[\w-]+\.js/)?.[0]
     expect(entry).toBeTruthy()
-    const js = await (await request.get(`/${entry}`)).text()
-    const w = js.match(/policy\.worker-[\w-]+\.js/)?.[0]
-    expect(w, 'policy worker referenced from the entry bundle').toBeTruthy()
+    // the worker is referenced from whichever lazy chunk imports it: scan the entry and the chunks it names
+    const entryJs = await (await request.get(`/${entry}`)).text()
+    const chunks = [...new Set(entryJs.match(/[\w-]+-[\w-]{8}\.js/g) ?? [])]
+    let w = entryJs.match(/policy\.worker-[\w-]+\.js/)?.[0]
+    for (const c of chunks) {
+      if (w) break
+      w = (await (await request.get(`/assets/${c}`)).text()).match(/policy\.worker-[\w-]+\.js/)?.[0]
+    }
+    expect(w, 'policy worker referenced from the entry bundle or its chunks').toBeTruthy()
     const wr = await request.get(`/assets/${w}`)
     expect(wr.status()).toBe(200)
     expect(wr.headers()['content-security-policy']).toContain("connect-src 'none'")
@@ -92,6 +98,7 @@ test.describe('platform checks', () => {
     await modeButton(page, info, 'Data & Sources').click()
     const insp = page.locator('[aria-label="Inspector"]').first()
     await expect(insp).toBeVisible()
+    await page.waitForTimeout(2000) // let the panel content settle before measuring
     const box = (await insp.boundingBox())!
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     const sc = () =>
@@ -103,9 +110,8 @@ test.describe('platform checks', () => {
     const before = await sc()
     expect(before, 'a scrollable container exists in the inspector').not.toBeNull()
     await page.mouse.wheel(0, 600)
-    await page.waitForTimeout(500)
-    const after = await sc()
-    expect(after!.top, 'wheel moved the panel').toBeGreaterThan(before!.top)
+    // software GL (SwiftShader) keeps the main thread busy: give the wheel event time to be applied
+    await expect.poll(async () => (await sc())?.top ?? 0, { timeout: 30_000, message: 'wheel moved the panel' }).toBeGreaterThan(before!.top)
   })
 
   test('Export panel with absent ZIPs says so (no broken links)', async ({ page, baseURL }, info) => {

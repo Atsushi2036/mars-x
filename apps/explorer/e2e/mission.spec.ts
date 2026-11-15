@@ -16,7 +16,7 @@ test.describe('mission flow', () => {
       await page.mouse.click(box.x + box.width * fx!, box.y + box.height * fy!)
       await page.waitForTimeout(500)
     }
-    const ok = page.getByText('Nodes expanded')
+    const ok = page.getByText('Max slope', { exact: true }).first()
     const none = page.getByRole('alert').filter({ hasText: 'No route for this profile' })
     const err = page.getByText('Planner error')
     const result = ok.or(none).or(err).first()
