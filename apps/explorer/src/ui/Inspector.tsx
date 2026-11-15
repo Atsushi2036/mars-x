@@ -2,6 +2,8 @@ import { ChevronDown, X } from '@/ui/icons'
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollPanel } from './ScrollPanel'
+import { useWizard } from './wizard/store'
+import { useImmersive } from './wizard/immersive'
 import { useApp, type Mode } from '@/store/app'
 import { useMission } from '@/store/mission'
 import { MODES } from './modes'
@@ -125,7 +127,9 @@ export function Inspector() {
   useEffect(() => {
     if (results > 0 && !desktop) setExpanded(true)
   }, [results, desktop, setExpanded])
-  if (!open) return null
+  const journey = useImmersive()
+  const wizardOn = useWizard((s) => s.active)
+  if (!open || journey) return null
   if (desktop) {
     return (
       <aside
@@ -149,7 +153,7 @@ export function Inspector() {
       className={`glass pointer-events-auto fixed inset-x-0 bottom-24 z-20 flex flex-col overflow-hidden rounded-t-2xl border-b-0 text-card-foreground transition-[height] duration-[var(--dur-slow)] ease-[var(--ease-out)] ${height}`}
     >
       <SheetHandle />
-      <Header compact={snap === 'peek'} />
+      <Header compact={snap === 'peek' || (wizardOn && mode === 'mission')} />
       {snap === 'peek' ? (
         <div className="min-h-0 flex-1 overflow-hidden overscroll-contain [mask-image:linear-gradient(to_bottom,black_70%,transparent)]">
           <PanelBody />

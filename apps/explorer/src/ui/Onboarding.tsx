@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { startGuidedMission } from '@/features/guided/api'
 import { useApp } from '@/store/app'
+import { useWizard } from './wizard/store'
 
 const KEY = 'marsx.onboarded'
 const AUTO_CLOSE_MS = 12_000
@@ -63,7 +64,8 @@ export function Onboarding() {
     }
   }, [open, setOpen])
 
-  if (!open) return null
+  const picking = useWizard((s) => s.active)
+  if (!open || picking) return null
   const close = () => {
     setOpen(false)
     remember()

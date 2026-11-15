@@ -2,6 +2,7 @@ import { Info } from '@/ui/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { fmtDeg, fmtElevation, fmtLat, fmtLon } from '@/lib/format'
 import { useApp } from '@/store/app'
+import { useImmersive } from './wizard/immersive'
 
 function Cell({ label, value }: { label: string; value: string }) {
   return (
@@ -20,6 +21,7 @@ export function TelemetryBar() {
   const t = useApp((s) => s.telemetry)
   const ready = useApp((s) => s.progress.ready >= 1)
   const setMode = useApp((s) => s.setMode)
+  const immersive = useImmersive()
   const dash = '—'
   return (
     <div
@@ -27,7 +29,7 @@ export function TelemetryBar() {
       aria-label="Telemetry"
       data-cover="bottom"
       data-chrome="bottom"
-      className="pointer-events-auto absolute inset-x-0 bottom-16 z-20 flex h-8 items-center gap-x-4 overflow-hidden border-t border-border bg-background/90 px-3 font-mono text-[13px] tabular-nums backdrop-blur-md md:bottom-0 md:px-4"
+      className={`pointer-events-auto absolute inset-x-0 z-20 flex h-8 items-center gap-x-4 overflow-hidden border-t border-border bg-background/90 px-3 font-mono text-[13px] tabular-nums backdrop-blur-md md:bottom-0 md:px-4 ${immersive ? 'bottom-0 pb-[env(safe-area-inset-bottom)] max-md:h-[calc(2rem+env(safe-area-inset-bottom))]' : 'bottom-16'}`}
     >
       {/* phones: one coordinate string, the disclaimer sits behind the info button */}
       <div className="flex min-w-0 flex-1 items-center gap-3 md:hidden">

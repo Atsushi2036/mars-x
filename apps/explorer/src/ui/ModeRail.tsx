@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { useApp } from '@/store/app'
 import { LogoMark } from '@/ui/Logo'
 import { RAIL_MODES, railIdFor } from './modes'
+import { useImmersive } from './wizard/immersive'
 
 /**
  * Desktop: 88 px dark rail, every item an icon over its task name (no tooltip-only names).
@@ -14,6 +15,7 @@ export function ModeRail() {
   const setMode = useApp((s) => s.setMode)
   const setOpen = useApp((s) => s.setInspectorOpen)
   const lit = railIdFor(mode)
+  const journey = useImmersive()
 
   const choose = (id: (typeof RAIL_MODES)[number]['id']) => {
     if (id === lit && open) setOpen(false)
@@ -30,6 +32,8 @@ export function ModeRail() {
     setBar({ y: y + (el.offsetHeight - 32) / 2, on: open })
   }, [lit, open])
 
+  // the journey shows only the agent and the playback bar
+  if (journey) return null
   return (
     <>
       <nav

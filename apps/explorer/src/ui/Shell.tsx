@@ -8,6 +8,7 @@ import { Slot } from './slots'
 import { Topbar } from './Topbar'
 import { useCoverVars } from './cover'
 import { FlyIn } from '@/scene/FlyIn'
+import { PlanWizard } from './wizard/PlanWizard'
 import { RouteToasts } from './motion/RouteToasts'
 
 /**
@@ -34,6 +35,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <Onboarding />
         <Slot name="overlay" />
         <FlyIn />
+        <PlanWizard />
         <Inspector />
         <Joystick />
         <TelemetryBar />

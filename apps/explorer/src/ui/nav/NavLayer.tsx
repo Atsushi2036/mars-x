@@ -13,6 +13,8 @@ import { HelpOverlay } from './HelpOverlay'
 import { Minimap, miniPerf } from './Minimap'
 import { openHelp } from './store'
 import { WatchBar, WatchButton } from './WatchBar'
+import { selectPicking, useWizard } from '../wizard/store'
+import { useImmersive } from '../wizard/immersive'
 import { ZoomCluster } from './ZoomCluster'
 
 const DESKTOP = '(min-width: 768px)'
@@ -97,6 +99,8 @@ function FollowNeedsRoute() {
  * Everything is positioned from the shell's `--cover-*` variables, so it never overlaps the topbar, inspector, sheet or telemetry.
  */
 export default function NavLayer() {
+  const journey = useImmersive()
+  const picking = useWizard(selectPicking)
   const desktop = useDesktop()
   const mode = useCamera((s) => s.mode)
   const watching = usePlayback((s) => s.source !== null)
@@ -113,6 +117,7 @@ export default function NavLayer() {
   const lift = watching && !desktop ? 'calc(var(--cover-bottom) + 12px + 8.5rem)' : base
   return (
     <div className="pointer-events-none absolute inset-0 z-10" data-nav-layer>
+      {!journey && !picking && (
       <div className="absolute left-3 flex items-center gap-2" style={{ top: 'calc(var(--cover-top) + 12px)' }}>
         <button type="button" className="glass pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:scale-95" onClick={() => useApp.getState().setMode("layers")}>
           <Layers className="size-5" strokeWidth={1.75} aria-hidden="true" />
@@ -128,22 +133,25 @@ export default function NavLayer() {
           <House className="size-5" strokeWidth={1.75} aria-hidden="true" />
         </button>
       </div>
+      )}
 
-      {(desktop || mode !== 'fpv') && (
+      {!journey && (desktop || mode !== 'fpv') && (
         <div className="absolute left-3" style={{ bottom: lift }}>
           <Minimap compact={!desktop} />
         </div>
       )}
 
-      <div className="absolute" style={{ right: 'calc(var(--cover-right) + 16px)', bottom: lift }}>
-        <ZoomCluster />
-      </div>
+      {!journey && (
+        <div className="absolute" style={{ right: 'calc(var(--cover-right) + 16px)', bottom: lift }}>
+          <ZoomCluster />
+        </div>
+      )}
 
       <div className="absolute flex -translate-x-1/2 flex-col items-center gap-2" style={{ left: 'calc((100% - var(--cover-right)) / 2)', bottom: base }}>
-        <ControlHints />
+        {!journey && <ControlHints />}
         <FollowNeedsRoute />
-        {!watching && <WatchButton />}
-        {watching ? <WatchBar /> : <CameraDock onHelp={openHelp} />}
+        {!watching && !picking && <WatchButton />}
+        {watching ? <WatchBar /> : !journey && <CameraDock onHelp={openHelp} />}
       </div>
       <Ripple />
       <HelpOverlay />

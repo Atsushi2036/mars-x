@@ -8,10 +8,13 @@ import { cn } from '@/lib/utils'
 import { useApp } from '@/store/app'
 import { useMission, type MissionProfile } from '@/store/mission'
 import { roverLive } from '@/store/rover'
-import { AstronautIcon, Check, CircleAlert, Flag, MapPin, RoverIcon, Trash2, type LucideIcon } from '../icons'
+import { AstronautIcon, Check, CircleAlert, Flag, MapPin, Play, RoverIcon, Trash2, type LucideIcon } from '../icons'
 import { Chip, Details, EmptyState, Metric, PanelSection, Segmented, StatCard } from '../kit'
 import { MarswalkReport, MarswalkSetup } from './MarswalkPanel'
 import { pickSampleRoute } from './sample-route'
+import { beginJourney } from '../wizard/journey'
+import { useWizard } from '../wizard/store'
+import { WizardPanel } from '../wizard/WizardPanel'
 
 const PROFILE_LABEL: Record<MissionProfile, string> = { astronaut: 'Astronaut', 'rover-rtg': 'Rover RTG', 'rover-solar': 'Rover solar' }
 const PROFILE_ICON: Record<MissionProfile, LucideIcon> = { astronaut: AstronautIcon, 'rover-rtg': RoverIcon, 'rover-solar': RoverIcon }
@@ -105,7 +108,7 @@ function useSampleRoute() {
   }
 }
 
-export function MissionPanel() {
+function MissionPanelClassic() {
   const ds = useApp((s) => s.dataset)
   const m = useMission()
   const sample = useSampleRoute()
@@ -176,9 +179,14 @@ export function MissionPanel() {
             title={m.origin ? 'Now pick the goal' : 'Pick a start and a goal'}
             line={m.origin ? 'Tap the terrain to place the destination.' : 'Tap the terrain to place your start.'}
             cta={
-              <Button className="h-11 w-full" onClick={sample}>
-                Use a sample route
-              </Button>
+              <div className="flex w-full flex-col gap-2">
+                <Button className="h-11 w-full" onClick={() => useWizard.getState().dispatch({ type: 'begin' })}>
+                  Plan step by step
+                </Button>
+                <Button variant="ghost" className="h-11 w-full" onClick={sample}>
+                  Use a sample route
+                </Button>
+              </div>
             }
           />
         )}
@@ -204,6 +212,10 @@ export function MissionPanel() {
                 <StatCard label="Climb" value={fmtInt(outcome.stats.climbM)} unit="m" provenance="derived" />
                 <StatCard label="Mean slope" value={outcome.stats.meanSlopeDeg.toFixed(1)} unit="°" provenance="derived" />
               </div>
+              <Button className="h-12 w-full bg-brand text-base font-semibold text-brand-foreground hover:bg-brand/90" onClick={() => beginJourney()}>
+                <Play className="size-5" aria-hidden="true" />
+                Watch the journey
+              </Button>
               <Details summary="Details">
                 <dl className="divide-y divide-border">
                   <Metric label="Nodes expanded" value={fmtInt(outcome.expanded)} />
@@ -232,4 +244,10 @@ export function MissionPanel() {
       )}
     </div>
   )
+}
+
+/** Plan a route: the step-by-step wizard while it runs, the full panel otherwise (editing an existing plan). */
+export function MissionPanel() {
+  const wizard = useWizard((s) => s.active && !s.journey)
+  return wizard ? <WizardPanel /> : <MissionPanelClassic />
 }

@@ -8,6 +8,10 @@ import { useApp } from './app'
 import { focusBounds } from './camera'
 import { roverLive } from './rover'
 
+/** a goal closer than this to the start is rejected (metres): the planner would return a one-cell path */
+export const MIN_GOAL_DISTANCE_M = 20
+export const GOAL_TOO_CLOSE = 'Pick a goal farther from the start'
+
 export type MissionProfile = 'astronaut' | 'rover-rtg' | 'rover-solar'
 
 export type ProfileOutcome =
@@ -28,6 +32,8 @@ export interface MissionState {
   profile: MissionProfile
   /** wall-clock time of the last planAll (all profiles in parallel), ms; null before the first plan */
   planWallMs: number | null
+  /** short message about the last rejected tap (a goal too close to the start), cleared after a few seconds */
+  placeNotice: string | null
   /** astronaut slope limit used for planning (assumption, 15 deg by default, up to 20) */
   astronautSlopeLimit: number
   /** Marswalk assumptions (EVA hours, speed, stop time, shelter window) */
@@ -48,6 +54,7 @@ export interface MissionState {
 let pool: import('@/intelligence/nav/planner-pool').PlannerPool | null = null
 let poolLayers: PlanLayers | null = null
 let seq = 0
+let noticeTimer: ReturnType<typeof setTimeout> | undefined
 
 async function getPool(layers: PlanLayers) {
   if (pool && poolLayers === layers) return pool
@@ -77,6 +84,7 @@ export const useMission = create<MissionState>((set, get) => ({
   outcomes: {},
   profile: 'rover-rtg',
   planWallMs: null,
+  placeNotice: null,
   astronautSlopeLimit: 15,
   walk: DEFAULT_WALK,
   scienceTargets: [],
@@ -119,7 +127,17 @@ export const useMission = create<MissionState>((set, get) => ({
   place: (ds, p) => {
     const { placing } = get()
     if (placing === 'origin') set({ origin: p, placing: 'destination', outcomes: {}, scienceTargetId: null })
-    else set({ destination: p, placing: 'origin', scienceTargetId: null })
+    else {
+      const o = get().origin
+      // same 2 m cell, or a few metres away: there is no route to plan. Keep the Goal step open and say why.
+      if (o && Math.hypot(p.x - o.x, p.z - o.z) < MIN_GOAL_DISTANCE_M) {
+        set({ placeNotice: GOAL_TOO_CLOSE })
+        clearTimeout(noticeTimer)
+        noticeTimer = setTimeout(() => useMission.setState({ placeNotice: null }), 3500)
+        return
+      }
+      set({ destination: p, placing: 'origin', scienceTargetId: null, placeNotice: null })
+    }
     if (get().origin && get().destination) void runPlan(ds)
   },
 
@@ -148,7 +166,10 @@ async function runPlan(ds: Dataset) {
   for (const [id, r] of Object.entries(res) as Array<[MissionProfile, (typeof res)[MissionProfile]]>) {
     if (r.status === 'ok') {
       const path = pathToWorld(layers.grid, r.path)
-      outcomes[id] = { status: 'ok', path, stats: pathStats(hf, path, slopeAt), expanded: r.expanded, ms: r.ms }
+      const stats = pathStats(hf, path, slopeAt)
+      // a path shorter than a metre is not a route (start and goal in the same cell): never reported as ready
+      if (stats.lengthM < 1) outcomes[id] = { status: 'no-route', message: 'The start and the goal are too close together.', ms: r.ms, requiredSlopeDeg: null }
+      else outcomes[id] = { status: 'ok', path, stats, expanded: r.expanded, ms: r.ms }
     } else if (r.status === 'no-route') {
       outcomes[id] = { status: 'no-route', message: r.message, ms: r.ms, requiredSlopeDeg: r.requiredSlopeDeg }
     } else outcomes[id] = { status: 'error', message: r.message }

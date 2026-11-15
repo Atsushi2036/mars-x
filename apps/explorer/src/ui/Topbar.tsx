@@ -6,6 +6,7 @@ import { useScenario } from '@/features/scenario/store'
 import { useApp } from '@/store/app'
 import { LogoMark, LogoWordmark } from '@/ui/Logo'
 import { Slot } from './slots'
+import { useImmersive } from './wizard/immersive'
 
 /** Local mean solar time in hours (14.5) to "14:30". */
 export function fmtClock(h: number): string {
@@ -50,6 +51,8 @@ export function Topbar() {
   const setOnboardingOpen = useApp((s) => s.setOnboardingOpen)
   const ds = useApp((s) => s.dataset)
   const next = theme === 'dark' ? 'light' : 'dark'
+  const journey = useImmersive()
+  if (journey) return null
 
   return (
     <header

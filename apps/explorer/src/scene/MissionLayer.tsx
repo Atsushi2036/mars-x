@@ -9,6 +9,8 @@ import { useApp } from '@/store/app'
 import { useMission } from '@/store/mission'
 import { useCamera } from '@/store/camera'
 import { usePlayback } from '@/store/playback'
+import { isPicking } from '@/ui/wizard/machine'
+import { useWizard } from '@/ui/wizard/store'
 
 const UNSAFE = new Color('#ff5d4d')
 /** the planner's route: cyan core on a dark casing (screen-space width, so it stays readable from 2 km up) */
@@ -223,23 +225,50 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
   useEffect(() => {
     const el = gl.domElement
     let down: { x: number; y: number; t: number } | null = null
+    // a tap is placed only after the double-tap window: the first tap of a double tap / double click (fly-to) never places a point
+    const DOUBLE_MS = 280
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let lastUp = 0
+    let ignoreUp = false
     const onDown = (e: PointerEvent) => {
-      down = { x: e.clientX, y: e.clientY, t: performance.now() }
+      const now = performance.now()
+      if (timer !== undefined && now - lastUp < DOUBLE_MS + 40) {
+        clearTimeout(timer)
+        timer = undefined
+        ignoreUp = true // the second tap of a double tap
+      }
+      down = { x: e.clientX, y: e.clientY, t: now }
     }
     const onUp = (e: PointerEvent) => {
       const d = down
       down = null
+      if (ignoreUp) {
+        ignoreUp = false
+        return
+      }
       if (!d || e.button !== 0) return
       if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6 || performance.now() - d.t > 450) return
       if (useApp.getState().mode !== 'mission') return
-      const r = el.getBoundingClientRect()
-      ray.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera)
-      const hit = raycastTerrain(hf, ray.ray.origin, ray.ray.direction)
-      if (hit) useMission.getState().place(ds, { x: hit.x, z: hit.z })
+      const cx = e.clientX
+      const cy = e.clientY
+      lastUp = performance.now()
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        timer = undefined
+        if (useApp.getState().mode !== 'mission') return
+        // inside the wizard only the Start and Goal steps take taps (a stray tap must not move a point while choosing the profile)
+        const w = useWizard.getState()
+        if (w.active && !isPicking(w)) return
+        const r = el.getBoundingClientRect()
+        ray.setFromCamera(new Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), camera)
+        const hit = raycastTerrain(hf, ray.ray.origin, ray.ray.direction)
+        if (hit) useMission.getState().place(ds, { x: hit.x, z: hit.z })
+      }, DOUBLE_MS)
     }
     el.addEventListener('pointerdown', onDown)
     el.addEventListener('pointerup', onUp)
     return () => {
+      clearTimeout(timer)
       el.removeEventListener('pointerdown', onDown)
       el.removeEventListener('pointerup', onUp)
     }

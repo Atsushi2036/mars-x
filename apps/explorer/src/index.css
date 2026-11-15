@@ -271,3 +271,8 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* the next tap on the map is a route endpoint (Plan a route wizard) */
+body[data-wizard-pick] canvas {
+  cursor: crosshair;
+}

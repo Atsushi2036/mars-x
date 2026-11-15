@@ -16,6 +16,8 @@ test.describe('mission flow', () => {
       await page.mouse.click(box.x + box.width * fx!, box.y + box.height * fy!)
       await page.waitForTimeout(500)
     }
+    // the wizard moves on by itself after the second point: Who -> Review shows the numbers
+    await page.getByRole('button', { name: 'Continue' }).click({ timeout: 60_000 })
     const ok = page.getByText('Max slope', { exact: true }).first()
     const none = page.getByRole('alert').filter({ hasText: 'No route for this profile' })
     const err = page.getByText('Planner error')
@@ -35,10 +37,11 @@ test.describe('mission flow', () => {
     expectClean(issues)
   })
 
-  test('Clear endpoints is disabled until a point is placed', async ({ page }, info) => {
+  test('entering Plan a route asks for the start first', async ({ page }, info) => {
     await open(page)
+    await dismissTips(page)
     await modeButton(page, info, 'Mission').click()
-    await expect(page.getByRole('button', { name: 'Clear endpoints' })).toBeDisabled()
+    await expect(page.getByRole('status').filter({ hasText: 'Tap the map to set' })).toContainText('START')
   })
 })
 
