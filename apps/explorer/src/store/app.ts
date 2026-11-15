@@ -18,6 +18,7 @@ export interface WaypointInfo {
   x: number
   z: number
 }
+export type SheetSnap = 'peek' | 'half' | 'full'
 export type Theme = 'dark' | 'light'
 export type Status = 'loading' | 'ready' | 'error'
 
@@ -53,12 +54,15 @@ export interface AppState {
   showTraverse: boolean
   /** waypoint the user picked on the 3D view */
   selectedWaypoint: WaypointInfo | null
-  /** mobile bottom sheet: false = peek (title + first controls), true = expanded */
+  /** mobile bottom sheet: false = peek (title + primary action), true = expanded (half or full) */
   sheetExpanded: boolean
+  /** mobile sheet snap point: peek 112 px, half 52dvh, full 88dvh. `sheetExpanded` is `snap !== 'peek'` */
+  sheetSnap: SheetSnap
   onboardingOpen: boolean
   telemetry: Telemetry
   setMode: (m: Mode) => void
   setSheetExpanded: (e: boolean) => void
+  setSheetSnap: (s: SheetSnap) => void
   setOnboardingOpen: (o: boolean) => void
   setInspectorOpen: (o: boolean) => void
   setTheme: (t: Theme) => void
@@ -112,11 +116,13 @@ export const useApp = create<AppState>((set) => ({
   showTraverse: false,
   selectedWaypoint: null,
   sheetExpanded: false,
+  sheetSnap: 'peek',
   onboardingOpen: false,
   telemetry: { lat: 0, lon: 0, elevation: 0, slopeDeg: 0, x: 0, z: 0, fps: 0 },
   // Data & Sources carries the disclaimer and the attributions: its sheet opens at the middle height
-  setMode: (mode) => set({ mode, inspectorOpen: true, sheetExpanded: mode === 'data' }),
-  setSheetExpanded: (sheetExpanded) => set({ sheetExpanded }),
+  setMode: (mode) => set({ mode, inspectorOpen: true, sheetExpanded: mode === 'data', sheetSnap: mode === 'data' ? 'half' : 'peek' }),
+  setSheetExpanded: (sheetExpanded) => set((s) => ({ sheetExpanded, sheetSnap: sheetExpanded ? (s.sheetSnap === 'peek' ? 'half' : s.sheetSnap) : 'peek' })),
+  setSheetSnap: (sheetSnap) => set({ sheetSnap, sheetExpanded: sheetSnap !== 'peek' }),
   setOnboardingOpen: (onboardingOpen) => set({ onboardingOpen }),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
   setTheme: (theme) => {
