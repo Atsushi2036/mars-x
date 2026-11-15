@@ -55,3 +55,20 @@ export function panStep(azimuth: number, fwd: number, str: number, amount: numbe
   const c = Math.cos(azimuth)
   return { x: (-s * fwd + c * str) * amount, z: (-c * fwd - s * str) * amount }
 }
+
+/**
+ * Critically damped spring (Unity-style SmoothDamp) for one axis: follows a moving target without overshoot or whiplash.
+ * `vel.v` carries the velocity between calls; `smoothTime` is roughly the time to settle (seconds).
+ */
+export function smoothDamp(current: number, target: number, vel: { v: number }, smoothTime: number, dt: number): number {
+  const st = Math.max(0.0001, smoothTime)
+  const omega = 2 / st
+  const x = omega * dt
+  const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
+  const change = current - target
+  const temp = (vel.v + omega * change) * dt
+  vel.v = (vel.v - omega * temp) * exp
+  const out = target + (change + temp) * exp
+  // never overshoot the target
+  return target - current > 0 === out > target ? target : out
+}

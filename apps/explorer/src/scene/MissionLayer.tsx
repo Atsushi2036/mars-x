@@ -8,6 +8,7 @@ import { marswalkReport } from '@/core/mission/marswalk'
 import { useApp } from '@/store/app'
 import { useMission } from '@/store/mission'
 import { useCamera } from '@/store/camera'
+import { curveFor } from '@/core/rover/curve'
 import { usePlayback } from '@/store/playback'
 import { isPicking } from '@/ui/wizard/machine'
 import { useWizard } from '@/ui/wizard/store'
@@ -298,7 +299,7 @@ export function MissionLayer({ ds }: { ds: Dataset }) {
           <ShelterLimitMarker at={unsafe.boundary} hf={hf} />
         </>
       )}
-      {outcome && outcome.status === 'ok' && <RouteLine path={outcome.path} hf={hf} />}
+      {outcome && outcome.status === 'ok' && <RouteLine path={curveFor(outcome.path).pts} hf={hf} />}
     </>
   )
 }

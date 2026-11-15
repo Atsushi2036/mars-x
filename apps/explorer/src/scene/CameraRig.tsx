@@ -5,7 +5,7 @@ import { Vector3, type PerspectiveCamera } from 'three'
 import { raycastTerrain } from '@/core/mission/geometry'
 import type { Heightfield } from '@/core/terrain/heightfield'
 import { agentLive, cameraRig, flyTo, FPV, resetNorth, useCamera, zoomBy, type FlyRequest } from '@/store/camera'
-import { azimuthOf, clampDistance, clampPitch, clampToTile, DIST_MAX, easeInOut, lerpAngle, orbitPosition, panStep } from '@/store/camera-math'
+import { azimuthOf, clampDistance, clampPitch, clampToTile, DIST_MAX, easeInOut, lerpAngle, orbitPosition, panStep, smoothDamp } from '@/store/camera-math'
 import { useMission } from '@/store/mission'
 import { useApp } from '@/store/app'
 import { roverLive } from '@/store/rover'
@@ -16,6 +16,8 @@ const DOUBLE_TAP_MS = 350
 const TAP_SLOP = 8
 /** zoom factor of one +/- press (25 % of the distance) */
 export const ZOOM_STEP = 0.75
+/** Follow camera settle time (s) */
+const CHASE_SMOOTH_S = 0.4
 
 /**
  * One camera, three modes, one store (`useCamera`):
@@ -69,6 +71,7 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
   const flight = useRef<Flight | null>(null)
   /** Follow: how far the user has dragged the view around the agent (springs back when released) */
   const look = useRef({ yaw: 0, pitch: 0, idle: 0 })
+  const chaseVel = useRef({ x: { v: 0 }, y: { v: 0 }, z: { v: 0 } })
 
   const ext = hf.extent
   const half = Math.max(ext.xMax - ext.xMin, ext.zMax - ext.zMin) / 2
@@ -262,6 +265,7 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
       } else if (mode === 'chase' && agent.ready) {
         // snap behind the agent instead of flying in from wherever the previous camera was
         look.current = { yaw: 0, pitch: 0, idle: 0 }
+        chaseVel.current = { x: { v: 0 }, y: { v: 0 }, z: { v: 0 } }
         const back = agentLive.kind === 'astronaut' ? 3.4 : 9
         const tx = agent.x - Math.cos(agent.yaw) * back
         const tz = agent.z - Math.sin(agent.yaw) * back
@@ -452,10 +456,10 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
       const tz = agent.z - Math.sin(heading) * back
       const rg = hf.sampleHeight(agent.x, agent.z)
       const ty = Math.max(hf.sampleHeight(tx, tz) + 2.5, rg + (astro ? 2.3 : 4.2) + lk.pitch * back * 1.6)
-      const s = 1 - Math.exp(-4 * dt)
-      camera.position.x += (tx - camera.position.x) * s
-      camera.position.y += (ty - camera.position.y) * s
-      camera.position.z += (tz - camera.position.z) * s
+      // critically damped follow: no whiplash in the zigzags, no overshoot when the agent stops
+      camera.position.x = smoothDamp(camera.position.x, tx, chaseVel.current.x, CHASE_SMOOTH_S, dt)
+      camera.position.y = smoothDamp(camera.position.y, ty, chaseVel.current.y, CHASE_SMOOTH_S, dt)
+      camera.position.z = smoothDamp(camera.position.z, tz, chaseVel.current.z, CHASE_SMOOTH_S, dt)
       const floor = hf.sampleHeight(camera.position.x, camera.position.z) + 1.5
       if (camera.position.y < floor) camera.position.y = floor
       camera.lookAt(agent.x, rg + (astro ? 1.3 : 1.0), agent.z)

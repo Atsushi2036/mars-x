@@ -1,23 +1,25 @@
 import { cellToWorld, type PlanGrid, type XZ } from '@/core/mission/geometry'
+import { curveFor, headingAhead, type Curve } from '@/core/rover/curve'
 import type { LiveTrack } from '@/intelligence/drive/drive-loop'
 import { useByo } from '@/features/shared/byo-store'
 import { EVENT_LABEL, fmtElapsed, stepAtTime, useReplay } from '@/features/replay/store'
 import { agentLive } from './camera'
 import { DRIVER_ENABLED, useDriver } from './driver'
 import { useMission } from './mission'
-import { eventKind, fmtMission, pathLength, playbackLive, usePlayback, type PlaybackEvent } from './playback'
+import { eventKind, fmtMission, usePlayback, type PlaybackEvent } from './playback'
 import { roverLive, useRover } from './rover'
 
 /** Replay speed at 1x, trajectory steps per second (same pace as the replay in the AI Lab panel). */
 export const RUN_RATE = 24
-/** how fast the rover MOVES on screen at 1x playback (m/s) */
-const ROVER_SPEED = 1.5
-/** a route is shown in about this many seconds at 1x, whatever its real length (the clock still shows real mission time) */
-export const FIT_SECONDS = 30
+/** how fast the agent MOVES on screen at 1x playback (m/s): a believable pace at any route length, with no ceiling on the duration */
+export const VISUAL_ROVER_MS = 3
+export const VISUAL_ASTRO_MS = 2
+/** a short route still takes at least this long at 1x */
+export const MIN_ROUTE_SECONDS = 15
 
-/** On-screen speed (m/s) that makes a route of this length take about FIT_SECONDS, never slower than the vehicle's base pace. */
-export function fitSpeed(lengthM: number, baseMs: number): number {
-  return Math.max(baseMs, lengthM / FIT_SECONDS)
+/** On-screen speed (m/s) at 1x: the vehicle's pace, slowed only so that a short route lasts at least MIN_ROUTE_SECONDS. */
+export function visualSpeed(lengthM: number, astro: boolean): number {
+  return Math.min(astro ? VISUAL_ASTRO_MS : VISUAL_ROVER_MS, lengthM / MIN_ROUTE_SECONDS)
 }
 /** how fast the real rover drives (m/s, Perseverance autonav average): mission time = distance / this */
 export const ROVER_REAL_SPEED = 0.042
@@ -40,14 +42,17 @@ export function currentWatchTarget(appMode: string): WatchTarget | null {
 export interface RouteCtx {
   kind: 'route'
   path: XZ[]
+  /** the smoothed arc-length curve the agent drives AND the 3D line draws (core/rover/curve) */
+  curve: Curve
+  /** on-screen speed at 1x, m/s */
   speed: number
-  /** metres already covered before the current follower was created (after a seek) */
-  base: number
+  /** arc length covered so far, metres (advanced every frame by the driver) */
+  s: number
+  /** damped heading, radians */
+  yaw: number
   length: number
-  /** id of the rover route this Watch started (another route taking over ends the Watch) */
+  /** id of the rover route this Watch started (another route taking over ends the Watch); -1 = none, any new rover route ends the Watch */
   routeId: number
-  /** frames to ignore the rover's travelled counter after a seek (the follower is rebuilt on the next React commit) */
-  settle: number
 }
 export interface RunCtx {
   kind: 'run'
@@ -73,21 +78,22 @@ export function startRouteWatch(): boolean {
   const m = useMission.getState()
   const out = m.outcomes[m.profile]
   if (!out || out.status !== 'ok' || out.path.length < 2) return false
-  const path = out.path.map((p) => ({ x: p.x, z: p.z }))
+  const path = out.path
   const astro = m.profile === 'astronaut'
-  const length = pathLength(path)
-  const speed = fitSpeed(length, astro ? m.walk.speedMs : ROVER_SPEED)
+  const curve = curveFor(path)
+  const length = curve.length
+  const speed = visualSpeed(length, astro)
   const duration = length / speed
   // mission time is the real one (distance over the real pace); timeScale is how much faster than real the playback runs
   const timeScale = speed / (astro ? m.walk.speedMs : ROVER_REAL_SPEED)
   agentLive.kind = astro ? 'astronaut' : 'rover'
-  roverLive.x = path[0]!.x
-  roverLive.z = path[0]!.z
-  roverLive.yaw = Math.atan2(path[1]!.z - path[0]!.z, path[1]!.x - path[0]!.x)
-  watchCtx.current = { kind: 'route', path, speed, base: 0, length, settle: 3, routeId: -1 }
-  playbackLive.travelled = 0
-  useRover.getState().followPath(path.slice(1), speed)
-  watchCtx.current.routeId = useRover.getState().route?.id ?? -1
+  const yaw0 = headingAhead(curve, 0)
+  roverLive.x = curve.pts[0]!.x
+  roverLive.z = curve.pts[0]!.z
+  roverLive.yaw = yaw0
+  // the driver moves the agent along the curve every frame; the rover's own follower (demo loop) stays out of it
+  useRover.getState().stop()
+  watchCtx.current = { kind: 'route', path, curve, speed, s: 0, yaw: yaw0, length, routeId: -1 }
   usePlayback.getState().begin({
     source: 'route',
     duration,
@@ -164,11 +170,11 @@ export function placeAgentAtOrigin(): boolean {
   const m = useMission.getState()
   const out = m.outcomes[m.profile]
   if (!out || out.status !== 'ok' || out.path.length < 2) return false
-  const [a, b] = [out.path[0]!, out.path[1]!]
+  const curve = curveFor(out.path)
   useRover.getState().stop()
-  roverLive.x = a.x
-  roverLive.z = a.z
-  roverLive.yaw = Math.atan2(b.z - a.z, b.x - a.x)
+  roverLive.x = curve.pts[0]!.x
+  roverLive.z = curve.pts[0]!.z
+  roverLive.yaw = headingAhead(curve, 0)
   agentLive.kind = m.profile === 'astronaut' ? 'astronaut' : 'rover'
   return true
 }

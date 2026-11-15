@@ -76,6 +76,7 @@ export function Rover({ hf }: { hf: Heightfield }) {
   const follower = useRef<PathFollower | null>(null)
   const quat = useRef(new Quaternion())
   const first = useRef(true)
+  const lastPos = useRef({ x: 0, z: 0, ok: false })
   const route = useRover((s) => s.route)
   const model = usePerseveranceModel()
 
@@ -137,6 +138,12 @@ export function Rover({ hf }: { hf: Heightfield }) {
         useRover.getState().setStatus('arrived')
       }
     }
+    if (!f) {
+      // the Watch driver moves the pose (roverLive): turn the wheels at the ground speed it actually covers
+      const l = lastPos.current
+      if (l.ok && dt > 0) moving = Math.min(30, Math.hypot(roverLive.x - l.x, roverLive.z - l.z) / dt)
+    }
+    lastPos.current = { x: roverLive.x, z: roverLive.z, ok: true }
     const pose = roverPose(hf, roverLive.x, roverLive.z, roverLive.yaw)
     // basis -> quaternion (model: +x right, +y up, -z forward)
     _right.set(pose.right.x, pose.right.y, pose.right.z)

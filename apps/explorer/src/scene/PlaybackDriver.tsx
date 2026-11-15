@@ -2,10 +2,11 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { agentLive } from '@/store/camera'
 import { lerpAngle } from '@/store/camera-math'
-import { pointAlong, playbackLive, usePlayback } from '@/store/playback'
+import { usePlayback } from '@/store/playback'
 import { useMission } from '@/store/mission'
 import { roverLive, useRover } from '@/store/rover'
 import { cellToWorld } from '@/core/mission/geometry'
+import { curveAt, dampAngle, headingAhead } from '@/core/rover/curve'
 import { useDriver } from '@/store/driver'
 import { DRIVE_RATE, liveEvents, stopAiDrive } from '@/store/drive-watch'
 import { installAgentSync, RUN_RATE, watchCtx, type RouteCtx, type RunCtx } from '@/store/watch'
@@ -87,42 +88,40 @@ export function PlaybackDriver() {
   return null
 }
 
+/**
+ * Route Watch: the agent rides the smoothed arc-length curve (the same object the 3D line draws), advanced EVERY frame by a continuous
+ * clock (dt clamped, so a slow frame never jumps), heading = the curve tangent a few metres ahead with frame-rate independent damping.
+ * The store only gets the time at 10 Hz, for the scrubber and the clock.
+ */
 function driveRoute(ctx: RouteCtx, pb: PB, a: Acc, dt: number) {
-  agentLive.x = roverLive.x
-  agentLive.z = roverLive.z
-  agentLive.yaw = roverLive.yaw
-  agentLive.ready = true
   if (a.nonce !== pb.seekNonce) {
     a.nonce = pb.seekNonce
-    const want = pb.t * ctx.speed
-    const have = ctx.base + playbackLive.travelled
-    if (Math.abs(want - have) > 0.75) {
-      const p = pointAlong(ctx.path, want)
-      roverLive.x = p.x
-      roverLive.z = p.z
-      const nx = p.rest[0]!
-      if (Math.hypot(nx.x - p.x, nx.z - p.z) > 0.01) roverLive.yaw = Math.atan2(nx.z - p.z, nx.x - p.x)
-      ctx.base = want
-      ctx.settle = 3
-      playbackLive.travelled = 0
-      useRover.getState().followPath(p.rest, ctx.speed)
-      ctx.routeId = useRover.getState().route?.id ?? -1
-    }
+    ctx.s = Math.min(ctx.length, Math.max(0, pb.t * ctx.speed))
   }
-  if (ctx.settle > 0) {
-    ctx.settle--
-    return
+  if (usePlayback.getState().playing) {
+    ctx.s = Math.min(ctx.length, ctx.s + dt * ctx.speed * pb.speed)
+    if (ctx.s >= ctx.length) pb.finish()
   }
+  const p = curveAt(ctx.curve, ctx.s, ROUTE_POINT)
+  ctx.yaw = dampAngle(ctx.yaw, headingAhead(ctx.curve, ctx.s, LOOK_AHEAD_M), dt, YAW_RATE)
+  roverLive.x = p.x
+  roverLive.z = p.z
+  roverLive.yaw = ctx.yaw
+  agentLive.x = p.x
+  agentLive.z = p.z
+  agentLive.yaw = ctx.yaw
+  agentLive.ready = true
   a.tick += dt
-  if (useRover.getState().status === 'arrived' && pb.playing) {
-    pb.finish()
-    return
-  }
   if (a.tick >= TICK_S) {
     a.tick = 0
-    pb.tick((ctx.base + playbackLive.travelled) / ctx.speed)
+    pb.tick(ctx.s / ctx.speed)
   }
 }
+
+const ROUTE_POINT = { x: 0, z: 0, tx: 1, tz: 0 }
+/** how far ahead of the agent the heading looks (m) and how fast it settles (1/s) */
+const LOOK_AHEAD_M = 4
+const YAW_RATE = 6
 
 function driveRun(ctx: RunCtx, pb: PB, a: Acc, dt: number) {
   const rep = useReplay.getState()

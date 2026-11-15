@@ -58,7 +58,9 @@ describe('agent follows the plan', () => {
     if (ctx?.kind !== 'route') throw new Error('route expected')
     expect(ctx.path).toEqual(P1)
     expect(roverLive.x).toBe(100)
-    expect(useRover.getState().route?.waypoints).toEqual(P1.slice(1))
+    // the agent rides the shared smoothed curve (no rover follower), starting on the first cell
+    expect(ctx.curve.pts[0]).toEqual(P1[0])
+    expect(useRover.getState().route).toBeNull()
     expect(usePlayback.getState().t).toBe(0)
     expect(usePlayback.getState().source).toBe('route')
   })
@@ -69,7 +71,7 @@ describe('agent follows the plan', () => {
     useMission.setState({ outcomes: { 'rover-rtg': ok(P2) } })
     expect(usePlayback.getState().source).toBe('route')
     expect(roverLive.x).toBe(-80)
-    expect(useRover.getState().route?.waypoints).toEqual(P2.slice(1))
+    expect(watchCtx.current?.kind === 'route' && watchCtx.current.path).toEqual(P2)
   })
 
   it('a plan that disappears while watching ends the Watch', () => {
@@ -87,10 +89,16 @@ describe('agent follows the plan', () => {
   })
 })
 
-describe('fitSpeed', () => {
-  it('shows a long route in about 30 s, never slower than the vehicle base pace', async () => {
-    const { fitSpeed } = await import('./watch')
-    expect(300 / fitSpeed(300, 1.5)).toBeCloseTo(30, 0)
-    expect(20 / fitSpeed(20, 1.5)).toBeCloseTo(20 / 1.5, 5) // short route keeps the base pace
+describe('visualSpeed', () => {
+  it('is a constant believable pace at any length (rover 3 m/s, astronaut 2 m/s) with no ceiling on the duration', async () => {
+    const { visualSpeed } = await import('./watch')
+    expect(visualSpeed(3000, false)).toBe(3)
+    expect(3000 / visualSpeed(3000, false)).toBe(1000)
+    expect(visualSpeed(3000, true)).toBe(2)
+  })
+  it('a short route is slowed down just enough to last 15 s at 1x', async () => {
+    const { visualSpeed } = await import('./watch')
+    expect(30 / visualSpeed(30, false)).toBeCloseTo(15, 5)
+    expect(20 / visualSpeed(20, true)).toBeCloseTo(15, 5)
   })
 })

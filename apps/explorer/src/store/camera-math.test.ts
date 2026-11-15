@@ -64,3 +64,32 @@ describe('camera math', () => {
     expect(r0.x).toBeCloseTo(10)
   })
 })
+
+describe('smoothDamp', () => {
+  it('settles on a step without overshooting, and keeps moving every frame on the way', async () => {
+    const { smoothDamp } = await import('./camera-math')
+    const vel = { v: 0 }
+    let x = 0
+    let prev = 0
+    for (let i = 0; i < 180; i++) {
+      x = smoothDamp(x, 10, vel, 0.35, 1 / 60)
+      expect(x).toBeLessThanOrEqual(10)
+      expect(x).toBeGreaterThanOrEqual(prev)
+      prev = x
+    }
+    expect(x).toBeGreaterThan(9.9)
+  })
+  it('a target moving at constant speed is followed with a bounded lag and no oscillation', async () => {
+    const { smoothDamp } = await import('./camera-math')
+    const vel = { v: 0 }
+    let x = 0
+    let last = -Infinity
+    for (let i = 0; i < 600; i++) {
+      const t = (i / 60) * 3 // 3 m/s
+      x = smoothDamp(x, t, vel, 0.35, 1 / 60)
+      expect(x).toBeGreaterThanOrEqual(last)
+      last = x
+    }
+    expect(3 * 10 - x).toBeLessThan(1.5)
+  })
+})
