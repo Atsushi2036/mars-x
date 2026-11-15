@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "catalog/1",
+  "models": [
+    {
+      "id": "ppo-reference",
+      "kind": "reference",
+      "name": "PPO reference",
+      "version": "0.2.0",
+      "sha256": "fbb0bdfc86ca9f9178a1a28cbe6dbf19c77c3e4db5b83b50ac8544423809a11f",
+      "onnx": "models/policy.onnx",
+      "card": "models/policy-card.json",
+      "runs": {},
+      "official": {
+        "suite": "jezero-v1 0.1.0",
+        "L1": { "success": 0.605, "n": 600 },
+        "L2": { "success": 0.629, "n": 800 }
+      },
+      "passesL1": false
+    },
+    {
+      "id": "my-first-model",
+      "kind": "example",
+      "name": "Example student model (PPO, 1.5M steps)",
+      "version": "0.1.0",
+      "sha256": "ad8cd057223c1e44c5a78370434a63ea99b7cdb4e3d85b2aae2f32047f9f8bc2",
+      "onnx": "models/examples/my-first-model/my-model.onnx",
+      "card": "models/examples/my-first-model/my-model.card.json",
+      "runs": {
+        "L1": "models/examples/my-first-model/my-model.L1.run.json",
+        "L2": "models/examples/my-first-model/my-model.L2.run.json"
+      },
+      "official": {
+        "suite": "jezero-v1 0.1.0",
+        "L1": { "success": 0.53, "n": 600 },
+        "L2": { "success": 0.539, "n": 800 }
+      },
+      "passesL1": false
+    }
+  ]
+}

@@ -45,6 +45,21 @@ for (const [from, to, label] of [
   if (existsSync(from)) sources.push({ src: from, dest: to, filter: () => true });
   else console.warn(`WARNING: ${relative(root, from)} not found; ${label} will be missing from dist.`);
 }
+// Ready-made example models for the lab's "Try a model" catalog: only the files the app loads (the ONNX, its card,
+// the official L1/L2 run.json and the scorecard), not the golden vectors, CSV or README. Same size control as the rest.
+const EXAMPLE_FILES = new Set(["my-model.onnx", "my-model.card.json", "my-model.L1.run.json", "my-model.L2.run.json", "my-model.scorecard.json"]);
+const examplesDir = join(root, "examples");
+if (existsSync(examplesDir)) {
+  for (const e of readdirSync(examplesDir, { withFileTypes: true })) {
+    if (e.isDirectory()) {
+      sources.push({
+        src: join(examplesDir, e.name),
+        dest: join(dest, "models", "examples", e.name),
+        filter: (p) => statSync(p).isDirectory() || EXAMPLE_FILES.has(p.slice(p.lastIndexOf(sep) + 1)),
+      });
+    }
+  }
+} else console.warn("WARNING: examples/ not found; the example models will be missing from dist.");
 if (skipExport) console.warn("MARSX_SKIP_EXPORT=1: data/<region>/export/ is NOT copied.");
 
 let total = 0;
