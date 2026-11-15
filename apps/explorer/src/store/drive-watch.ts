@@ -43,9 +43,16 @@ export function stopAiDrive(): void {
 export function liveEvents(track: LiveTrack, summary: DriveSummary | null): PlaybackEvent[] {
   const out: PlaybackEvent[] = []
   let blocked = 0
+  let lastBlocked = -100
   for (const e of track.events) {
     if (e.kind === 'blocked') {
-      if (++blocked > 40) continue // a policy stuck against a wall must not flood the bar
+      // a policy pushing against a wall is one marker, not hundreds: bumps within 6 steps merge, and the bar never shows more than 40
+      if (e.at - lastBlocked < 6) {
+        lastBlocked = e.at
+        continue
+      }
+      lastBlocked = e.at
+      if (++blocked > 40) continue
       out.push({ t: e.at, kind: 'stuck', label: 'Blocked move' })
     } else if (e.kind === 'rock') out.push({ t: e.at, kind: 'rock', label: 'Hit an obstacle' })
     else out.push({ t: e.at, kind: summary?.outcome === 'success' ? 'end' : 'stuck', label: summary ? (summary.outcome === 'success' ? 'Reached the goal' : 'Run ended') : 'End' })
