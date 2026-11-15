@@ -94,6 +94,14 @@ export const SCENARIOS = {
       if (!seen.has('mid') && i === 6) { seen.add('mid'); await shot('2-slow-mid-episode') }
       if (b && !seen.has(b.split(' ')[0])) { seen.add(b.split(' ')[0]); await shot('3-banner-' + b.split(' ')[0].replace(/[^a-z]/gi, '')) }
     }
+    // 2b. the same episode in 3D with a ghost rover on the real terrain, camera framed on the learning area
+    await page.getByRole('switch', { name: 'Show in 3D' }).click()
+    await page.getByRole('button', { name: 'Follow the learner' }).click()
+    await page.waitForTimeout(2500)
+    await shot('7-3d-ghost')
+    await page.waitForTimeout(1500)
+    await shot('7b-3d-ghost')
+    await page.getByRole('switch', { name: 'Show in 3D' }).click()
     // 3. learn for a while at Turbo, then show what it learned
     await page.getByRole('radio', { name: 'Turbo' }).click()
     await page.waitForTimeout(25000)

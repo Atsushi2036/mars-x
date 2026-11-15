@@ -7,6 +7,7 @@ import { createLucideIcon } from 'lucide-react'
 
 export {
   Bot,
+  Box,
   Hand,
   Keyboard,
   MousePointerClick,

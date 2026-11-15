@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { cellToWorld, type PlanGrid } from '@/core/mission/geometry'
-import { learnerCellToPlanIndex, learnerCellToWorld } from './ghost-map'
+import { cropBounds, learnerCellToPlanIndex, learnerCellToWorld } from './ghost-map'
 
 const grid: PlanGrid = { n: 100, res: 2, x0: -100, y0: 100 }
 // a 48x48 learning grid that covers planning cells rows 10..105 / cols 20..115 (factor 2) would overflow: use 4x4 for the test
@@ -29,5 +29,17 @@ describe('learnerCellToPlanIndex', () => {
     expect(r).toBeLessThanOrEqual(3)
     expect(c).toBeGreaterThanOrEqual(2)
     expect(c).toBeLessThanOrEqual(3)
+  })
+})
+
+describe('cropBounds', () => {
+  it('is the box that covers the four corner cells of the learning grid in world metres', () => {
+    const b = cropBounds(map, grid)
+    const pts = [0, 3, 12, 15].map((c) => learnerCellToWorld(map, grid, c))
+    expect(b.minX).toBe(Math.min(...pts.map((p) => p.x)))
+    expect(b.maxX).toBe(Math.max(...pts.map((p) => p.x)))
+    expect(b.minZ).toBe(Math.min(...pts.map((p) => p.z)))
+    expect(b.maxZ).toBe(Math.max(...pts.map((p) => p.z)))
+    expect(b.maxX).toBeGreaterThan(b.minX)
   })
 })

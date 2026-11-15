@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { EpisodeSample, LearnerSnapshot } from '@/intelligence'
 import { useApp } from '@/store/app'
 import type { QProblem } from './problem'
-import { ACTION_ARROWS, cividis, frameAt, normalizeValues, WATCH_SPEEDS, type FlashTone, type FloaterTone, type WatchSpeed } from './watch'
+import { ACTION_ARROWS, cividis, frameAt, normalizeValues, stepMsFor, type FlashTone, type FloaterTone, type WatchSpeed } from './watch'
 
 export type StageView = 'map' | 'value' | 'policy'
 const PX = 6 // canvas pixels per grid cell (drawn at 2x for sharpness)
@@ -204,7 +204,7 @@ export function TrainStage({
       }
       if (s) {
         const p = pal()
-        const stepMs = rm ? 1 : WATCH_SPEEDS[sp].stepMs
+        const stepMs = rm ? 1 : stepMsFor(sp, s.cells.length)
         const elapsed = rm ? s.cells.length * stepMs + (now - t0.current) : now - t0.current
         const f = frameAt(s, elapsed, stepMs, { endHoldMs: rm ? 1100 : sp === 'slow' ? 1100 : 450, floatMs: sp === 'slow' ? 700 : 350 })
         const xy = (i: number): [number, number] => [(i % problem.cols) * k + k / 2, Math.floor(i / problem.cols) * k + k / 2]

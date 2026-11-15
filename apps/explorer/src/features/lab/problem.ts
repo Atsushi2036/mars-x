@@ -40,6 +40,9 @@ export interface QProblem {
   goal: number
   /** fine cells per coarse cell */
   factor: number
+  /** top-left planning cell of the crop (row, col): where the learning grid sits on the real terrain */
+  r0: number
+  c0: number
   cellM: number
   /** where the endpoints came from */
   endpoints: 'mission' | 'default'
@@ -119,5 +122,5 @@ export function buildQProblem(i: ProblemInput): QProblem | null {
     endpoints = 'default'
   }
   if (start < 0 || goal < 0 || start === goal) return null
-  return { rows, cols, cost, start, goal, factor, cellM: i.resM * factor, endpoints, blocked }
+  return { rows, cols, cost, start, goal, factor, r0, c0, cellM: i.resM * factor, endpoints, blocked }
 }

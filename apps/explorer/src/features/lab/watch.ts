@@ -23,6 +23,13 @@ export function planBatch(speed: WatchSpeed) {
   return { batch, sampleEvery }
 }
 
+/** Step duration for an episode of `steps` steps: the speed's own pace, but at most ~10 s per episode (a wandering agent can take 600 steps). */
+export function stepMsFor(speed: WatchSpeed, steps: number): number {
+  const base = WATCH_SPEEDS[speed].stepMs
+  if (steps <= 0) return base
+  return Math.max(4, Math.min(base, 10_000 / steps))
+}
+
 /** The fields of a traced episode that the animation needs (EpisodeSample satisfies it). */
 export interface SampleLike {
   start: number

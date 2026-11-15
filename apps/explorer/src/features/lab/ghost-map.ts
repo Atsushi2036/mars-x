@@ -22,3 +22,14 @@ export function learnerCellToPlanIndex(crop: LearnerCrop, planN: number, cell: n
 export function learnerCellToWorld(crop: LearnerCrop, grid: PlanGrid, cell: number): XZ {
   return cellToWorld(grid, learnerCellToPlanIndex(crop, grid.n, cell))
 }
+
+/** Axis-aligned world box (metres) of the learning grid, from its four corner cells: what "Follow the learner" frames. */
+export function cropBounds(crop: LearnerCrop, grid: PlanGrid): { minX: number; minZ: number; maxX: number; maxZ: number } {
+  const corners = [0, crop.cols - 1, (crop.rows - 1) * crop.cols, crop.rows * crop.cols - 1].map((c) => learnerCellToWorld(crop, grid, c))
+  return {
+    minX: Math.min(...corners.map((p) => p.x)),
+    maxX: Math.max(...corners.map((p) => p.x)),
+    minZ: Math.min(...corners.map((p) => p.z)),
+    maxZ: Math.max(...corners.map((p) => p.z)),
+  }
+}

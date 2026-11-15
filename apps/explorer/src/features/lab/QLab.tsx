@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { cropBounds } from './ghost-map'
+import { useTrainGhost } from './train-ghost'
 import { useReducedMotion } from './use-reduced-motion'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Slider } from '@/components/ui/slider'
+import { Switch } from '@/components/ui/switch'
 import { worldToCell } from '@/core/mission/geometry'
 import { astar, PROFILES, useQLearning } from '@/intelligence'
 import { useApp } from '@/store/app'
+import { focusBounds } from '@/store/camera'
 import { useMission } from '@/store/mission'
-import { CircleAlert, Pause, Play, RotateCcw } from '@/ui/icons'
+import { Box, CircleAlert, Pause, Play, RotateCcw, RoverIcon } from '@/ui/icons'
 import { Details, Learn, PanelSection, StatCard } from '@/ui/kit'
 import { fmtNum } from '../shared/fmt'
 import { compareVerdict, summarizeCurve } from './curve'
@@ -62,6 +66,8 @@ export function QLab() {
   const [speed, setSpeed] = useState<WatchSpeed>('fast')
   const [view, setView] = useState<StageView>('map')
   const reduced = useReducedMotion()
+  const show3d = useTrainGhost((s) => s.enabled)
+  const setShow3d = useTrainGhost((s) => s.setEnabled)
 
   useEffect(() => {
     if (ds) void ensureLayers(ds)
@@ -86,6 +92,24 @@ export function QLab() {
   useEffect(() => {
     setPlan(watch ? { ...planBatch(speed), waitForPlayback: speed === 'slow' } : { batch: 25, sampleEvery: 0, waitForPlayback: false })
   }, [watch, speed, setPlan])
+
+  // the 3D ghost replays the same traced episode as the map; it goes away with the panel
+  const { sample: tracedSample } = q
+  useEffect(() => {
+    if (!show3d || !tracedSample || !trained) return
+    useTrainGhost.getState().publish({ r0: trained.r0, c0: trained.c0, factor: trained.factor, rows: trained.rows, cols: trained.cols }, tracedSample, speed, reduced)
+  }, [show3d, tracedSample, trained, speed, reduced])
+  useEffect(
+    () => () => {
+      useTrainGhost.getState().setEnabled(false)
+    },
+    [],
+  )
+  const followLearner = useCallback(() => {
+    const shownNow = trained ?? preview
+    if (!shownNow || !layers) return
+    focusBounds(cropBounds({ r0: shownNow.r0, c0: shownNow.c0, factor: shownNow.factor, rows: shownNow.rows, cols: shownNow.cols }, layers.grid))
+  }, [trained, preview, layers])
 
   // keep the learner's alpha and gamma live while it trains
   const { setParams, status } = q
@@ -227,6 +251,20 @@ export function QLab() {
 
       <PanelSection title="Watch it learn">
         <WatchSwitch on={watch} onChange={setWatch} speed={speed} onSpeed={setSpeed} />
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="show-3d" className="flex items-center gap-2 text-sm font-medium">
+              <Box className="size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+              Show in 3D
+            </label>
+            <Switch id="show-3d" checked={show3d} onCheckedChange={setShow3d} />
+          </div>
+          {show3d && (
+            <Button variant="outline" className="h-11 w-full gap-2" disabled={!layers} onClick={followLearner}>
+              <RoverIcon className="size-6" strokeWidth={1.75} /> Follow the learner
+            </Button>
+          )}
+        </div>
         <ConceptChips />
       </PanelSection>
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { FLAG_BUMP } from '@/intelligence/lab/qlearn'
-import { ACTION_ARROWS, cividis, exploreShare, frameAt, normalizeValues, planBatch, successRate, WATCH_SPEEDS, type SampleLike } from './watch'
+import { ACTION_ARROWS, cividis, exploreShare, frameAt, normalizeValues, planBatch, stepMsFor, successRate, WATCH_SPEEDS, type SampleLike } from './watch'
 
 const sample = (over: Partial<SampleLike> = {}): SampleLike => ({
   start: 10,
@@ -18,6 +18,17 @@ describe('planBatch', () => {
     expect(planBatch('turbo').batch).toBeGreaterThan(planBatch('fast').batch)
     expect(WATCH_SPEEDS.slow.stepMs).toBeGreaterThan(WATCH_SPEEDS.fast.stepMs)
     expect(WATCH_SPEEDS.fast.stepMs).toBeGreaterThan(WATCH_SPEEDS.turbo.stepMs)
+  })
+})
+
+describe('stepMsFor', () => {
+  it('keeps the speed for short episodes and speeds up long ones so no episode lasts more than ~10 s', () => {
+    expect(stepMsFor('slow', 40)).toBe(WATCH_SPEEDS.slow.stepMs)
+    const long = stepMsFor('slow', 600)
+    expect(long).toBeLessThan(WATCH_SPEEDS.slow.stepMs)
+    expect(long * 600).toBeLessThanOrEqual(10_000)
+    expect(stepMsFor('turbo', 600)).toBeGreaterThanOrEqual(4) // never faster than a frame can show
+    expect(stepMsFor('slow', 0)).toBe(WATCH_SPEEDS.slow.stepMs)
   })
 })
 
