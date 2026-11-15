@@ -6,7 +6,8 @@ import { EnvLite, type EnvConfig } from '../sim/env-lite'
 import { computeMetrics, diffMetrics, alertCompliance, failureTaxonomy } from '../sim/metrics'
 
 /** Fixtures generated from the Python oracle (NavBatch / bench.metrics); see fixtures/README in the commit message. */
-const fx = (name: string) => JSON.parse(readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8'))
+// official goldens owned by QA (python/tests/parity/golden_gen.py)
+const fx = (name: string) => JSON.parse(readFileSync(path.resolve(import.meta.dirname, '../../../../../fixtures/golden', name), 'utf8'))
 
 const f32 = (b64: string) => {
   const b = Buffer.from(b64, 'base64')
@@ -32,7 +33,7 @@ interface Step {
   outcome: string
 }
 
-const env = fx('env-golden.json')
+const env = fx('env/env-golden.json')
 
 describe('env-lite parity with python NavBatch (obs/1 + step)', () => {
   it('fixture is the expected spec', () => {
@@ -107,7 +108,7 @@ describe('env-lite parity with python NavBatch (obs/1 + step)', () => {
 })
 
 describe('metrics parity with python bench.metrics', () => {
-  const doc = fx('metrics-golden.json')
+  const doc = fx('metrics/metrics-golden.json')
   for (const c of doc.cases) {
     it(`${c.name}: recomputed metrics equal Python's`, () => {
       const eps = c.episodes as Episode[]

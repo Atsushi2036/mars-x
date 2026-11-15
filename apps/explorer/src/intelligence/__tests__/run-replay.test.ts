@@ -117,7 +117,7 @@ function floatToHalf(x: number): number {
   return s | (e << 10) | m
 }
 
-const golden = JSON.parse(readFileSync(path.resolve(dir, 'fixtures/env-golden.json'), 'utf8'))
+const golden = JSON.parse(readFileSync(path.resolve(dir, '../../../../../fixtures/golden/env/env-golden.json'), 'utf8'))
 
 function buildEnv(c: (typeof golden.cases)[number]) {
   const rc = c.config.reward
@@ -144,10 +144,9 @@ function trajBytes(points: [number, number, number, number, number][]) {
   return b
 }
 
-/** python NavBatch(record=True) stores (state after action i, action i); bench traj/1 stores (state before action k, action k) + terminal WAIT. */
-function toBenchConvention(pts: [number, number, number, number, number][]): [number, number, number, number, number][] {
-  return pts.map(([r, c, t, s], k) => [r, c, Math.round(t), s, k + 1 < pts.length ? pts[k + 1]![4] : 8])
-}
+/** official goldens already use the bench traj/1 convention; time is stored in whole seconds */
+const toBenchConvention = (pts: [number, number, number, number, number][]): [number, number, number, number, number][] =>
+  pts.map(([r, c, t, s, a]) => [r, c, Math.round(t), s, a])
 
 describe('replay of python trajectories through env-lite', () => {
   for (const c of golden.cases) {

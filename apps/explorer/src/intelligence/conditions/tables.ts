@@ -36,18 +36,23 @@ export class HorizonMaps {
     sizeCheck('horizon', q.length, N_AZ * rows * cols)
   }
 
-  /** Horizon elevation (deg) at (row, col) for a compass azimuth, interpolated between the 16 bins; NaN if nodata. */
-  elevationAt(row: number, col: number, azimuthDeg: number): number {
+  /**
+   * Horizon elevation (deg) at (row, col) for a compass azimuth, interpolated between the 16 bins; NaN if nodata
+   * unless `nodataAs` gives the value to use for nodata bins (python env loads nodata horizon as 0 = open sky).
+   */
+  elevationAt(row: number, col: number, azimuthDeg: number, nodataAs?: number): number {
     const pos = (((azimuthDeg % 360) + 360) % 360) / (360 / N_AZ)
     const i0 = Math.floor(pos) % N_AZ
     const i1 = (i0 + 1) % N_AZ
     const w = pos - Math.floor(pos)
     const plane = this.rows * this.cols
     const idx = row * this.cols + col
-    const a = this.q[i0 * plane + idx]!
-    const b = this.q[i1 * plane + idx]!
-    if (a === U8_NODATA || b === U8_NODATA) return Number.NaN
-    return a * ANGLE_SCALE * (1 - w) + b * ANGLE_SCALE * w
+    const qa = this.q[i0 * plane + idx]!
+    const qb = this.q[i1 * plane + idx]!
+    if (nodataAs === undefined && (qa === U8_NODATA || qb === U8_NODATA)) return Number.NaN
+    const a = qa === U8_NODATA ? nodataAs! : qa * ANGLE_SCALE
+    const b = qb === U8_NODATA ? nodataAs! : qb * ANGLE_SCALE
+    return a * (1 - w) + b * w
   }
 
   /** Sun above the local horizon (same rule as the Python shaded irradiance); nodata counts as lit. */

@@ -25,7 +25,9 @@ export function replayEpisode(env: EnvLite, ep: Episode, traj: TrajArrays): Repl
     if (bad.length < 20) bad.push(m)
   }
   const n = traj.row.length
-  env.reset(ep.start, ep.goal)
+  // the scripted SPE alert time is part of the episode (event speAlert); python draws it from an RNG the web cannot replay
+  const alert = ep.events.find((e) => e.type === 'speAlert')
+  env.reset(ep.start, ep.goal, { alertTS: alert?.t })
   if (n > 0 && traj.action[n - 1] !== 8) note('last trajectory entry must carry the WAIT sentinel')
   if (n === 0 || traj.row[0] !== ep.start[0] || traj.col[0] !== ep.start[1]) note('trajectory does not begin at the episode start')
   const states: EnvState[] = [{ ...env.state }]

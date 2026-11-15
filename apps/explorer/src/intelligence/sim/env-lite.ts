@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { ACTIONS, OBS_DIM, PATCH_K } from '../contracts'
-import { astronautStepEnergyWh, batteryCapacityWh, evaConsumablesWh, roverDriveEnergyWh, rtgPowerW } from './energy'
+import { astronautStepEnergyWh, batteryCapacityWh, ENERGY, evaConsumablesWh, roverDriveEnergyWh, rtgPowerW } from './energy'
 
 /**
  * "Env lite": single-episode TypeScript port of the NumPy dynamics in python/src/marsx/env/core.py
@@ -17,6 +17,23 @@ const SOL_S = 88775.244
 const P = PATCH_K >> 1
 const WAIT = 8
 const DIST = ACTIONS.map(([, dr, dc]) => Math.hypot(dr, dc))
+
+/**
+ * L2 conditions provider (python marsx.env.l2.MarsConditions). Dynamics only need `generationW`
+ * (RTG / solar / none per agent kind, at the agent cell and time BEFORE the step); `features` and
+ * `comm` fill the obs/1 environment and comm blocks.
+ */
+export interface ConditionsHook {
+  generationW(kind: ParsedConfig['kind'], tS: number, row: number, col: number): number
+  features(tS: number, row: number, col: number): ArrayLike<number>
+  comm(tS: number): ArrayLike<number>
+}
+
+/** space-weather rule states (python marsx.conditions.spaceweather) */
+const SPE_IDLE = 0
+const SPE_ACTIVE = 1
+const SPE_SAFE = 2
+const SPE_VIOLATED = 3
 
 export interface Terrain {
   rows: number
@@ -54,11 +71,14 @@ export const envConfigSchema = z
     sensorRadiusM: z.number().min(0).max(1000),
     waitS: z.number().positive().max(86_400),
     sols: z.number().positive().nullable(),
+    /** space-weather shelter rule (astronaut only); omitted = disabled */
+    spe: z.object({ enabled: z.boolean(), windowS: z.number().positive().max(86_400) }).strict().default({ enabled: false, windowS: 1800 }),
   })
   .strict()
-export type EnvConfig = z.infer<typeof envConfigSchema>
+export type EnvConfig = z.input<typeof envConfigSchema>
+type ParsedConfig = z.output<typeof envConfigSchema>
 
-export type Outcome = '' | 'success' | 'collision' | 'battery' | 'timeout'
+export type Outcome = '' | 'success' | 'collision' | 'battery' | 'spe_violation' | 'timeout'
 
 export interface StepResult {
   reward: number
@@ -80,6 +100,10 @@ export interface EnvState {
   timeSlopeGt15S: number
   shield: number
   outcome: Outcome
+  /** 0 idle, 1 alert active, 2 safe, 3 violated (astronaut with the shelter rule) */
+  speState: number
+  goalRow: number
+  goalCol: number
 }
 
 /** Same cost model as marsx.env.terrain.cost_map + marsx.nav.costmap.cost_from_slope (slope weight 4). */
@@ -103,6 +127,10 @@ export class EnvLite {
   private readonly rocks: Uint8Array
   private readonly capacityWh: number
   private readonly rechargeW: number
+  private readonly idleW: number
+  private alertT = Number.NaN
+  private shelterRow = 0
+  private shelterCol = 0
   private readonly sensor: Float32Array
   private row = 0
   private col = 0
@@ -115,8 +143,8 @@ export class EnvLite {
     terrain: Terrain,
     config: EnvConfig,
     rocks?: Uint8Array,
-    /** returns 8 normalised obs/1 environment features for time `tS` (default zeros) */
-    private readonly envFeatures?: (tS: number) => ArrayLike<number>,
+    /** L2 conditions; without it the env behaves like python with conditions=None */
+    private readonly conditions?: ConditionsHook,
   ) {
     this.cfg = envConfigSchema.parse(config)
     const { rows, cols } = terrain
@@ -142,23 +170,30 @@ export class EnvLite {
     this.slope = Float32Array.from(terrain.slope, (v) => (Number.isFinite(v) ? v : 90))
     this.capacityWh = this.cfg.kind === 'astronaut' ? evaConsumablesWh() : batteryCapacityWh()
     this.rechargeW = this.cfg.kind === 'rtg_rover' ? rtgPowerW(0) : 0
+    this.idleW = this.cfg.kind === 'astronaut' ? ENERGY.metRateLowW : ENERGY.baseLoadW
     this.sensor = new Float32Array(PATCH_K * PATCH_K)
     for (let oy = -P; oy <= P; oy++) {
       for (let ox = -P; ox <= P; ox++) this.sensor[(oy + P) * PATCH_K + ox + P] = Math.hypot(oy, ox) * this.resM <= this.cfg.sensorRadiusM ? 1 : 0
     }
     this.s = this.blankState()
   }
-  readonly cfg: EnvConfig
+  readonly cfg: ParsedConfig
 
   private blankState(): EnvState {
-    return { row: 0, col: 0, tS: 0, soc: 1, energyWh: 0, pathM: 0, pathCost: 0, steps: 0, violations: 0, timeSlopeGt15S: 0, shield: 0, outcome: '' }
+    return { row: 0, col: 0, tS: 0, soc: 1, energyWh: 0, pathM: 0, pathCost: 0, steps: 0, violations: 0, timeSlopeGt15S: 0, shield: 0, outcome: '', speState: SPE_IDLE, goalRow: 0, goalCol: 0 }
   }
 
   get state(): Readonly<EnvState> {
-    return { ...this.s, row: this.row, col: this.col }
+    return { ...this.s, row: this.row, col: this.col, goalRow: this.goalRow, goalCol: this.goalCol }
   }
 
-  reset(start: readonly [number, number], goal: readonly [number, number]): Float32Array {
+  /**
+   * `alertTS`: scripted space-weather alert time of this episode (undefined = none). Python draws it from the
+   * episode RNG, which the web does not replicate, so it has to come from the run (event `speAlert`).
+   * `initialSoc`: starting battery/consumables level (default 1).
+   */
+  reset(start: readonly [number, number], goal: readonly [number, number], opts: { alertTS?: number; initialSoc?: number } = {}): Float32Array {
+    const { alertTS, initialSoc } = opts
     for (const [r, c] of [start, goal] as const) {
       if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= this.rows || c >= this.cols) throw new Error('start/goal outside the grid')
     }
@@ -168,6 +203,10 @@ export class EnvLite {
     this.goalCol = goal[1]
     this.heading = 0
     this.s = this.blankState()
+    if (initialSoc !== undefined) this.s.soc = Math.fround(initialSoc)
+    this.shelterRow = start[0]
+    this.shelterCol = start[1]
+    this.alertT = this.cfg.kind === 'astronaut' && this.cfg.spe.enabled && alertTS !== undefined ? alertTS : Number.NaN
     return this.observe()
   }
 
@@ -223,15 +262,28 @@ export class EnvLite {
     out[489] = 0
     out[490] = Math.sin(hd)
     out[491] = Math.cos(hd)
-    if (this.envFeatures) {
-      const f = this.envFeatures(this.s.tS)
+    if (this.conditions) {
+      const f = this.conditions.features(this.s.tS, this.row, this.col)
       for (let i = 0; i < 8; i++) out[492 + i] = f[i] ?? 0
+      const cm = this.conditions.comm(this.s.tS)
+      for (let i = 0; i < 3; i++) out[500 + i] = cm[i] ?? 0
+    } else {
+      out[500] = 1 // link available (python without conditions)
     }
-    out[500] = 1 // link available (comms hook pending, as in python v0.1)
     const sols = this.cfg.sols
     out[503] = sols === null ? 1 : Math.min(Math.max(1 - this.s.tS / (sols * SOL_S), 0), 1)
     out[504] = Math.min(Math.max(1 - this.s.steps / this.cfg.maxSteps, 0), 1)
     return out
+  }
+
+  /** python marsx.conditions.spaceweather.update for one agent (sticky SAFE / VIOLATED). */
+  private speUpdate(state: number, t: number, inShelter: boolean, windowS: number): number {
+    if (state !== SPE_IDLE && state !== SPE_ACTIVE) return state
+    const alert = this.alertT
+    if (Number.isNaN(alert) || t < alert) return state
+    const late = t > alert + windowS
+    if (inShelter && !late) return SPE_SAFE
+    return late ? SPE_VIOLATED : SPE_ACTIVE
   }
 
   private gdist(r: number, c: number) {
@@ -260,11 +312,16 @@ export class EnvLite {
     const dt = moved ? distM / cfg.speedMS : wait ? cfg.waitS : 0
     const rise = Math.fround(this.heightAt(nr, nc) - this.heightAt(this.row, this.col))
     const slopeSigned = moved ? Math.fround(Math.sign(rise) * this.slopeAt(nr, nc)) : 0
-    const eWh = moved
-      ? cfg.kind === 'astronaut'
-        ? astronautStepEnergyWh(distM, slopeSigned)
-        : roverDriveEnergyWh(distM, slopeSigned, cfg.gravity)
-      : 0
+    const eWh =
+      (moved
+        ? cfg.kind === 'astronaut'
+          ? astronautStepEnergyWh(distM, slopeSigned)
+          : roverDriveEnergyWh(distM, slopeSigned, cfg.gravity)
+        : 0) + (wait ? (this.idleW * dt) / 3600 : 0)
+    // generation: agent cell and time BEFORE the step (python conditions.generation_w(t_s, rc0))
+    const genWh = this.conditions
+      ? (this.conditions.generationW(cfg.kind, this.s.tS, this.row, this.col) * dt) / 3600
+      : (this.rechargeW * dt) / 3600
     const progress = this.gdist(this.row, this.col) - this.gdist(nr, nc)
     if (moved) this.heading = Math.atan2(mc, -mr)
     this.row = nr
@@ -280,14 +337,24 @@ export class EnvLite {
     if (rock) s.violations += 1
     if (blocked) s.shield += 1
     if (cfg.energyOn) {
-      const delta = ((this.rechargeW * dt) / 3600 - eWh) / this.capacityWh
+      const delta = (genWh - eWh) / this.capacityWh
       s.soc = Math.fround(Math.min(Math.max(s.soc + delta, 0), 1))
     }
-    const reached = nr === this.goalRow && nc === this.goalCol
+    let speViol = false
+    if (cfg.kind === 'astronaut' && cfg.spe.enabled) {
+      const prev = s.speState
+      s.speState = this.speUpdate(s.speState, s.tS, nr === this.shelterRow && nc === this.shelterCol, cfg.spe.windowS)
+      if (prev === SPE_IDLE && s.speState !== SPE_IDLE) {
+        this.goalRow = this.shelterRow // the alert redirects the goal to the shelter
+        this.goalCol = this.shelterCol
+      }
+      speViol = s.speState === SPE_VIOLATED
+    }
+    const reached = nr === this.goalRow && nc === this.goalCol && !speViol
     const battery = s.soc <= 0 && !reached
-    const terminated = reached || rock || battery
+    const terminated = reached || rock || battery || speViol
     const truncated = s.steps >= cfg.maxSteps && !terminated
-    s.outcome = reached ? 'success' : rock ? 'collision' : battery ? 'battery' : truncated ? 'timeout' : ''
+    s.outcome = reached ? 'success' : rock ? 'collision' : speViol ? 'spe_violation' : battery ? 'battery' : truncated ? 'timeout' : ''
     const reward =
       -w.stepCost * costInc +
       w.progress * progress -
@@ -296,7 +363,7 @@ export class EnvLite {
       (w.energy * eWh) / 100 -
       w.risk * (steep && moved ? 1 : 0) +
       w.goal * (reached ? 1 : 0) -
-      w.failure * (rock || battery ? 1 : 0)
+      w.failure * (rock || battery || speViol ? 1 : 0)
     return { reward: Math.fround(reward), terminated, truncated, outcome: s.outcome }
   }
 }
