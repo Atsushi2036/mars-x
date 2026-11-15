@@ -33,11 +33,11 @@
 /version.json
   Cache-Control: no-cache
 
-# --- Future: ONNX policy Worker with its own, stricter CSP -------------------
-# Serve the worker bundle from /workers/policy/ and uncomment. "! Content-Security-Policy"
-# removes the global CSP so only this one applies. The page downloads the .wasm and hands it
-# to the worker (env.wasm.wasmBinary), so the worker needs no network at all.
-#
-# /workers/policy/*
-#   ! Content-Security-Policy
-#   Content-Security-Policy: default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'none'; worker-src 'none'
+# --- ONNX policy Worker: its own, stricter CSP (ADR-0007) ----------------------
+# Vite emits the worker as /assets/policy.worker-<hash>.js. "! Content-Security-Policy" removes the global CSP so
+# only this one applies to the worker. The page downloads the .wasm and hands it to the worker (wasmBinary), so the
+# worker needs no network (connect-src 'none') and cannot spawn workers. script-src 'self' is required because the
+# worker imports the ort.wasm.bundle chunk from /assets.
+/assets/policy.worker-*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'none'; worker-src 'none'
