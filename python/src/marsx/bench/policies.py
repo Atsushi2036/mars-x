@@ -184,7 +184,7 @@ class OnnxPolicy:
     """policy/1 ONNX model: input ``obs`` float32[batch, 505] -> ``logits`` float32[batch, 9]; argmax.
 
     Needs the ``train`` extra (onnxruntime). The model is data, never code: single thread, CPU only,
-    size cap and forbidden control-flow ops checked before the session is created when ``onnx`` is present.
+    validated with marsx.contracts.onnx_check (fails closed) before the session is created.
     """
 
     def __init__(self, path: str | Path) -> None:
@@ -204,24 +204,13 @@ class OnnxPolicy:
 
     @staticmethod
     def _check_graph(data: bytes) -> None:
-        try:
-            import onnx
-        except ImportError:
-            return
-        model = onnx.load_from_string(data)
-        ops = {n.op_type for n in model.graph.node}
-        bad = ops & policy_spec.FORBIDDEN_OPS
-        if bad:
-            raise ValueError(f"forbidden ONNX ops: {sorted(bad)}")
-        if len(model.graph.node) > policy_spec.MAX_NODES:
-            raise ValueError("too many ONNX nodes")
-        for init in model.graph.initializer:
-            if init.data_location == onnx.TensorProto.EXTERNAL:
-                raise ValueError("external data is not allowed")
+        """ADR-0007 rules shared with the web validator; fails closed when ``onnx`` is missing."""
+        from marsx.contracts.onnx_check import validate_bytes
+
+        validate_bytes(data)
 
     def begin(self, specs: Sequence[EpisodeSpec], env: Any) -> None:
         pass
 
     def act(self, obs: np.ndarray, info: Mapping[str, Any] | None = None) -> np.ndarray:
-        (logits,) = self.session.run([policy_spec.OUTPUT_NAME], {policy_spec.INPUT_NAME: obs.astype(np.float32)})
-        return np.argmax(logits, axis=1).astype(np.int64)
+        return np.asarray(self.fn(obs), dtype=np.int64).reshape(obs.shape[0])

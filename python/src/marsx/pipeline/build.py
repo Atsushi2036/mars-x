@@ -38,7 +38,7 @@ M20 = "https://mars.nasa.gov/mmgis-maps/M20/Layers/json/"
 
 SRC_USGS = dict(
     license="CC0-1.0",
-    attribution="USGS Astrogeology Science Center; NASA/JPL-Caltech/University of Arizona (HiRISE)",
+    attribution="USGS Astrogeology Science Center; NASA/JPL/University of Arizona (HiRISE)",
 )
 
 # CRISM prototype colours from Jezero_readme.pdf (Parente, Itoh, Saranathan 2021), key page 5.
@@ -73,7 +73,7 @@ class Region:
 
 
 # dust-storm window (Lemmon et al. 2022); 'clear' sols are added once the data team pins them
-SUN_SOLS = (313, 314, 315)
+SUN_SOLS = (148, 149, 313, 314, 315)  # clear aphelion sol 148 (+149: a 1-sol scenario from 09:00 LTST) and the Jan-2022 storm
 
 REGIONS = {
     # Delta-front window: densest stretch of the real traverse inside DEM ∩ ortho ∩ CRISM (see validation report).
@@ -477,7 +477,7 @@ def build(region: Region, workers: int | None = None, bench: bool = True, refres
                                           description="Mars24 sun position at the window centre, every 60 s from local mean solar midnight"),
                 table=schemas.TableInfo(
                     columns=["azimuth_deg", "elevation_deg", "r_au"],
-                    start_utc=datetime.fromtimestamp(start / 1000, UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    start_utc=tables.utc_ms_iso(start),
                     step_s=60.0, rows=int(tab.shape[0]), lat=region.lat0, lon_east=region.lon0),
                 origin="derived", source=mars24_src))
         o_start = int(datetime(2021, 2, 18, tzinfo=UTC).timestamp() * 1000)
@@ -539,7 +539,7 @@ def build(region: Region, workers: int | None = None, bench: bool = True, refres
                 local_origin="window centre = (0, 0); x east, y north, z up (metres); equirectangular on a sphere R=3396190 m with lat_ts = centre latitude (true E-W scale)"),
             grid=_grid_model("dem", G["dem"]), grids={k: _grid_model(k, g) for k, g in G.items()},
             bbox_lon_lat=_lonlat_bbox(G["dem"], proj), layers=layers,
-            extras={"disclaimer": "Not affiliated with or endorsed by NASA, JPL or Caltech. Data credits: USGS Astrogeology, NASA/JPL-Caltech/University of Arizona, CRISM team (Parente et al.).",
+            extras={"disclaimer": "Not affiliated with or endorsed by NASA, JPL or Caltech. Data credits: USGS Astrogeology, NASA/JPL/University of Arizona, CRISM team (Parente et al.).",
                     "hazardLimits": "engineering assumptions, not official rover limits"})
         (out / "manifest.json").write_text(manifest.model_dump_json(by_alias=True, indent=2), encoding="utf-8")
         schemas.export_schemas(REPO / "packages" / "schemas")

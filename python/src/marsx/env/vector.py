@@ -12,6 +12,8 @@ Interface agreed with marsx.bench (T5):
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 from gymnasium import spaces
 from gymnasium.vector import AutoresetMode, VectorEnv
@@ -25,7 +27,7 @@ from marsx.env.core import DEFAULT_ROCK_SEED, NavBatch
 
 
 class JezeroVecEnv(VectorEnv):
-    metadata = {"render_modes": [], "autoreset_mode": AutoresetMode.NEXT_STEP}
+    metadata: ClassVar[dict] = {"render_modes": [], "autoreset_mode": AutoresetMode.NEXT_STEP}
 
     def __init__(self, num_envs: int = 1, scenario=None, terrain=None, **engine_kwargs):
         self.num_envs = int(num_envs)

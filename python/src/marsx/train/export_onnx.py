@@ -7,15 +7,14 @@ from __future__ import annotations
 
 import contextlib
 import io
-from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import onnx
 import torch
 
 from marsx.contracts import obs as spec
 from marsx.contracts import policy as pc
-from marsx.contracts.canonical import sha256_bytes
 
 
 class _Logits(torch.nn.Module):
@@ -48,56 +47,17 @@ def export_logits(sb3_policy, path: str | Path) -> Path:
     return path
 
 
-@dataclass
-class OnnxReport:
-    ops: list[str]
-    opset: int
-    nodes: int
-    bytes: int
-    sha256: str
+def validate(path: str | Path):
+    """ADR-0007 rules + policy/1 signature (marsx.contracts.onnx_check). Raises ValueError on the first violation."""
+    from marsx.contracts.onnx_check import validate_bytes
+
+    return validate_bytes(Path(path).read_bytes())
 
 
-def validate(path: str | Path) -> OnnxReport:
-    """ADR-0007 rules + policy/1 signature. Raises ValueError with the first violation."""
-    raw = Path(path).read_bytes()
-    if len(raw) > pc.MAX_BYTES:
-        raise ValueError(f"model is {len(raw)} bytes > {pc.MAX_BYTES}")
-    m = onnx.load_from_string(raw)
-    for t in m.graph.initializer:
-        if t.data_location == onnx.TensorProto.EXTERNAL:
-            raise ValueError("external data is not allowed")
-    opsets = {o.domain or "ai.onnx": o.version for o in m.opset_import}
-    if set(opsets) != {"ai.onnx"}:
-        raise ValueError(f"only the ai.onnx domain is allowed, got {sorted(opsets)}")
-    opset = opsets["ai.onnx"]
-    if not pc.OPSET_MIN <= opset <= pc.OPSET_MAX:
-        raise ValueError(f"opset {opset} outside [{pc.OPSET_MIN}, {pc.OPSET_MAX}]")
-    ops = sorted({n.op_type for n in m.graph.node})
-    bad = sorted(set(ops) & pc.FORBIDDEN_OPS)
-    if bad:
-        raise ValueError(f"forbidden ops: {bad}")
-    if any(n.domain not in ("", "ai.onnx") for n in m.graph.node):
-        raise ValueError("custom-domain nodes are not allowed")
-    if len(m.graph.node) > pc.MAX_NODES:
-        raise ValueError(f"{len(m.graph.node)} nodes > {pc.MAX_NODES}")
-    (inp,), (out,) = m.graph.input, m.graph.output
-    dim = lambda v, i: v.type.tensor_type.shape.dim[i].dim_value  # noqa: E731
-    if inp.name != pc.INPUT_NAME or dim(inp, 1) != spec.OBS_DIM:
-        raise ValueError(f"input must be '{pc.INPUT_NAME}' float32[N,{spec.OBS_DIM}]")
-    if out.name != pc.OUTPUT_NAME or dim(out, 1) != spec.N_ACTIONS:
-        raise ValueError(f"output must be '{pc.OUTPUT_NAME}' float32[N,{spec.N_ACTIONS}]")
-    try:
-        onnx.checker.check_model(m)
-    except onnx.checker.ValidationError as exc:
-        raise ValueError(f"invalid ONNX graph: {exc}") from exc
-    return OnnxReport(ops, opset, len(m.graph.node), len(raw), sha256_bytes(raw))
-
-
-def write_golden(path: str | Path, obs: "np.ndarray", out_json: str | Path) -> dict:
+def write_golden(path: str | Path, obs: np.ndarray, out_json: str | Path) -> dict:
     """Parity fixture for the web: observations + logits/actions from onnxruntime (Python) for this exact model."""
     import json
 
-    import numpy as np
     import onnxruntime as ort
 
     x = np.ascontiguousarray(obs, dtype=np.float32)

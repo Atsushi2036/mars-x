@@ -10,11 +10,11 @@ import pytest
 
 gym = pytest.importorskip("gymnasium")
 
-from marsx.contracts import obs as obs_spec  # noqa: E402
-from marsx.env import scenarios  # noqa: E402
-from marsx.contracts.suite import EpisodeSpec  # noqa: E402
-from marsx.env.core import NavBatch  # noqa: E402
-from marsx.env.terrain import Terrain, cost_map, load_terrain, synthetic_terrain  # noqa: E402
+from marsx.contracts import obs as obs_spec
+from marsx.contracts.suite import EpisodeSpec
+from marsx.env import scenarios
+from marsx.env.core import NavBatch
+from marsx.env.terrain import Terrain, cost_map, load_terrain, synthetic_terrain
 
 REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data" / "processed" / "jezero-v1"
@@ -195,7 +195,7 @@ def test_vector_env_runs_thousands_of_envs():
                        terrain="synthetic")
     o, _ = vec.reset(seed=0)
     for _ in range(5):
-        o, r, term, trunc, _ = vec.step(vec.action_space.sample())
+        o, r, _term, _trunc, _ = vec.step(vec.action_space.sample())
     assert o.shape == (2048, obs_spec.OBS_DIM) and np.isfinite(r).all()
 
 
@@ -214,7 +214,7 @@ def test_vector_reset_with_explicit_episodes_and_bench_info_contract():
     o, info = vec.reset(seed=[1, 2], options={"episodes": eps})
     assert o.shape == (2, obs_spec.OBS_DIM) and BENCH_INFO_KEYS <= set(info)
     np.testing.assert_array_equal(info["cell"], [[10, 10], [5, 5]])
-    o, r, term, trunc, info = vec.step(np.array([2, 2]))
+    o, _r, _term, _trunc, info = vec.step(np.array([2, 2]))
     assert BENCH_INFO_KEYS <= set(info)
     assert list(info["outcome"]) == ["", ""] and info["pathM"][0] == pytest.approx(2.0)
     assert info["energyWh"][0] > 0 and info["tS"][0] == pytest.approx(2.0 / 0.042)
@@ -258,7 +258,7 @@ def test_sb3_adapter_reports_terminal_observation():
     venv.engine.reset_to([0, 1], starts=[(10, 10), (5, 5)], goals=[(10, 11), (5, 25)])
     venv.reset_infos = [{} for _ in range(2)]
     venv.step_async(np.array([2, 2]))
-    o, r, d, infos = venv.step_wait()
+    _o, r, d, infos = venv.step_wait()
     assert d[0] and not d[1] and "terminal_observation" in infos[0]
     assert infos[0]["terminal_observation"].shape == (obs_spec.OBS_DIM,)
     assert math.isfinite(float(r.sum()))

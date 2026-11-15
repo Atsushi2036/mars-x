@@ -129,7 +129,7 @@ class NavBatch:
             raise ValueError("terrain has no passable cells in the scenario window")
 
         n = self.N
-        z = lambda dt: np.zeros(n, dt)  # noqa: E731
+        z = lambda dt: np.zeros(n, dt)
         self.pos, self.goal, self.start = z(np.int64), z(np.int64), z(np.int64)
         self.t_s, self.path_m, self.path_cost, self.energy_wh, self.risk_s = (z(np.float64) for _ in range(5))
         self.steps, self.violations, self.shield = z(np.int32), z(np.int32), z(np.int32)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
@@ -12,7 +14,7 @@ from marsx.env.core import NavBatch
 
 
 class JezeroEnv(gym.Env):
-    metadata = {"render_modes": []}
+    metadata: ClassVar[dict] = {"render_modes": []}
 
     def __init__(self, scenario=None, terrain=None, **engine_kwargs):
         t = resolve_terrain(terrain)

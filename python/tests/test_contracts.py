@@ -9,11 +9,10 @@ from pathlib import Path
 import jsonschema
 import numpy as np
 import pytest
-from pydantic import ValidationError
-
 from marsx.contracts import obs, policy, run, scenario, suite, traj
 from marsx.contracts.canonical import canonical_json, sha256_json
 from marsx.contracts.export import SCHEMA_FILES, all_schemas, example_documents
+from pydantic import ValidationError
 
 REPO = Path(__file__).resolve().parents[2]
 SCHEMAS = REPO / "packages" / "schemas"
@@ -23,7 +22,7 @@ SCHEMAS = REPO / "packages" / "schemas"
 def test_obs_v1_layout_sums_to_documented_dimension():
     assert obs.OBS_DIM == 505
     assert sum(b.size for b in obs.LAYOUT) == obs.OBS_DIM
-    assert [b.name for b in obs.LAYOUT][0] == "terrain"
+    assert next(b.name for b in obs.LAYOUT) == "terrain"
     starts = [b.start for b in obs.LAYOUT]
     assert starts == sorted(starts) and starts[0] == 0
 

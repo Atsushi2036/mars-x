@@ -9,21 +9,20 @@ pytest.importorskip("stable_baselines3")
 onnx = pytest.importorskip("onnx")
 ort = pytest.importorskip("onnxruntime")
 
-from marsx.contracts import obs as spec  # noqa: E402
-from marsx.contracts import policy  # noqa: E402
-from marsx.env import scenarios  # noqa: E402
-from marsx.env.core import NavBatch  # noqa: E402
-from marsx.env.terrain import cost_map, synthetic_terrain  # noqa: E402
-from marsx.nav.core import dijkstra_cost_to_goal  # noqa: E402
-from marsx.train import export_onnx, qlearn  # noqa: E402
-from marsx.train.evaluate import evaluate_policy  # noqa: E402
+from marsx.contracts import obs as spec
+from marsx.contracts import policy
+from marsx.env import scenarios
+from marsx.env.core import NavBatch
+from marsx.env.terrain import cost_map, synthetic_terrain
+from marsx.nav.core import dijkstra_cost_to_goal
+from marsx.train import export_onnx, qlearn
+from marsx.train.evaluate import evaluate_policy
 
 
 @pytest.fixture(scope="module")
 def tiny_model():
-    from stable_baselines3 import PPO
-
     from marsx.sb3 import SB3VecAdapter
+    from stable_baselines3 import PPO
 
     eng = NavBatch(synthetic_terrain(64, 0), scenarios.get("jezero-v1/l1/rtg-geometry"), num_envs=4, seed=0)
     return PPO("MlpPolicy", SB3VecAdapter(eng), n_steps=16, batch_size=32, policy_kwargs={"net_arch": [32, 32]},

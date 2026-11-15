@@ -7,13 +7,13 @@ import pytest
 
 pytest.importorskip("gymnasium")
 
-from marsx.bench import policies as P  # noqa: E402
-from marsx.bench import runner as R  # noqa: E402
-from marsx.contracts.suite import EpisodeSpec  # noqa: E402
-from marsx.env import scenarios  # noqa: E402
-from marsx.env.core import NavBatch  # noqa: E402
-from marsx.env.terrain import Terrain  # noqa: E402
-from marsx.env.vector import JezeroVecEnv  # noqa: E402
+from marsx.bench import policies as P
+from marsx.bench import runner as R
+from marsx.contracts.suite import EpisodeSpec
+from marsx.env import scenarios
+from marsx.env.core import NavBatch
+from marsx.env.terrain import Terrain
+from marsx.env.vector import JezeroVecEnv
 
 
 def flat(n=48) -> Terrain:

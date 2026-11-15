@@ -9,10 +9,10 @@ import pytest
 
 pytest.importorskip("gymnasium")
 
-from marsx.contracts import obs as spec  # noqa: E402
-from marsx.env import scenarios  # noqa: E402
-from marsx.env.core import NavBatch  # noqa: E402
-from marsx.env.terrain import Terrain  # noqa: E402
+from marsx.contracts import obs as spec
+from marsx.env import scenarios
+from marsx.env.core import NavBatch
+from marsx.env.terrain import Terrain
 
 ENV, COMM = spec.block("environment"), spec.block("comm")
 
@@ -124,7 +124,7 @@ def test_l2_reads_pipeline_tables_as_single_source():
     # manifest startUtc is truncated to whole seconds (sun moves ~0.004 deg/s): 0.01 deg tolerance
     np.testing.assert_allclose(storm.elev[:600], np.asarray(ref.elevation_deg), atol=1e-2)
     clear = MarsConditions(scenarios.get("jezero-v1/l2/solar-clear"), t)
-    assert clear.sources["sun"] == "mars24" and clear.sources["owlt"] == "table:owlt"
+    assert clear.sources["sun"] == "table:sun_sol_148+sun_sol_149" and clear.sources["owlt"] == "table:owlt"
 
 
 # ------------------------------------------------------------------ MEDA weather (missing data -> sentinel -1)
@@ -150,9 +150,7 @@ def test_meda_values_enter_observation_and_missing_is_sentinel():
 
 
 def test_clear_scenario_starts_on_perseverance_sol_148():
-    from marsx.env.l2 import perseverance_sol
-
-    from marsx.env.l2 import utc_ms
+    from marsx.env.l2 import perseverance_sol, utc_ms
     assert perseverance_sol(utc_ms(scenarios.get("jezero-v1/l2/solar-clear").time.start_utc), 77.3935) == 148
     assert perseverance_sol(utc_ms(scenarios.get("jezero-v1/l2/solar-storm").time.start_utc), 77.3935) == 314
 

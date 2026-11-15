@@ -101,7 +101,7 @@ def build_glb(mesh: Mesh, texture_jpeg: bytes | None, extras: dict | None = None
     bin_chunk = b"".join(chunks)
     gltf = {
         "asset": {"version": "2.0", "generator": "marsx.export",
-                  "copyright": "USGS Astrogeology / NASA/JPL-Caltech/University of Arizona (HiRISE); see ATTRIBUTION.txt"},
+                  "copyright": "USGS Astrogeology / NASA/JPL/University of Arizona (HiRISE); see ATTRIBUTION.txt"},
         "scene": 0, "scenes": [{"nodes": [0]}],
         "nodes": [{"name": "terrain", "mesh": 0}],
         "meshes": [{"name": "terrain", "primitives": [{
