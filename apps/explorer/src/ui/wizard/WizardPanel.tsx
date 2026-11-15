@@ -7,6 +7,7 @@ import { useApp } from '@/store/app'
 import { useMission, type MissionProfile } from '@/store/mission'
 import { ROVER_REAL_SPEED } from '@/store/watch'
 import { beginJourney } from './journey'
+import { DriverPicker } from '../nav/DriverPicker'
 import { AstronautIcon, CircleAlert, Play, RoverIcon, type LucideIcon } from '../icons'
 import { Segmented, StatCard } from '../kit'
 import { MarswalkSetup } from '../panels/MarswalkPanel'
@@ -130,6 +131,7 @@ function Review() {
           </Alert>
         )}
         <p className="text-sm text-muted-foreground">{PROFILE_LABEL[profile]} · you will see the journey through its eyes.</p>
+        {ok && <DriverPicker />}
       </div>
       <Actions>
         <Button variant="outline" className="h-12 flex-1" onClick={() => dispatch({ type: 'back' })}>
