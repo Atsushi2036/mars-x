@@ -111,7 +111,7 @@ export function Inspector() {
     return (
       <aside
         aria-label="Inspector"
-        className="pointer-events-auto absolute right-3 top-[3.75rem] z-20 flex max-h-[calc(100%-6.5rem)] w-80 flex-col overflow-hidden rounded-xl border border-border bg-card/95 text-card-foreground shadow-lg backdrop-blur-md"
+        className="pointer-events-auto absolute right-3 top-[3.75rem] z-20 flex h-[min(calc(100%-6.5rem),52rem)] w-80 flex-col overflow-hidden rounded-xl border border-border bg-card/95 text-card-foreground shadow-lg backdrop-blur-md"
       >
         <Header />
         <ScrollArea className="min-h-0 flex-1">
