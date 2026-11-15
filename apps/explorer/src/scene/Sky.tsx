@@ -3,7 +3,7 @@ import { useMemo, useRef } from 'react'
 import { BackSide, Color, FogExp2, Mesh, ShaderMaterial, Vector3 } from 'three'
 import { terrainUniforms } from './terrain-material'
 import { useThree } from '@react-three/fiber'
-import { sunDirection, useApp } from '@/store/app'
+import { sunDirection, sunLive, useApp } from '@/store/app'
 
 const HORIZON = new Color(0.78, 0.5, 0.34)
 const HAZE_DULL = new Color(0.5, 0.36, 0.28)
@@ -44,7 +44,8 @@ void main(){
   )
 
   useFrame(({ camera }) => {
-    const { sun, haze } = useApp.getState()
+    const { haze } = useApp.getState()
+    const sun = sunLive
     const d = sunDirection(sun.azimuthDeg, sun.elevationDeg)
     const day = Math.min(1, Math.max(0.06, (sun.elevationDeg + 4) / 14))
     mat.uniforms.uSun!.value.set(d[0], d[1], d[2])

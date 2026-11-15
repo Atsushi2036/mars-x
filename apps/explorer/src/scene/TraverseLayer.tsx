@@ -1,8 +1,8 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Color, InstancedMesh, Object3D, Sphere, Vector3 } from 'three'
-import { Line2 } from 'three/examples/jsm/lines/Line2.js'
-import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import type { Dataset } from '@/core/data/loader'
 import { registerSlot } from '@/ui/slots'
@@ -13,7 +13,7 @@ import { WaypointCard } from './WaypointCard'
 const IVORY = new Color('#f3efe6')
 const CASING = new Color('#0b0e14')
 const AMBER = new Color('#ffb81f')
-const LIFT = 0.9
+const LIFT = 1.4
 /** marker half-size as a fraction of the distance to the camera (constant size on screen) */
 const MARKER_SCALE = 0.0085
 
@@ -74,12 +74,14 @@ function TraverseDraw({ ds, data }: { ds: Dataset; data: Loaded }) {
   const selected = useApp((s) => s.selectedWaypoint)
 
   const lines = useMemo(() => {
-    const mk = (width: number, color: Color, order: number) => {
+    const mk = (width: number, color: Color, order: number, ghost = false) => {
       const mat = new LineMaterial({
         color: color.getHex(),
         linewidth: width,
         worldUnits: false,
-        depthTest: true,
+        depthTest: !ghost,
+        transparent: ghost,
+        opacity: ghost ? 0.35 : 1,
         polygonOffset: true,
         polygonOffsetFactor: -3,
         polygonOffsetUnits: -3,
@@ -89,30 +91,36 @@ function TraverseDraw({ ds, data }: { ds: Dataset; data: Loaded }) {
     }
     const casing = mk(5, CASING, 6)
     const core = mk(2.4, IVORY, 7)
-    const geoms: LineGeometry[] = []
-    const objs: Line2[] = []
+    // faint pass without depth test: the route stays readable where a coarse terrain LOD or a ridge covers it
+    const ghost = mk(1.6, IVORY, 10, true)
+    // every drive goes into ONE segment geometry: three draw calls (casing, core, ghost) instead of 3 per drive
+    let nSeg = 0
+    for (const l of data.traverse.lines) nSeg += Math.max(0, l.xz.length / 2 - 1)
+    const pos = new Float32Array(nSeg * 6)
+    let k = 0
+    const put = (x: number, z: number) => {
+      pos[k++] = x
+      pos[k++] = hf.sampleHeight(x, z) + LIFT
+      pos[k++] = z
+    }
     for (const l of data.traverse.lines) {
       const n = l.xz.length / 2
-      if (n < 2) continue
-      const pos = new Float32Array(n * 3)
-      for (let i = 0; i < n; i++) {
-        const x = l.xz[2 * i]!
-        const z = l.xz[2 * i + 1]!
-        pos[3 * i] = x
-        pos[3 * i + 1] = hf.sampleHeight(x, z) + LIFT
-        pos[3 * i + 2] = z
-      }
-      const g = new LineGeometry()
-      g.setPositions(pos)
-      geoms.push(g)
-      for (const m of [casing, core]) {
-        const o = new Line2(g, m.mat)
-        o.renderOrder = m.order
-        o.frustumCulled = false
-        objs.push(o)
+      for (let i = 0; i < n - 1; i++) {
+        put(l.xz[2 * i]!, l.xz[2 * i + 1]!)
+        put(l.xz[2 * i + 2]!, l.xz[2 * i + 3]!)
       }
     }
-    return { objs, mats: [casing.mat, core.mat], geoms }
+    const g = new LineSegmentsGeometry()
+    g.setPositions(pos)
+    const geoms = [g]
+    const objs: LineSegments2[] = []
+    for (const m of [casing, core, ghost]) {
+      const o = new LineSegments2(g, m.mat)
+      o.renderOrder = m.order
+      o.frustumCulled = false
+      objs.push(o)
+    }
+    return { objs, mats: [casing.mat, core.mat, ghost.mat], geoms }
   }, [data, hf])
   useEffect(
     () => () => {
@@ -183,7 +191,7 @@ function Waypoints({ ds, points, selected }: { ds: Dataset; points: WaypointInfo
     <>
       <instancedMesh ref={ring} args={[undefined, undefined, points.length]} renderOrder={8} frustumCulled={false}>
         <octahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={CASING} toneMapped={false} />
+        <meshBasicMaterial color={CASING} toneMapped={false} depthWrite={false} />
       </instancedMesh>
       <instancedMesh
         ref={core}

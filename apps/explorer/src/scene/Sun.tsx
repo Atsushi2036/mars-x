@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { DirectionalLight, Object3D } from 'three'
-import { sunDirection, useApp } from '@/store/app'
+import { sunDirection, sunLive } from '@/store/app'
 import { cameraRig } from '@/store/camera'
 import { terrainUniforms } from './terrain-material'
 
@@ -41,7 +41,7 @@ export function Sun() {
     const l = light.current
     const t = target.current
     if (!l || !t) return
-    const { sun } = useApp.getState()
+    const sun = sunLive
     terrainUniforms.uSunAz.value = sun.azimuthDeg
     terrainUniforms.uSunEl.value = sun.elevationDeg
     const d = sunDirection(sun.azimuthDeg, sun.elevationDeg)

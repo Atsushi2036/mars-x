@@ -143,8 +143,27 @@ export function setSun(azimuthDeg: number, elevationDeg: number, source: SunMode
   if (source === 'scenario' && useApp.getState().sunMode === 'manual') return
   const az = ((azimuthDeg % 360) + 360) % 360
   const el = Math.max(-5, Math.min(90, elevationDeg))
-  useApp.setState({ sun: { azimuthDeg: az, elevationDeg: el } })
+  // the scene reads `sunLive` every frame (no React in the loop); the store, which React panels watch, is refreshed at ~10 Hz
+  sunLive.azimuthDeg = az
+  sunLive.elevationDeg = el
+  const now = performance.now()
+  if (now - lastPublish >= 90) {
+    lastPublish = now
+    clearTimeout(publishTimer)
+    useApp.setState({ sun: { azimuthDeg: az, elevationDeg: el } })
+  } else {
+    clearTimeout(publishTimer)
+    publishTimer = setTimeout(() => {
+      lastPublish = performance.now()
+      useApp.setState({ sun: { azimuthDeg: sunLive.azimuthDeg, elevationDeg: sunLive.elevationDeg } })
+    }, 90)
+  }
 }
+
+/** Live sun angles, always current (mutable; read it in render loops instead of subscribing to the store). */
+export const sunLive = { azimuthDeg: 250, elevationDeg: 32 }
+let lastPublish = 0
+let publishTimer: ReturnType<typeof setTimeout> | undefined
 
 /** Public API for the conditions engine: atmospheric dust optical depth tau (0 = clear). Controls the haze density. */
 export function setHaze(tau: number) {

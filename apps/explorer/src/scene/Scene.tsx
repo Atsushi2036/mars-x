@@ -14,14 +14,14 @@ import { MissionLayer } from './MissionLayer'
 import { Rover } from './Rover'
 import { Sky } from './Sky'
 import { Sun } from './Sun'
-import { useApp } from '@/store/app'
+import { sunLive, useApp } from '@/store/app'
 import { disposeMissionPlanner } from '@/store/mission'
 import { cameraRig, useCamera } from '@/store/camera'
 import { roverLive } from '@/store/rover'
 
 declare global {
   interface Window {
-    __marsx?: { ready: boolean; fps: number; frameCount: number; chunks: number; triangles: number; mode: string; drawCalls: number; renderedTriangles: number; geometries: number; textures: number; sunAz?: number; sunEl?: number; layer?: string }
+    __marsx?: { ready: boolean; fps: number; frameCount: number; chunks: number; triangles: number; mode: string; drawCalls: number; renderedTriangles: number; geometries: number; textures: number; sunAz?: number; sunEl?: number; layer?: string; jumpTo?: (x: number, z: number) => void }
   }
 }
 
@@ -105,6 +105,10 @@ function Probes({ ds }: { ds: Dataset }) {
   const gl = useThree((s) => s.gl)
   useEffect(() => {
     window.__marsx = { ready: false, fps: 0, frameCount: 0, chunks: 0, triangles: 0, mode: 'orbit', drawCalls: 0, renderedTriangles: 0, geometries: 0, textures: 0 }
+    // test hook: re-centres the orbit target on a world position (x east, z south)
+    window.__marsx.jumpTo = (x, z) => {
+      cameraRig.jumpTo = { x, z }
+    }
     return () => {
       delete window.__marsx
       disposeMissionPlanner()
@@ -152,8 +156,8 @@ function Probes({ ds }: { ds: Dataset }) {
       w.geometries = gl.info.memory.geometries
       w.textures = gl.info.memory.textures
       w.mode = mode
-      w.sunAz = s.sun.azimuthDeg
-      w.sunEl = s.sun.elevationDeg
+      w.sunAz = sunLive.azimuthDeg
+      w.sunEl = sunLive.elevationDeg
       w.layer = s.layer
       if (!acc.ready && s.progress.mesh >= 1 && s.progress.ortho >= 1) {
         acc.ready = true
