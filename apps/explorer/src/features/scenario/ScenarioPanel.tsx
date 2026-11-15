@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Slider } from '@/components/ui/slider'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
-import { setHaze, setSun, useApp } from '@/store/app'
+import { useApp } from '@/store/app'
 import { Section } from '@/ui/panels/Section'
 import { ProvenanceChip } from '../shared/ProvenanceChip'
 import { fmtClock } from '../shared/fmt'
@@ -115,14 +115,7 @@ function useConditions() {
     return { sun: sunR, link: linkR }
   }, [sunTable, owlt, lmstH])
 
-  // the 3D scene follows the conditions: sun direction and haze
-  useEffect(() => {
-    if (sun) setSun(sun.azimuthDeg, sun.elevationDeg)
-  }, [sun])
-  const tauNow = tauOverride ?? meda?.tau ?? scenario.tau?.value ?? null
-  useEffect(() => {
-    if (tauNow !== null) setHaze(tauNow)
-  }, [tauNow])
+  // the sun and the haze of the 3D scene are driven by scene/ConditionsDriver from the same scenario store
 
   const rows = useMemo(
     () => buildConditionRows({ scenario, sol, lmstH, tauOverride, comm, meda, sun, link }),

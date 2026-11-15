@@ -24,25 +24,25 @@ function watchNetwork(page) {
 export const SCENARIOS = {
   lab_map: async (page, vp, _t, h) => {
     await openLab(page, vp, h)
-    await page.waitForSelector('canvas[aria-label^="Learning grid"]', { timeout: 60000 })
+    await page.waitForSelector('canvas[aria-label^="Learning grid"]:visible', { timeout: 60000 })
   },
   lab_train: async (page, vp, _t, h) => {
     await openLab(page, vp, h)
-    await page.waitForSelector('canvas[aria-label^="Learning grid"]', { timeout: 60000 })
+    await page.waitForSelector('canvas[aria-label^="Learning grid"]:visible', { timeout: 60000 })
     await page.getByRole('button', { name: /^Train$/ }).first().click()
     await page.waitForTimeout(9000)
     await h.scrollInspector(page, vp, 'Reward per episode')
   },
   lab_trained_map: async (page, vp, _t, h) => {
     await openLab(page, vp, h)
-    await page.waitForSelector('canvas[aria-label^="Learning grid"]', { timeout: 60000 })
+    await page.waitForSelector('canvas[aria-label^="Learning grid"]:visible', { timeout: 60000 })
     await page.getByRole('button', { name: /^Train$/ }).first().click()
     await page.waitForTimeout(9000)
     await h.scrollInspector(page, vp, 'Q-learning, live')
   },
   lab_compare: async (page, vp, _t, h) => {
     await openLab(page, vp, h)
-    await page.waitForSelector('canvas[aria-label^="Learning grid"]', { timeout: 60000 })
+    await page.waitForSelector('canvas[aria-label^="Learning grid"]:visible', { timeout: 60000 })
     await page.getByRole('button', { name: /^Train$/ }).first().click()
     await page.waitForTimeout(9000)
     await h.scrollInspector(page, vp, 'Greedy policy vs A*')
@@ -57,7 +57,7 @@ export const SCENARIOS = {
     await openLab(page, vp, h)
     await tab(page, 'Bring your model')
     await page.locator('input[type=file][accept=".onnx"]').setInputFiles(ONNX)
-    await page.getByText('Matches the policy/1 contract').first().waitFor({ timeout: 30000 })
+    await page.getByText('Matches the policy/1 contract').filter({ visible: true }).first().waitFor({ timeout: 30000 })
     await h.scrollInspector(page, vp, 'ONNX policy')
     console.log('  network with body or off-origin during ONNX load:', net.length ? net : 'none')
   },
@@ -86,21 +86,21 @@ export const SCENARIOS = {
 Object.assign(SCENARIOS, {
   sources_top: async (page, vp, _t, h) => {
     await h.openMode(page, vp, 'Data & Sources', 'Data')
-    await page.getByText('Validation').first().waitFor({ timeout: 30000 })
+    await page.getByText('Validation').filter({ visible: true }).first().waitFor({ timeout: 30000 })
   },
   sources_validation: async (page, vp, _t, h) => {
     await h.openMode(page, vp, 'Data & Sources', 'Data')
-    await page.getByText('r = 0.99999').first().waitFor({ timeout: 30000 })
+    await page.getByText('r = 0.99999').filter({ visible: true }).first().waitFor({ timeout: 30000 })
     await h.scrollInspector(page, vp, 'Validation')
   },
   sources_credits: async (page, vp, _t, h) => {
     await h.openMode(page, vp, 'Data & Sources', 'Data')
-    await page.getByText('Map data').first().waitFor({ timeout: 30000 })
+    await page.getByText('Map data').filter({ visible: true }).first().waitFor({ timeout: 30000 })
     await h.scrollInspector(page, vp, 'Data sources')
   },
   sources_scope: async (page, vp, _t, h) => {
     await h.openMode(page, vp, 'Data & Sources', 'Data')
-    await page.getByText('Scope & limits').first().waitFor({ timeout: 30000 })
+    await page.getByText('Scope & limits').filter({ visible: true }).first().waitFor({ timeout: 30000 })
     await h.scrollInspector(page, vp, 'Scope & limits')
   },
 })
