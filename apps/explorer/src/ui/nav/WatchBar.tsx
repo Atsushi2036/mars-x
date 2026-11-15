@@ -6,6 +6,7 @@ import { currentWatchTarget, startWatch } from '@/store/watch'
 import { useReplay } from '@/features/replay/store'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
+import { DriverChip } from './DriverChip'
 import { BatteryLow, Flag, Mountain, OctagonX, Pause, Play, SkipBack, Sun, X, type LucideIcon } from '@/ui/icons'
 
 const MARK: Record<EventKind, { icon: LucideIcon; tone: string }> = {
@@ -28,14 +29,17 @@ export function WatchButton() {
   const target = currentWatchTarget(mode)
   if (!target) return null
   return (
-    <button
+    <div className="flex flex-col items-center gap-1.5">
+      {target.kind === 'route' && <DriverChip className="glass pointer-events-auto rounded-full px-3 py-1 text-foreground/80" />}
+      <button
       type="button"
       onClick={() => startWatch(mode)}
       className="pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full bg-brand px-4 text-sm font-semibold text-brand-foreground shadow-float outline-none transition-transform duration-[var(--dur-fast)] hover:brightness-105 focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
     >
       <Play className="size-5" strokeWidth={2} fill="currentColor" aria-hidden="true" />
       {target.label}
-    </button>
+      </button>
+    </div>
   )
 }
 
@@ -115,6 +119,7 @@ export function WatchBar() {
           onValueChange={([v]) => v !== undefined && s.seek(v)}
           className="touch-none py-2.5"
         />
+        {s.source === 'route' && <DriverChip className="mt-1" />}
         <p className="mt-0.5 flex justify-between font-mono text-xs tabular-nums text-muted-foreground" aria-live="off">
           <span>{s.label(s.t)}</span>
           <span>{s.source === 'route' ? `of ${s.label(s.duration)} mission time` : s.events.at(-1)?.label}</span>
