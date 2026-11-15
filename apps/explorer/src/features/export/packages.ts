@@ -46,6 +46,14 @@ export const scenarioName = (id: string) => SCENARIO_NAMES[id] ?? id
 /** Download URL of a package; the file name is validated by the schema, so it cannot leave the export folder. */
 export const packageUrl = (base: string, p: Pick<ExportPackage, 'zip'>) => `${base}/export/${p.zip}`
 
+/**
+ * A HEAD response proves the ZIP exists. Static hosts answer a missing file with the SPA page (200, text/html),
+ * so a successful status is not enough: the body type must not be HTML.
+ */
+export function isZipResponse(ok: boolean, contentType: string | null): boolean {
+  return ok && contentType !== null && !contentType.toLowerCase().includes('html')
+}
+
 export function fmtSize(bytes: number): string {
   return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} kB`
 }

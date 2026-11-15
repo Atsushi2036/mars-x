@@ -8,9 +8,11 @@ import { cn } from '@/lib/utils'
 import { fmtClock } from '../shared/fmt'
 import { useApp } from '@/store/app'
 import { Section } from '@/ui/panels/Section'
-import { CONTENTS, fmtSize, packageUrl, parseExportIndex, scenarioName, type ExportIndex, type ExportPackage } from './packages'
+import { CONTENTS, fmtSize, isZipResponse, packageUrl, parseExportIndex, scenarioName, type ExportIndex, type ExportPackage } from './packages'
 
-type Load = { status: 'loading' } | { status: 'ready'; index: ExportIndex } | { status: 'unavailable'; reason: string }
+type Load = { status: 'loading' } | { status: 'ready'; index: ExportIndex; available: ReadonlySet<string> } | { status: 'unavailable'; reason: string }
+
+const NOT_PUBLISHED = 'The export packages are not published in this build.'
 
 function useExportIndex(base: string | null): Load {
   const [load, setLoad] = useState<Load>({ status: 'loading' })
@@ -22,10 +24,22 @@ function useExportIndex(base: string | null): Load {
         if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) throw new Error('missing')
         return parseExportIndex(await res.json())
       })
-      .then((index) => setLoad({ status: 'ready', index }))
+      .then(async (index) => {
+        // never offer a link that would 404: every ZIP is checked with a HEAD request first
+        const checks = await Promise.all(
+          index.packages.map((p) =>
+            fetch(packageUrl(base, p), { method: 'HEAD', signal: ctl.signal })
+              .then((r) => isZipResponse(r.ok, r.headers.get('content-type')))
+              .catch(() => false),
+          ),
+        )
+        const available = new Set(index.packages.filter((_, i) => checks[i]).map((p) => p.zip))
+        if (available.size === 0) throw new Error('missing')
+        setLoad({ status: 'ready', index, available })
+      })
       .catch((e) => {
         if (ctl.signal.aborted) return
-        setLoad({ status: 'unavailable', reason: e instanceof Error && e.message === 'missing' ? 'This dataset does not include export packages.' : 'The export index could not be read.' })
+        setLoad({ status: 'unavailable', reason: e instanceof Error && e.message === 'missing' ? NOT_PUBLISHED : 'The export index could not be read.' })
       })
     return () => ctl.abort()
   }, [base])
@@ -56,7 +70,7 @@ function CopyHash({ hash }: { hash: string }) {
   )
 }
 
-function PackageCard({ p, base }: { p: ExportPackage; base: string }) {
+function PackageCard({ p, base, available }: { p: ExportPackage; base: string; available: boolean }) {
   return (
     <li className="space-y-2 rounded-lg border border-border bg-card p-3">
       <div className="flex items-start justify-between gap-2">
@@ -78,11 +92,17 @@ function PackageCard({ p, base }: { p: ExportPackage; base: string }) {
         </div>
         <CopyHash hash={p.sha256} />
       </div>
-      <Button asChild className="h-10 w-full md:h-8">
-        <a href={packageUrl(base, p)} download={p.zip}>
-          <Download /> Download ZIP
-        </a>
-      </Button>
+      {available ? (
+        <Button asChild className="h-10 w-full md:h-8">
+          <a href={packageUrl(base, p)} download={p.zip}>
+            <Download /> Download ZIP
+          </a>
+        </Button>
+      ) : (
+        <Button disabled className="h-10 w-full md:h-8">
+          <Download /> Not published in this build
+        </Button>
+      )}
     </li>
   )
 }
@@ -133,14 +153,19 @@ export function ExportPanel() {
       {load.status === 'unavailable' && (
         <Alert>
           <PackageOpen />
-          <AlertTitle>No export packages</AlertTitle>
-          <AlertDescription>{load.reason}</AlertDescription>
+          <AlertTitle>No export packages in this build</AlertTitle>
+          <AlertDescription className="space-y-1.5">
+            <p>{load.reason}</p>
+            <p>
+              Generate them from the open-source repository with <span className="font-mono">marsx export --demo</span> (the same scenarios, terrain included).
+            </p>
+          </AlertDescription>
         </Alert>
       )}
       {load.status === 'ready' && base && (
         <ul className="space-y-2.5" aria-label="Export packages">
           {load.index.packages.map((p) => (
-            <PackageCard key={p.zip} p={p} base={base} />
+            <PackageCard key={p.zip} p={p} base={base} available={load.available.has(p.zip)} />
           ))}
         </ul>
       )}

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { fmtSize, packageUrl, parseExportIndex, scenarioName } from './packages'
+import { fmtSize, isZipResponse, packageUrl, parseExportIndex, scenarioName } from './packages'
 
 const real = path.resolve(import.meta.dirname, '../../../../../data/processed/jezero-v1/export/index.json')
 
@@ -29,5 +29,17 @@ describe('export index', () => {
     expect(scenarioName('x/y')).toBe('x/y')
     expect(fmtSize(11140292)).toBe('10.6 MB')
     expect(packageUrl('/data/jezero-v1', { zip: 'a.zip' })).toBe('/data/jezero-v1/export/a.zip')
+  })
+})
+
+describe('zip availability check (HEAD)', () => {
+  it('accepts a successful non-HTML response', () => {
+    expect(isZipResponse(true, 'application/zip')).toBe(true)
+    expect(isZipResponse(true, 'application/octet-stream')).toBe(true)
+  })
+  it('rejects 404s and the SPA fallback page that servers answer for missing files', () => {
+    expect(isZipResponse(false, 'application/zip')).toBe(false)
+    expect(isZipResponse(true, 'text/html; charset=utf-8')).toBe(false)
+    expect(isZipResponse(true, null)).toBe(false)
   })
 })
