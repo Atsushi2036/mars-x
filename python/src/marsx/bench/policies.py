@@ -213,4 +213,5 @@ class OnnxPolicy:
         pass
 
     def act(self, obs: np.ndarray, info: Mapping[str, Any] | None = None) -> np.ndarray:
-        return np.asarray(self.fn(obs), dtype=np.int64).reshape(obs.shape[0])
+        (logits,) = self.session.run([policy_spec.OUTPUT_NAME], {policy_spec.INPUT_NAME: obs.astype(np.float32)})
+        return np.argmax(logits, axis=1).astype(np.int64)

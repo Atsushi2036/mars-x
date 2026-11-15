@@ -132,3 +132,19 @@ def test_sdk_policy_fails_closed_without_onnx(tmp_path, monkeypatch):
     monkeypatch.setattr(builtins, "__import__", no_onnx)
     with pytest.raises(RuntimeError, match="onnx"):
         OnnxPolicy(p)
+
+
+def test_sdk_policy_runs_argmax_of_logits(tmp_path):
+    """Regression: OnnxPolicy.act must run the ONNX session (it once inherited CallablePolicy.act by a bad edit)."""
+    pytest.importorskip("onnxruntime")
+    from marsx.bench.policies import OnnxPolicy
+
+    w = np.zeros((spec.OBS_DIM, spec.N_ACTIONS), np.float32)
+    w[0, 3] = 1.0  # obs[0] drives action 3
+    b = np.zeros(spec.N_ACTIONS, np.float32)
+    p = tmp_path / "g.onnx"
+    p.write_bytes(model([helper.make_node("Gemm", ["obs", "W", "B"], ["logits"])],
+                        [numpy_helper.from_array(w, "W"), numpy_helper.from_array(b, "B")]))
+    obs = np.zeros((2, spec.OBS_DIM), np.float32)
+    obs[0, 0] = 1.0
+    assert OnnxPolicy(p).act(obs).tolist() == [3, 0]
