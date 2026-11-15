@@ -96,3 +96,21 @@ def train(cost: np.ndarray, start, goal, episodes: int = 20000, alpha: float = 0
 def greedy_cost(q: np.ndarray, cost: np.ndarray, start, goal) -> float:
     return float(_greedy(q, np.ascontiguousarray(cost, dtype=np.float64), int(start[0]), int(start[1]),
                          int(goal[0]), int(goal[1])))
+
+
+def greedy_path(q: np.ndarray, cost: np.ndarray, start, goal) -> np.ndarray | None:
+    """Cells (row, col) of the greedy policy from start to goal, or None if it loops / hits a wall / never arrives."""
+    c = np.ascontiguousarray(cost, dtype=np.float64)
+    r, col = int(start[0]), int(start[1])
+    out, seen = [(r, col)], {(r, col)}
+    for _ in range(c.size):
+        if (r, col) == (int(goal[0]), int(goal[1])):
+            return np.array(out, np.int64)
+        a = int(np.argmax(q[r, col]))
+        nr, nc, s = _move(c, r, col, a)
+        if s < 0 or (nr, nc) in seen:
+            return None
+        r, col = int(nr), int(nc)
+        out.append((r, col))
+        seen.add((r, col))
+    return None

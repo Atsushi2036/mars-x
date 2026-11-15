@@ -49,6 +49,8 @@ def main(argv=None) -> dict:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--r-min", type=float, default=10, help="goal distance band, cells (2 m)")
     ap.add_argument("--r-max", type=float, default=60)
+    ap.add_argument("--time-weight", type=float, default=1.0,
+                    help="reward.time used for training: without it WAIT is free and the policy learns to stand still")
     ap.add_argument("--out", default="models/jezero-v1")
     ap.add_argument("--name", default="marsx/ppo-l1-reference")
     ap.add_argument("--version", default="0.1.0")
@@ -61,6 +63,7 @@ def main(argv=None) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     terrain = load_terrain(a.data)
     sc = scenarios.get(a.scenario)
+    sc = sc.model_copy(update={"reward": sc.reward.model_copy(update={"time": a.time_weight})})
     train_eng = NavBatch(terrain, sc, a.envs, seed=a.seed, region=region(terrain.shape, True), r_min=a.r_min,
                          r_max=a.r_max)
     test_eng = NavBatch(terrain, sc, 50, seed=a.seed + 1, autoreset=False, region=region(terrain.shape, False),
@@ -73,31 +76,42 @@ def main(argv=None) -> dict:
         return model.predict(o, deterministic=True)[0]
 
     curve, t0, done = [], time.perf_counter(), 0
-    res = evaluate_policy(act, test_eng, a.eval_episodes, seed=1234)
-    curve.append({"timesteps": 0, "minutes": 0.0, **{k: res[k] for k in ("success", "splCost", "medianCostRatio")}})
-    print(json.dumps(curve[-1]), flush=True)
+    onnx_path = out / "policy.onnx"
+    best = None  # (success, splCost, timesteps, res): the best checkpoint is exported as ONNX (no pickle)
+
+    def record(res):
+        nonlocal best
+        curve.append({"timesteps": done, "minutes": round((time.perf_counter() - t0) / 60, 2),
+                      **{k: res[k] for k in ("success", "splCost", "medianCostRatio")}})
+        print(json.dumps(curve[-1]), flush=True)
+        key = (res["success"], res["splCost"])
+        if done > 0 and (best is None or key > best[:2]):
+            export_onnx.export_logits(model.policy, onnx_path)
+            best = (*key, done, res)
+            print(f"checkpoint: exported best policy at {done} steps", flush=True)
+
+    record(evaluate_policy(act, test_eng, a.eval_episodes, seed=1234))
     while done < a.timesteps:
         chunk = min(a.eval_every, a.timesteps - done)
         model.learn(chunk, reset_num_timesteps=False)
         done += chunk
-        res = evaluate_policy(act, test_eng, a.eval_episodes, seed=1234)
-        curve.append({"timesteps": done, "minutes": round((time.perf_counter() - t0) / 60, 2),
-                      **{k: res[k] for k in ("success", "splCost", "medianCostRatio")}})
-        print(json.dumps(curve[-1]), flush=True)
+        record(evaluate_policy(act, test_eng, a.eval_episodes, seed=1234))
     wall = time.perf_counter() - t0
+    if best is None:
+        raise SystemExit("no checkpoint was exported")
+    res = best[3]
 
     with (out / "learning_curve.csv").open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(curve[0]))
         w.writeheader()
         w.writerows(curve)
-    onnx_path = export_onnx.export_logits(model.policy, out / "policy.onnx")
     card = export_onnx.policy_card(
         onnx_path, name=a.name, version=a.version, license="MIT", authors=["MARS-X team"],
         metrics={k: float(v) for k, v in {
             "successTest": res["success"], "successTestCi95Low": res["successCi95"][0],
             "splCostTest": res["splCost"], "medianCostRatioTest": res["medianCostRatio"],
             "testEpisodes": float(res["n"])}.items() if np.isfinite(v)},
-        training=pc.TrainingInfo(algorithm="PPO", library="stable-baselines3 2.9.2", timesteps=done,
+        training=pc.TrainingInfo(algorithm="PPO", library="stable-baselines3 2.9.2", timesteps=best[2],
                                  wall_clock_s=round(wall, 1), seed=a.seed, suite_id=None, split="train"),
         intended_use=(f"Reference local-navigation policy for MARS-X, trained on scenario {a.scenario} on the Jezero "
                       "2 m planning grid: a baseline to compare user models against, and a demo of real learning."),
