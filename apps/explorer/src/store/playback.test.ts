@@ -41,13 +41,13 @@ describe('playback store', () => {
     expect(playbackLive.paused).toBe(false)
   })
 
-  it('speed changes the live rate (1x, 4x, 16x only)', () => {
+  it('speed changes the live rate (1x, 2x, 4x only)', () => {
     usePlayback.getState().begin({ source: 'route', duration: 60, label: String })
-    usePlayback.getState().setSpeed(16)
-    expect(usePlayback.getState().speed).toBe(16)
-    expect(playbackLive.rate).toBe(16)
+    usePlayback.getState().setSpeed(4)
+    expect(usePlayback.getState().speed).toBe(4)
+    expect(playbackLive.rate).toBe(4)
     usePlayback.getState().setSpeed(3 as never)
-    expect(usePlayback.getState().speed).toBe(16)
+    expect(usePlayback.getState().speed).toBe(4)
   })
 
   it('seek clamps to [0, duration] and bumps the seek counter', () => {

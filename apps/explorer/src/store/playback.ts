@@ -7,7 +7,7 @@ import { useCamera, type CameraMode } from './camera'
  * drive seconds for a route, trajectory steps for a run (the bar shows `label(t)`).
  */
 export type PlaybackSource = 'route' | 'run'
-export const SPEEDS = [1, 4, 16] as const
+export const SPEEDS = [1, 2, 4] as const
 export type PlaybackSpeed = (typeof SPEEDS)[number]
 export type EventKind = 'rock' | 'spe' | 'low-energy' | 'stuck' | 'end'
 

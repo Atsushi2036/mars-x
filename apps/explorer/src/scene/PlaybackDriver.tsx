@@ -5,7 +5,7 @@ import { lerpAngle } from '@/store/camera-math'
 import { pointAlong, playbackLive, usePlayback } from '@/store/playback'
 import { useMission } from '@/store/mission'
 import { roverLive, useRover } from '@/store/rover'
-import { RUN_RATE, watchCtx, type RouteCtx, type RunCtx } from '@/store/watch'
+import { installAgentSync, RUN_RATE, watchCtx, type RouteCtx, type RunCtx } from '@/store/watch'
 import { useReplay } from '@/features/replay/store'
 
 const TICK_S = 0.1
@@ -21,7 +21,11 @@ type PB = ReturnType<typeof usePlayback.getState>
  * Runs before the camera rig (negative priority) so Follow sees this frame's pose.
  */
 export function PlaybackDriver() {
+  const hooked = useRef(false)
   const acc = useRef<Acc>({ tick: 0, nonce: -1, store: 0 })
+
+  useEffect(() => installAgentSync(), [])
+
 
   useEffect(() => {
     // leaving the Watch stops what it started; a different episode or a closed run ends a run watch
@@ -42,6 +46,14 @@ export function PlaybackDriver() {
   }, [])
 
   useFrame((_, dtRaw) => {
+    if (!hooked.current) {
+      // test hook for Playwright (Probes creates window.__marsx after this component mounts): the live agent pose and the stores
+      const w = window as unknown as { __marsx?: Record<string, unknown> }
+      if (w.__marsx) {
+        w.__marsx.agent = { roverLive, agentLive, rover: useRover, playback: usePlayback }
+        hooked.current = true
+      }
+    }
     const dt = Math.min(dtRaw, 0.1)
     const pb = usePlayback.getState()
     const ctx = watchCtx.current
@@ -83,6 +95,7 @@ function driveRoute(ctx: RouteCtx, pb: PB, a: Acc, dt: number) {
       ctx.settle = 3
       playbackLive.travelled = 0
       useRover.getState().followPath(p.rest, ctx.speed)
+      ctx.routeId = useRover.getState().route?.id ?? -1
     }
   }
   if (ctx.settle > 0) {

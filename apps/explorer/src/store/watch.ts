@@ -10,6 +10,13 @@ import { roverLive, useRover } from './rover'
 export const RUN_RATE = 24
 /** how fast the rover MOVES on screen at 1x playback (m/s) */
 const ROVER_SPEED = 1.5
+/** a route is shown in about this many seconds at 1x, whatever its real length (the clock still shows real mission time) */
+export const FIT_SECONDS = 30
+
+/** On-screen speed (m/s) that makes a route of this length take about FIT_SECONDS, never slower than the vehicle's base pace. */
+export function fitSpeed(lengthM: number, baseMs: number): number {
+  return Math.max(baseMs, lengthM / FIT_SECONDS)
+}
 /** how fast the real rover drives (m/s, Perseverance autonav average): mission time = distance / this */
 export const ROVER_REAL_SPEED = 0.042
 
@@ -35,6 +42,8 @@ export interface RouteCtx {
   /** metres already covered before the current follower was created (after a seek) */
   base: number
   length: number
+  /** id of the rover route this Watch started (another route taking over ends the Watch) */
+  routeId: number
   /** frames to ignore the rover's travelled counter after a seek (the follower is rebuilt on the next React commit) */
   settle: number
 }
@@ -55,18 +64,19 @@ export function startRouteWatch(): boolean {
   if (!out || out.status !== 'ok' || out.path.length < 2) return false
   const path = out.path.map((p) => ({ x: p.x, z: p.z }))
   const astro = m.profile === 'astronaut'
-  const speed = astro ? m.walk.speedMs : ROVER_SPEED
   const length = pathLength(path)
+  const speed = fitSpeed(length, astro ? m.walk.speedMs : ROVER_SPEED)
   const duration = length / speed
-  // an astronaut walks at real pace; the rover is shown sped up
-  const timeScale = astro ? 1 : ROVER_SPEED / ROVER_REAL_SPEED
+  // mission time is the real one (distance over the real pace); timeScale is how much faster than real the playback runs
+  const timeScale = speed / (astro ? m.walk.speedMs : ROVER_REAL_SPEED)
   agentLive.kind = astro ? 'astronaut' : 'rover'
   roverLive.x = path[0]!.x
   roverLive.z = path[0]!.z
   roverLive.yaw = Math.atan2(path[1]!.z - path[0]!.z, path[1]!.x - path[0]!.x)
-  watchCtx.current = { kind: 'route', path, speed, base: 0, length, settle: 3 }
+  watchCtx.current = { kind: 'route', path, speed, base: 0, length, settle: 3, routeId: -1 }
   playbackLive.travelled = 0
   useRover.getState().followPath(path.slice(1), speed)
+  watchCtx.current.routeId = useRover.getState().route?.id ?? -1
   usePlayback.getState().begin({
     source: 'route',
     duration,
@@ -121,4 +131,49 @@ export function startWatch(appMode: string): boolean {
   const t = currentWatchTarget(appMode)
   if (!t) return false
   return t.kind === 'route' ? startRouteWatch() : startRunWatch()
+}
+
+/** The journey entry point for the Plan a route wizard (): the same as the Watch button on a route. */
+export const startJourney = startRouteWatch
+
+/** Parks the active agent (rover or astronaut) on the origin of the profile's route, facing the first leg, and stops any rover route. */
+export function placeAgentAtOrigin(): boolean {
+  const m = useMission.getState()
+  const out = m.outcomes[m.profile]
+  if (!out || out.status !== 'ok' || out.path.length < 2) return false
+  const [a, b] = [out.path[0]!, out.path[1]!]
+  useRover.getState().stop()
+  roverLive.x = a.x
+  roverLive.z = a.z
+  roverLive.yaw = Math.atan2(b.z - a.z, b.x - a.x)
+  agentLive.kind = m.profile === 'astronaut' ? 'astronaut' : 'rover'
+  return true
+}
+
+/**
+ * Keeps the agent consistent with the plan (installed once by the playback driver):
+ *  - a finished plan, or a profile change, parks the agent on the new origin (Watch or not) and stops the Explore demo loop;
+ *  - replanning during a route Watch restarts it on the new route (or ends it when the plan is gone);
+ *  - another rover route (the demo loop) starting during a route Watch ends the Watch instead of fighting it.
+ */
+export function installAgentSync(): () => void {
+  const offMission = useMission.subscribe((s, prev) => {
+    if (s.outcomes === prev.outcomes && s.profile === prev.profile) return
+    const src = usePlayback.getState().source
+    if (src === 'run') return
+    if (src === 'route') {
+      if (!startRouteWatch()) usePlayback.getState().exit()
+      return
+    }
+    placeAgentAtOrigin()
+  })
+  const offRover = useRover.subscribe((s, prev) => {
+    const ctx = watchCtx.current
+    if (!ctx || ctx.kind !== 'route' || usePlayback.getState().source !== 'route') return
+    if (s.route && s.route !== prev.route && s.route.id !== ctx.routeId) usePlayback.getState().exit()
+  })
+  return () => {
+    offMission()
+    offRover()
+  }
 }
