@@ -38,6 +38,15 @@ for (const [name, vp] of Object.entries(VPS)) {
   await page.getByRole('radio', { name: '4×' }).click()
   await page.waitForTimeout(2500)
   await page.screenshot({ path: path.join(out, `16-follow-astronaut__${name}__dark.png`) })
+  if (name === 'desktop') {
+    // look back at the astronaut: drag the Follow view half a turn
+    await page.mouse.move(700, 300)
+    await page.mouse.down()
+    await page.mouse.move(1220, 300, { steps: 12 })
+    await page.mouse.up()
+    await page.waitForTimeout(1200)
+    await page.screenshot({ path: path.join(out, '17-astronaut-front__desktop__dark.png') })
+  }
   const kind = await page.evaluate(() => window.__marsx.nav.playback.getState().source)
   if (kind !== 'route') fails++
   console.log(name, 'source', kind, 'errors', errors.length, errors.slice(0, 2).join(' | '))
