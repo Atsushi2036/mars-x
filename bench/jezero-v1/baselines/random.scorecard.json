@@ -8,13 +8,13 @@
   "suite": {
    "id": "jezero-v1",
    "version": "0.1.0",
-   "sha256": "c22c2a73db362c4fc05a2f82c5e2953838f7b812436aacae1dd8479c210a33ff"
+   "sha256": "96765641e7513c1d500bfa4394c33b6a836cb1acbbb79611090fdf6bc7ac6749"
   },
   "marsx": {
    "version": "0.1.0",
-   "gitSha": "a1f4136eaa721bdf132d8c8d7ed078a011faf8fb"
+   "gitSha": "118945cb98005d17a53983c473d8d708ef8b1732"
   },
-  "date": "2026-11-14T23:55:56Z",
+  "date": "2026-11-15T01:54:11Z",
   "status": "Verified by re-simulation ✓"
  },
  "verdict": {
@@ -63,7 +63,7 @@
     "name": "Under Mars conditions",
     "passed": false,
     "reasons": [
-     "89 critical violation(s) (any one fails the level)",
+     "80 critical violation(s) (any one fails the level)",
      "success 0.02 < 0.70"
     ],
     "metrics": {
@@ -73,10 +73,10 @@
       0.012348,
       0.03224
      ],
-     "spl": 0.013912,
-     "energyRatio": 7.616882,
-     "violations": 89,
-     "meanPathM": 399.375568
+     "spl": 0.01418,
+     "energyRatio": 7.003329,
+     "violations": 80,
+     "meanPathM": 387.847393
     },
     "families": {
      "jezero-v1/l2/astronaut-clear": {
@@ -86,10 +86,10 @@
        0.045975,
        0.120044
       ],
-      "spl": 0.054318,
-      "energyRatio": 7.934681,
-      "violations": 89,
-      "meanPathM": 402.883309
+      "spl": 0.055388,
+      "energyRatio": 7.259037,
+      "violations": 80,
+      "meanPathM": 390.586589
      },
      "jezero-v1/l2/rtg-storm": {
       "n": 200,
@@ -238,8 +238,8 @@
    "timeout": 599
   },
   "L2": {
-   "spe_violation": 89,
-   "timeout": 695
+   "spe_violation": 80,
+   "timeout": 704
   },
   "L3": {
    "collision": 600
@@ -278,9 +278,9 @@
   "rootSeed": 20261115,
   "datasetSha256": "ff3543fbe375b4e9705e14429f02e4be13634dcfce403bce001046c79e46494b",
   "runIds": {
-   "L1": "90c543df-4187-428a-9ba8-79b1a481a9f7",
-   "L2": "1347e6c5-5a36-479d-ae82-7892fbc8cc6d",
-   "L3": "1ac28d52-c42f-42b5-804c-08006bfa279f"
+   "L1": "a76f4861-5b56-4547-be63-b2ffa8686db1",
+   "L2": "1295696e-a50e-45a2-bf6b-7e5407b72234",
+   "L3": "d4442cac-4c40-4514-ad12-1c48de3f4689"
   },
   "command": "marsx evaluate --policy <model.onnx> --suite bench/jezero-v1/suite.json --level <L1|L2|L3>"
  },

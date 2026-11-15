@@ -1,0 +1,119 @@
+{
+ "schemaVersion": "scorecard/1",
+ "program": "MARS-X First Filter (simulation)",
+ "header": {
+  "model": "baseline/qlearning",
+  "modelSha256": null,
+  "via": "baseline",
+  "suite": {
+   "id": "jezero-v1",
+   "version": "0.1.0",
+   "sha256": "96765641e7513c1d500bfa4394c33b6a836cb1acbbb79611090fdf6bc7ac6749"
+  },
+  "marsx": {
+   "version": "0.1.0",
+   "gitSha": "c126fd7376f02187b20618d485e062c3145f4484"
+  },
+  "date": "2026-11-15T01:35:38Z",
+  "status": "Verified by re-simulation ✓"
+ },
+ "verdict": {
+  "precheck": {
+   "name": "Integration check",
+   "passed": true,
+   "reasons": []
+  },
+  "levels": [
+   {
+    "level": "L1",
+    "name": "Nominal navigation",
+    "passed": false,
+    "reasons": [
+     "success 0.49 < 0.80"
+    ],
+    "metrics": {
+     "n": 600,
+     "success": 0.49,
+     "successCi95": [
+      0.450191,
+      0.529936
+     ],
+     "spl": 0.470051,
+     "energyRatio": 1.042207,
+     "violations": 0,
+     "meanPathM": 157.622883
+    },
+    "families": {
+     "jezero-v1/l1/rtg-geometry": {
+      "n": 600,
+      "success": 0.49,
+      "successCi95": [
+       0.450191,
+       0.529936
+      ],
+      "spl": 0.470051,
+      "energyRatio": 1.042207,
+      "violations": 0,
+      "meanPathM": 157.622883
+     }
+    }
+   },
+   {
+    "level": "L2",
+    "name": "Under Mars conditions",
+    "passed": false,
+    "reasons": [
+     "not run"
+    ],
+    "metrics": null,
+    "families": {}
+   },
+   {
+    "level": "L3",
+    "name": "Consistent across sols & seeds",
+    "passed": false,
+    "reasons": [
+     "not run"
+    ],
+    "metrics": null,
+    "families": {}
+   }
+  ],
+  "seal": null,
+  "thresholdsVersion": "v0.1"
+ },
+ "failureTaxonomy": {
+  "L1": {
+   "timeout": 306
+  }
+ },
+ "alertCompliance": {
+  "L1": null
+ },
+ "conditions": {
+  "L1": {
+   "medaSols": [],
+   "gravity": 3.694
+  }
+ },
+ "reproducibility": {
+  "rootSeed": 20261115,
+  "datasetSha256": "ff3543fbe375b4e9705e14429f02e4be13634dcfce403bce001046c79e46494b",
+  "runIds": {
+   "L1": "852ea035-5896-4168-bcf1-c6f3dc70e5d8"
+  },
+  "command": "marsx evaluate --policy <model.onnx> --suite bench/jezero-v1/suite.json --level <L1|L2|L3>"
+ },
+ "notCovered": [
+  "Wheel-soil interaction (slip, sinkage) beyond a slope and thermal-inertia proxy",
+  "Real sensor noise and localisation drift",
+  "Sub-metre terrain (only statistical, synthetic rocks)",
+  "Thermal and mechanical faults",
+  "Flight software and its timing",
+  "DSN and relay scheduling",
+  "Local weather variability and dust devils",
+  "Human factors beyond the EVA budget",
+  "Terrain outside the crop"
+ ],
+ "disclaimer": "Uses NASA open data. Not affiliated with or endorsed by NASA, JPL or Caltech."
+}

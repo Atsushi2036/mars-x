@@ -7,9 +7,9 @@
   "nActions": 9,
   "inputName": "obs",
   "outputName": "logits",
-  "name": "marsx/ppo-l1-reference",
-  "version": "0.1.0",
-  "onnxSha256": "125c8b3726b09478c17a2cc399b1ede0742b90423ef49be90f1459add760ed57",
+  "name": "marsx/ppo-reference",
+  "version": "0.2.0",
+  "onnxSha256": "fbb0bdfc86ca9f9178a1a28cbe6dbf19c77c3e4db5b83b50ac8544423809a11f",
   "onnxBytes": 341506,
   "opset": 20,
   "ops": [
@@ -19,20 +19,25 @@
   "training": {
     "algorithm": "PPO",
     "library": "stable-baselines3 2.9.2",
-    "timesteps": 4000000,
-    "wallClockS": 1375.7,
+    "timesteps": 7000000,
+    "wallClockS": 5282.2,
     "seed": 0,
     "split": "train"
   },
   "metrics": {
-    "successTest": 0.965,
-    "successTestCi95Low": 0.9295293881131225,
-    "splCostTest": 0.9066475791180373,
-    "medianCostRatioTest": 1.0436189469974169,
-    "testEpisodes": 200.0
+    "successTest": 0.955,
+    "successTestCi95Low": 0.916703295616288,
+    "splCostTest": 0.8743564794086968,
+    "medianCostRatioTest": 1.0861273508600644,
+    "testEpisodes": 200.0,
+    "suiteL1Success": 0.605,
+    "suiteL2Success": 0.625,
+    "suiteL3Success": 0.565,
+    "suiteL2Violations": 78.0,
+    "suiteL3Violations": 79.0
   },
-  "intendedUse": "Reference local-navigation policy for MARS-X L1 (geometry) on the Jezero 2 m planning grid: a baseline to compare user models against, and a demo of real learning.",
-  "limitations": "Trained on synthetic start/goal pairs 20-120 m apart in the north part of the grid (rows < 768) and evaluated on the unseen south part. Sees only an 11x11 local window (22 m): dead ends larger than that cause failures; long routes need global waypoints (A*). Not trained with lighting, energy, comms or hidden rocks (L2/L3). Not a flight-ready controller.",
+  "intendedUse": "Reference local-navigation policy for MARS-X, trained on scenario jezero-v1/l3/rtg-onesol on the Jezero 2 m planning grid: a baseline to compare user models against, and a demo of real learning.",
+  "limitations": "Trained on random start/goal pairs 40-700 m apart in the north part of the grid (rows < 768); test metrics are on the unseen south part with the same distance band. Sees only an 11x11 local window (22 m): dead ends larger than that cause failures; long routes need global waypoints (A*). Other agents/conditions than the training scenario are out of distribution. Not a flight-ready controller. Official jezero-v1 suite (verified by re-simulation): L1 0.605, L2 0.625, L3 0.565 success; does not pass the v0.1 thresholds (episodes up to 1000 m, astronaut and solar profiles are outside its training distribution).",
   "license": "MIT",
   "authors": [
     "MARS-X team"

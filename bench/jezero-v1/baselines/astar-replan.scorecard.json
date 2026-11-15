@@ -8,13 +8,13 @@
   "suite": {
    "id": "jezero-v1",
    "version": "0.1.0",
-   "sha256": "c22c2a73db362c4fc05a2f82c5e2953838f7b812436aacae1dd8479c210a33ff"
+   "sha256": "96765641e7513c1d500bfa4394c33b6a836cb1acbbb79611090fdf6bc7ac6749"
   },
   "marsx": {
    "version": "0.1.0",
-   "gitSha": "b202475026b147f14871585c60a00d9f4ce9ae65"
+   "gitSha": "c126fd7376f02187b20618d485e062c3145f4484"
   },
-  "date": "2026-11-14T23:40:31Z",
+  "date": "2026-11-15T01:35:39Z",
   "status": "Verified by re-simulation ✓"
  },
  "verdict": {
@@ -61,32 +61,32 @@
     "name": "Under Mars conditions",
     "passed": false,
     "reasons": [
-     "5 critical violation(s) (any one fails the level)"
+     "2 critical violation(s) (any one fails the level)"
     ],
     "metrics": {
      "n": 800,
-     "success": 0.99375,
+     "success": 0.9975,
      "successCi95": [
-      0.985453,
-      0.997328
+      0.990931,
+      0.999314
      ],
-     "spl": 0.99375,
-     "energyRatio": 0.999667,
-     "violations": 5,
-     "meanPathM": 355.514455
+     "spl": 0.9975,
+     "energyRatio": 0.999733,
+     "violations": 2,
+     "meanPathM": 357.451164
     },
     "families": {
      "jezero-v1/l2/astronaut-clear": {
       "n": 200,
-      "success": 0.975,
+      "success": 0.99,
       "successCi95": [
-       0.942822,
-       0.989275
+       0.964278,
+       0.997253
       ],
-      "spl": 0.975,
-      "energyRatio": 0.998789,
-      "violations": 5,
-      "meanPathM": 375.940955
+      "spl": 0.99,
+      "energyRatio": 0.999069,
+      "violations": 2,
+      "meanPathM": 383.436986
      },
      "jezero-v1/l2/rtg-storm": {
       "n": 200,
@@ -131,44 +131,44 @@
     "name": "Consistent across sols & seeds",
     "passed": false,
     "reasons": [
-     "38 critical violation(s) (any one fails the level)"
+     "33 critical violation(s) (any one fails the level)"
     ],
     "metrics": {
      "n": 600,
-     "success": 0.793333,
+     "success": 0.8,
      "successCi95": [
-      0.759117,
-      0.823817
+      0.76613,
+      0.830053
      ],
-     "spl": 0.758508,
+     "spl": 0.765117,
      "energyRatio": 1.0,
-     "violations": 38,
-     "meanPathM": 372.011977
+     "violations": 33,
+     "meanPathM": 370.585947
     },
     "families": {
      "jezero-v1/l3/astronaut-clear": {
       "n": 100,
-      "success": 0.77,
+      "success": 0.8,
       "successCi95": [
-       0.678456,
-       0.841567
+       0.711171,
+       0.866633
       ],
-      "spl": 0.729134,
+      "spl": 0.758314,
       "energyRatio": null,
-      "violations": 23,
-      "meanPathM": 345.282496
+      "violations": 20,
+      "meanPathM": 351.160065
      },
      "jezero-v1/l3/astronaut-storm": {
       "n": 100,
-      "success": 0.85,
+      "success": 0.86,
       "successCi95": [
-       0.767164,
-       0.90694
+       0.778628,
+       0.914737
       ],
-      "spl": 0.813939,
+      "spl": 0.824415,
       "energyRatio": null,
-      "violations": 15,
-      "meanPathM": 400.597479
+      "violations": 13,
+      "meanPathM": 387.770769
      },
      "jezero-v1/l3/rtg-clear": {
       "n": 100,
@@ -227,12 +227,12 @@
  "failureTaxonomy": {
   "L1": {},
   "L2": {
-   "spe_violation": 5
+   "spe_violation": 2
   },
   "L3": {
-   "battery": 25,
+   "battery": 20,
    "spe_violation": 13,
-   "timeout": 86
+   "timeout": 87
   }
  },
  "alertCompliance": {
@@ -268,9 +268,9 @@
   "rootSeed": 20261115,
   "datasetSha256": "ff3543fbe375b4e9705e14429f02e4be13634dcfce403bce001046c79e46494b",
   "runIds": {
-   "L1": "4406b257-c384-474e-a94a-7e39a4875112",
-   "L2": "eb3a182c-7064-4b11-a789-ff50609cbd81",
-   "L3": "f8a65e8a-28f8-4a64-b3a7-ca93f0b04838"
+   "L1": "7a8ce1d6-9aaf-4555-bed6-cfa98f65285f",
+   "L2": "4227ddbe-8273-4705-8f44-5ac80d7dbd1c",
+   "L3": "aa1ffffa-7e1c-4d28-9a93-ff6f58779512"
   },
   "command": "marsx evaluate --policy <model.onnx> --suite bench/jezero-v1/suite.json --level <L1|L2|L3>"
  },

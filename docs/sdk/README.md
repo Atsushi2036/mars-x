@@ -10,13 +10,24 @@ scorecard, and, if it passes, export the scenario to higher-fidelity simulators.
 ## 1. Install
 
 ```bash
-pip install "marsx[train] @ git+https://github.com/Atsushi2036/mars-x#subdirectory=python"
+# pin a commit: the same SHA reproduces the same scenarios, suite and scores
+pip install "marsx[train] @ git+https://github.com/Atsushi2036/mars-x@<commit-sha>#subdirectory=python"
 # from a clone: uv sync --project python --extra train
 ```
 
-The processed dataset (`manifest.json` + raw layers) is not in the wheel. Point `MARSX_DATA` at it
-(`data/processed/jezero-v1`) or pass `terrain=<path>`. `terrain="synthetic"` gives a small deterministic map for
-quick tests and CI.
+Python ≥ 3.12 (Google Colab works). Colab quick start: [`colab_quickstart.ipynb`](colab_quickstart.ipynb).
+
+### Get the data
+
+The processed dataset (`manifest.json` + raw layers, ~100 MB) is not in the wheel. Either:
+
+- clone the repo and run `just fetch-data` (downloads the GitHub Release `data-jezero-v1` and checks the sha256
+  recorded in `data/dataset.lock.json`), or `just data` to rebuild it from the public NASA/USGS sources;
+- or download the release archive yourself, verify its sha256 against `data/dataset.lock.json`, extract it.
+
+Then `export MARSX_DATA=/path/to/jezero-v1` (or pass `terrain=<path>`). `terrain="synthetic"` gives a small
+deterministic map for quick tests without data. MEDA weather files (optional, for L2 temperature/wind) live in
+`data/raw/meda` (`python -m marsx.conditions.meda fetch 148 314 315`) or `MARSX_MEDA`.
 
 ## 2. The environment (Gymnasium 1.x)
 
@@ -94,15 +105,24 @@ marsx evaluate --policy baseline:astar --level L1                   # oracle-sty
 ```
 
 v0.1 pass thresholds (product decision): L1 success ≥ 80 %, L2 success ≥ 70 %, L3 Wilson-95 lower bound ≥ 60 %
-with n ≥ 20. `run.json` (`run/1`) is one file with hashes of the dataset, scenario and policy; drop it on the web
-app to replay the trajectories in 3D.
+with n ≥ 20; any critical violation (collision, battery, space-weather rule) fails the level.
+
+`run.json` (`run/1`) is one file with hashes of the dataset, scenario and policy and one `traj/1` trajectory per
+episode (`steps + 1` states, `WAIT` sentinel last). Seeds are integers in [0, 2^53 − 1] so they survive JavaScript.
+**Upload it on the web app** (Replay panel, drag and drop): it is validated in a worker (strict zod schema, size
+limit) and the trajectories are replayed in 3D on the Jezero terrain. Nothing leaves your browser.
 
 ## 6. Reference policy and learning
 
-- `python -m marsx.train.ppo --timesteps 4000000 --out models/jezero-v1`: PPO trained on the north of the grid
-  (rows < 768) and evaluated on the unseen south; writes `policy.onnx`, `policy-card.json`, `learning_curve.csv`.
+- `python -m marsx.train.ppo --scenario jezero-v1/l3/rtg-onesol --r-min 20 --r-max 350 --timesteps 8000000`:
+  PPO trained on the north of the grid (rows < 768) and evaluated on the unseen south; writes `policy.onnx`
+  (best checkpoint, no pickle), `policy-card.json`, `learning_curve.csv` and `golden.json` (Python ↔ onnxruntime-web
+  parity fixture). Keep a time penalty (`--time-weight`, default 1): without it `WAIT` is free and the policy learns
+  to stand still among hidden rocks (observed: 99.5 % WAIT, 0 % success).
 - `marsx.train.qlearn`: tabular Q-learning (fixed start/goal, real learning, does not generalise) — the same
-  algorithm as the in-browser AI Lab.
+  algorithm as the in-browser AI Lab. `marsx.train.qlearn_policy.QLearningPolicy` runs it as an L1 baseline.
+- `python -m marsx.train.baselines --runs <dir>`: Q-learning (L1) and PPO (L1-L3) runs + verified scorecards in
+  `bench/jezero-v1/baselines/`, next to the classical A*, A*-replan and random baselines.
 - Honest framing: A* plans (it does not learn); Q-learning learns one route; PPO learns a local policy that
   generalises to unseen terrain. Perseverance works the same way at a high level: global route from orbital data,
   local hazard avoidance on board.

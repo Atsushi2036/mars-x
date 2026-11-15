@@ -1,0 +1,303 @@
+{
+ "schemaVersion": "scorecard/1",
+ "program": "MARS-X First Filter (simulation)",
+ "header": {
+  "model": "policy",
+  "modelSha256": "fbb0bdfc86ca9f9178a1a28cbe6dbf19c77c3e4db5b83b50ac8544423809a11f",
+  "via": "onnx",
+  "suite": {
+   "id": "jezero-v1",
+   "version": "0.1.0",
+   "sha256": "96765641e7513c1d500bfa4394c33b6a836cb1acbbb79611090fdf6bc7ac6749"
+  },
+  "marsx": {
+   "version": "0.1.0",
+   "gitSha": "837e3196dc9fedd4ce9a4d6b69ad77adce625c0f"
+  },
+  "date": "2026-11-15T01:46:04Z",
+  "status": "Verified by re-simulation ✓"
+ },
+ "verdict": {
+  "precheck": {
+   "name": "Integration check",
+   "passed": true,
+   "reasons": []
+  },
+  "levels": [
+   {
+    "level": "L1",
+    "name": "Nominal navigation",
+    "passed": false,
+    "reasons": [
+     "success 0.60 < 0.80"
+    ],
+    "metrics": {
+     "n": 600,
+     "success": 0.605,
+     "successCi95": [
+      0.565335,
+      0.643329
+     ],
+     "spl": 0.600311,
+     "energyRatio": 1.000883,
+     "violations": 0,
+     "meanPathM": 277.109431
+    },
+    "families": {
+     "jezero-v1/l1/rtg-geometry": {
+      "n": 600,
+      "success": 0.605,
+      "successCi95": [
+       0.565335,
+       0.643329
+      ],
+      "spl": 0.600311,
+      "energyRatio": 1.000883,
+      "violations": 0,
+      "meanPathM": 277.109431
+     }
+    }
+   },
+   {
+    "level": "L2",
+    "name": "Under Mars conditions",
+    "passed": false,
+    "reasons": [
+     "78 critical violation(s) (any one fails the level)",
+     "success 0.62 < 0.70"
+    ],
+    "metrics": {
+     "n": 800,
+     "success": 0.625,
+     "successCi95": [
+      0.59093,
+      0.657875
+     ],
+     "spl": 0.612575,
+     "energyRatio": 1.320694,
+     "violations": 78,
+     "meanPathM": 262.055481
+    },
+    "families": {
+     "jezero-v1/l2/astronaut-clear": {
+      "n": 200,
+      "success": 0.595,
+      "successCi95": [
+       0.525797,
+       0.660622
+      ],
+      "spl": 0.569958,
+      "energyRatio": 2.283392,
+      "violations": 78,
+      "meanPathM": 259.095986
+     },
+     "jezero-v1/l2/rtg-storm": {
+      "n": 200,
+      "success": 0.675,
+      "successCi95": [
+       0.60732,
+       0.736084
+      ],
+      "spl": 0.667496,
+      "energyRatio": 1.009085,
+      "violations": 0,
+      "meanPathM": 273.749114
+     },
+     "jezero-v1/l2/solar-clear": {
+      "n": 200,
+      "success": 0.615,
+      "successCi95": [
+       0.545999,
+       0.679667
+      ],
+      "spl": 0.60647,
+      "energyRatio": 1.063545,
+      "violations": 0,
+      "meanPathM": 263.335317
+     },
+     "jezero-v1/l2/solar-storm": {
+      "n": 200,
+      "success": 0.615,
+      "successCi95": [
+       0.545999,
+       0.679667
+      ],
+      "spl": 0.606377,
+      "energyRatio": 1.004115,
+      "violations": 0,
+      "meanPathM": 250.804421
+     }
+    }
+   },
+   {
+    "level": "L3",
+    "name": "Consistent across sols & seeds",
+    "passed": false,
+    "reasons": [
+     "79 critical violation(s) (any one fails the level)",
+     "family jezero-v1/l3/astronaut-clear: Wilson 95% lower bound 0.502 < 0.60",
+     "family jezero-v1/l3/astronaut-storm: Wilson 95% lower bound 0.462 < 0.60",
+     "family jezero-v1/l3/rtg-clear: Wilson 95% lower bound 0.472 < 0.60",
+     "family jezero-v1/l3/rtg-storm: Wilson 95% lower bound 0.482 < 0.60",
+     "family jezero-v1/l3/solar-clear: Wilson 95% lower bound 0.433 < 0.60",
+     "family jezero-v1/l3/solar-storm: Wilson 95% lower bound 0.452 < 0.60"
+    ],
+    "metrics": {
+     "n": 600,
+     "success": 0.565,
+     "successCi95": [
+      0.525043,
+      0.60413
+     ],
+     "spl": 0.532842,
+     "energyRatio": 1.046246,
+     "violations": 79,
+     "meanPathM": 291.75377
+    },
+    "families": {
+     "jezero-v1/l3/astronaut-clear": {
+      "n": 100,
+      "success": 0.6,
+      "successCi95": [
+       0.502003,
+       0.690599
+      ],
+      "spl": 0.558438,
+      "energyRatio": null,
+      "violations": 34,
+      "meanPathM": 273.626262
+     },
+     "jezero-v1/l3/astronaut-storm": {
+      "n": 100,
+      "success": 0.56,
+      "successCi95": [
+       0.462281,
+       0.65328
+      ],
+      "spl": 0.502792,
+      "energyRatio": null,
+      "violations": 36,
+      "meanPathM": 328.969233
+     },
+     "jezero-v1/l3/rtg-clear": {
+      "n": 100,
+      "success": 0.57,
+      "successCi95": [
+       0.472154,
+       0.662667
+      ],
+      "spl": 0.53643,
+      "energyRatio": 1.016854,
+      "violations": 3,
+      "meanPathM": 293.558401
+     },
+     "jezero-v1/l3/rtg-storm": {
+      "n": 100,
+      "success": 0.58,
+      "successCi95": [
+       0.482065,
+       0.672016
+      ],
+      "spl": 0.557614,
+      "energyRatio": null,
+      "violations": 2,
+      "meanPathM": 304.643071
+     },
+     "jezero-v1/l3/solar-clear": {
+      "n": 100,
+      "success": 0.53,
+      "successCi95": [
+       0.432889,
+       0.624892
+      ],
+      "spl": 0.509663,
+      "energyRatio": 1.090185,
+      "violations": 1,
+      "meanPathM": 255.509317
+     },
+     "jezero-v1/l3/solar-storm": {
+      "n": 100,
+      "success": 0.55,
+      "successCi95": [
+       0.452446,
+       0.643855
+      ],
+      "spl": 0.532116,
+      "energyRatio": 1.038972,
+      "violations": 3,
+      "meanPathM": 293.100994
+     }
+    }
+   }
+  ],
+  "seal": null,
+  "thresholdsVersion": "v0.1"
+ },
+ "failureTaxonomy": {
+  "L1": {
+   "timeout": 237
+  },
+  "L2": {
+   "battery": 72,
+   "spe_violation": 6,
+   "timeout": 222
+  },
+  "L3": {
+   "battery": 48,
+   "collision": 14,
+   "spe_violation": 17,
+   "timeout": 182
+  }
+ },
+ "alertCompliance": {
+  "L1": null,
+  "L2": null,
+  "L3": null
+ },
+ "conditions": {
+  "L1": {
+   "medaSols": [],
+   "gravity": 3.694
+  },
+  "L2": {
+   "medaSols": [
+    148,
+    314,
+    315
+   ],
+   "tau": 2.0,
+   "gravity": 3.694
+  },
+  "L3": {
+   "medaSols": [
+    148,
+    314,
+    315
+   ],
+   "tau": 2.0,
+   "gravity": 3.694
+  }
+ },
+ "reproducibility": {
+  "rootSeed": 20261115,
+  "datasetSha256": "ff3543fbe375b4e9705e14429f02e4be13634dcfce403bce001046c79e46494b",
+  "runIds": {
+   "L1": "f43592e2-5a8d-4182-9811-d9d50d7b7866",
+   "L2": "d3f12f5b-519a-46b8-9daa-0e8d608d2092",
+   "L3": "2f3ee979-d6ad-4888-8bc3-9321f36ad16b"
+  },
+  "command": "marsx evaluate --policy <model.onnx> --suite bench/jezero-v1/suite.json --level <L1|L2|L3>"
+ },
+ "notCovered": [
+  "Wheel-soil interaction (slip, sinkage) beyond a slope and thermal-inertia proxy",
+  "Real sensor noise and localisation drift",
+  "Sub-metre terrain (only statistical, synthetic rocks)",
+  "Thermal and mechanical faults",
+  "Flight software and its timing",
+  "DSN and relay scheduling",
+  "Local weather variability and dust devils",
+  "Human factors beyond the EVA budget",
+  "Terrain outside the crop"
+ ],
+ "disclaimer": "Uses NASA open data. Not affiliated with or endorsed by NASA, JPL or Caltech."
+}
