@@ -367,4 +367,5 @@ class NavBatch:
                 "pathM": self.path_m.copy(), "pathCost": self.path_cost.copy(), "steps": self.steps.copy(),
                 "outcome": np.array([OUTCOMES[o] for o in oc], dtype=object), "outcomeCode": oc,
                 "violations": self.violations.copy(), "timeSlopeGt15S": self.risk_s.copy(),
-                "shieldInterventions": self.shield.copy()}
+                "shieldInterventions": self.shield.copy(),
+                "speAlertT": np.nan_to_num(self.alert_t, nan=-1.0)}  # alert time of the episode (s); -1 = no alert

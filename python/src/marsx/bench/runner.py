@@ -11,6 +11,7 @@ entry is the terminal state with WAIT (8) as sentinel, so ``trajectory.steps == 
 
 from __future__ import annotations
 
+import math
 import platform
 import subprocess
 import sys
@@ -33,6 +34,7 @@ from marsx.contracts.run import (
     ConditionsSummary,
     DatasetRef,
     EpisodeResult,
+    Event,
     Oracle,
     PolicyRef,
     Producer,
@@ -47,6 +49,13 @@ from marsx.contracts.suite import EpisodeSpec, Suite
 EnvFactory = Callable[[Scenario, int], Any]
 DEFAULT_BATCH = 1024
 _STEP_MARGIN = 2  # extra steps beyond max_steps before the runner force-stops a batch
+
+
+def _spe_events(alert_t: float, end_t: float) -> list[Event]:
+    """Space-weather alert as a run/1 event when it fired before the episode ended (web re-simulation needs it)."""
+    if math.isfinite(alert_t) and 0.0 <= alert_t <= end_t:  # speAlertT = -1 means no alert
+        return [Event(t=round(alert_t, 6), type="speAlert")]
+    return []
 
 
 def _run_batch(specs: Sequence[EpisodeSpec], scenario: Scenario, policy: Policy, env: Any) -> list[EpisodeResult]:
@@ -91,13 +100,15 @@ def _run_batch(specs: Sequence[EpisodeSpec], scenario: Scenario, policy: Policy,
                 "energyWh": float(info["energyWh"][i]) if "energyWh" in info else None,
                 "violations": int(info["violations"][i]) if "violations" in info else 0,
                 "slope15": float(info["timeSlopeGt15S"][i]) if "timeSlopeGt15S" in info else 0.0,
+                "alertT": float(info["speAlertT"][i]) if "speAlertT" in info else float("nan"),
             }
         done[ended] = True
     for i in np.flatnonzero(~done):  # safety net: env never ended the episode
         final[int(i)] = {"outcome": "timeout", "pathM": float(info["pathM"][i]),
                          "energyWh": float(info["energyWh"][i]) if "energyWh" in info else None,
                          "violations": int(info["violations"][i]) if "violations" in info else 0,
-                         "slope15": float(info["timeSlopeGt15S"][i]) if "timeSlopeGt15S" in info else 0.0}
+                         "slope15": float(info["timeSlopeGt15S"][i]) if "timeSlopeGt15S" in info else 0.0,
+                         "alertT": float(info["speAlertT"][i]) if "speAlertT" in info else float("nan")}
 
     out = []
     for i, spec in enumerate(specs):
@@ -115,6 +126,7 @@ def _run_batch(specs: Sequence[EpisodeSpec], scenario: Scenario, policy: Policy,
             outcome=f["outcome"], steps=len(acts[i]), path_m=round(f["pathM"], 6),
             energy_wh=None if f["energyWh"] is None else round(f["energyWh"], 6), oracle=oracle,
             risk=Risk(time_slope_gt15_s=round(f["slope15"], 6)), violations=f["violations"],
+            events=_spe_events(f.get("alertT", float("nan")), ts[i][-1] if ts[i] else 0.0),
             trajectory=traj.encode(arrays),
         ))
     return out
