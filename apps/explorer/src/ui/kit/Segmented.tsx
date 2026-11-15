@@ -52,9 +52,9 @@ export function Segmented<T extends string>({
             {stacked && Icon && <Icon className={cn('size-6 shrink-0', on ? 'text-primary' : 'text-muted-foreground')} strokeWidth={1.75} aria-hidden="true" />}
             <span className={cn('flex min-w-0 items-center gap-2 text-sm font-medium', stacked ? 'max-w-full' : 'w-full')}>
               {!stacked && Icon && <Icon className={cn('size-6 shrink-0', on ? 'text-primary' : 'text-muted-foreground')} strokeWidth={1.75} aria-hidden="true" />}
-              <span className={stacked ? 'leading-tight' : 'truncate'}>{o.label}</span>
+              <span className="leading-tight">{o.label}</span>
             </span>
-            {o.sub && <span className={cn('text-xs text-muted-foreground', stacked ? 'max-w-full' : 'w-full truncate')}>{o.sub}</span>}
+            {o.sub && <span className={cn('text-xs text-muted-foreground', 'max-w-full')}>{o.sub}</span>}
           </button>
         )
       })}

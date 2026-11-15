@@ -116,9 +116,9 @@ export function MissionPanel() {
 
   const outcome = m.outcomes[m.profile]
   const resultRef = useRef<HTMLDivElement>(null)
-  // on the phone sheet the result can sit below the fold: bring it into view when it appears
+  // only on the phone sheet (the result can sit below the fold); on desktop the panel keeps its place so the header stays visible
   useEffect(() => {
-    if (outcome) resultRef.current?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+    if (outcome && !window.matchMedia('(min-width: 768px)').matches) resultRef.current?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
   }, [outcome])
   const both = !!m.origin && !!m.destination
   const step: 1 | 2 | 3 = !m.origin ? 1 : !m.destination ? 2 : 3
