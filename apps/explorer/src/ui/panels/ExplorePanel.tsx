@@ -60,7 +60,7 @@ export function ExplorePanel() {
         </ToggleGroup>
       </Section>
 
-      <Section title="Rover" hint="Placeholder model. A demo loop shows terrain-following; route planning comes with Mission.">
+      <Section title="Rover" hint="Perseverance 3D model (NASA/JPL-Caltech). The demo loop shows terrain-following; plan real routes in Mission.">
         {status === 'driving' ? (
           <Button variant="secondary" className="h-10 w-full md:h-8" onClick={stop}>
             <Square /> Stop rover

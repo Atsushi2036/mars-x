@@ -96,7 +96,7 @@ describe('reference policy honesty', () => {
     const h = honestSummary({ metrics: { successTest: 0.965, successTestCi95Low: 0.9295, testEpisodes: 200 } })
     expect(h.inDistribution).toContain('96.5%')
     expect(h.inDistribution).toContain('training distribution')
-    expect(h.official).toContain('58.7%')
+    expect(h.official).toContain('60.5%')
     expect(h.verdict).toBe('Does not pass L1: it needs at least 80%.')
     expect(REFERENCE_OFFICIAL.success).toBeLessThan(REFERENCE_OFFICIAL.threshold)
   })

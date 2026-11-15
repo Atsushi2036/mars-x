@@ -2,7 +2,7 @@ import type { PolicyCard } from '@/intelligence'
 import { fmtPct } from '../shared/fmt'
 
 /**
- * Result of the reference PPO policy on the OFFICIAL suite v0.1 (marsx bench evaluate, test split, n = 600 for L1).
+ * Result of the reference PPO policy 0.2.0 (sha256 fbb0bdfc86ca…) on the OFFICIAL suite v0.1 (marsx bench evaluate, test split, n = 600 for L1).
  * Measured by the team; kept next to the card on purpose: the card's own number is in-distribution and must never be
  * shown alone.
  */
@@ -10,8 +10,8 @@ export const REFERENCE_OFFICIAL = {
   suite: 'jezero-v1 0.1.0',
   level: 'L1',
   n: 600,
-  success: 0.586667,
-  ci95: [0.546835, 0.625396] as const,
+  success: 0.605,
+  ci95: [0.565335, 0.643329] as const,
   threshold: 0.8,
 } as const
 
