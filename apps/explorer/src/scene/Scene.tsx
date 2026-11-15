@@ -12,6 +12,7 @@ import { CameraRig } from './CameraRig'
 import { PlaybackDriver } from './PlaybackDriver'
 import { Slot } from '@/ui/slots'
 import { MissionLayer } from './MissionLayer'
+import { Astronaut } from './Astronaut'
 import { Rover } from './Rover'
 import { Sky } from './Sky'
 import { Sun } from './Sun'
@@ -204,6 +205,7 @@ export default function Scene({ dataset }: { dataset: Dataset }) {
       <TraverseLayer ds={dataset} />
       <Terrain ds={dataset} />
       <Rover hf={dataset.heightfield} />
+      <Astronaut hf={dataset.heightfield} />
       <MissionLayer ds={dataset} />
       <PlaybackDriver />
       <CameraRig hf={dataset.heightfield} />

@@ -7,6 +7,7 @@ import type { Heightfield } from '@/core/terrain/heightfield'
 import { PathFollower } from '@/core/rover/path-follower'
 import { roverPose } from '@/core/rover/pose'
 import { playbackLive } from '@/store/playback'
+import { useMission } from '@/store/mission'
 import { roverLive, useRover } from '@/store/rover'
 
 const WHEEL_R = 0.26
@@ -111,6 +112,8 @@ export function Rover({ hf }: { hf: Heightfield }) {
   useFrame((_, dt) => {
     const g = root.current
     if (!g || !roverLive.ready) return
+    // the Astronaut profile shows the astronaut avatar instead (it follows the same pose)
+    g.visible = useMission.getState().profile !== 'astronaut'
     const f = follower.current
     let moving = 0
     if (f && playbackLive.paused) {

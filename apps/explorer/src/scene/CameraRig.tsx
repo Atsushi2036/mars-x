@@ -262,7 +262,7 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
       } else if (mode === 'chase' && agent.ready) {
         // snap behind the agent instead of flying in from wherever the previous camera was
         look.current = { yaw: 0, pitch: 0, idle: 0 }
-        const back = agentLive.kind === 'astronaut' ? 4.5 : 9
+        const back = agentLive.kind === 'astronaut' ? 3.4 : 9
         const tx = agent.x - Math.cos(agent.yaw) * back
         const tz = agent.z - Math.sin(agent.yaw) * back
         camera.position.set(tx, Math.max(hf.sampleHeight(tx, tz) + 2.5, hf.sampleHeight(agent.x, agent.z) + 4.2), tz)
@@ -446,19 +446,19 @@ export function CameraRig({ hf }: { hf: Heightfield }) {
         lk.pitch *= r
       }
       const astro = agentLive.kind === 'astronaut'
-      const back = astro ? 4.5 : 9
+      const back = astro ? 3.4 : 9
       const heading = agent.yaw + lk.yaw
       const tx = agent.x - Math.cos(heading) * back
       const tz = agent.z - Math.sin(heading) * back
       const rg = hf.sampleHeight(agent.x, agent.z)
-      const ty = Math.max(hf.sampleHeight(tx, tz) + 2.5, rg + (astro ? 2.2 : 4.2) + lk.pitch * back * 1.6)
+      const ty = Math.max(hf.sampleHeight(tx, tz) + 2.5, rg + (astro ? 2.3 : 4.2) + lk.pitch * back * 1.6)
       const s = 1 - Math.exp(-4 * dt)
       camera.position.x += (tx - camera.position.x) * s
       camera.position.y += (ty - camera.position.y) * s
       camera.position.z += (tz - camera.position.z) * s
       const floor = hf.sampleHeight(camera.position.x, camera.position.z) + 1.5
       if (camera.position.y < floor) camera.position.y = floor
-      camera.lookAt(agent.x, rg + 1.0, agent.z)
+      camera.lookAt(agent.x, rg + (astro ? 1.3 : 1.0), agent.z)
       cameraRig.focus.x = agent.x
       cameraRig.focus.y = rg
       cameraRig.focus.z = agent.z

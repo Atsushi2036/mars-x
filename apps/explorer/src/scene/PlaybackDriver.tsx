@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { agentLive } from '@/store/camera'
 import { lerpAngle } from '@/store/camera-math'
 import { pointAlong, playbackLive, usePlayback } from '@/store/playback'
+import { useMission } from '@/store/mission'
 import { roverLive, useRover } from '@/store/rover'
 import { RUN_RATE, watchCtx, type RouteCtx, type RunCtx } from '@/store/watch'
 import { useReplay } from '@/features/replay/store'
@@ -51,6 +52,7 @@ export function PlaybackDriver() {
       agentLive.z = roverLive.z
       agentLive.yaw = roverLive.yaw
       agentLive.ready = roverLive.ready
+      agentLive.kind = useMission.getState().profile === 'astronaut' ? 'astronaut' : 'rover'
       a.nonce = -1
       return
     }
