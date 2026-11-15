@@ -7,7 +7,7 @@ import { useByo } from '../shared/byo-store'
 import { DropZone } from '../shared/DropZone'
 import { short } from '../shared/fmt'
 import { RunCard } from '../replay/RunCard'
-import { ReferencePolicy } from './ReferencePolicy'
+import { TryAModel } from './TryAModel'
 import { explainPolicyError, explainRunError, type Explained } from './errors'
 
 function ErrorBox({ e, onDismiss }: { e: Explained; onDismiss: () => void }) {
@@ -61,10 +61,11 @@ function PolicySection() {
               <X className="size-5" />
             </Button>
           </div>
+          <p className="flex items-center gap-2 text-sm font-medium text-success">
+            <CircleCheck className="size-5 shrink-0" aria-hidden="true" /> Matches the policy/1 contract
+          </p>
           <div className="flex flex-wrap gap-1.5">
-            <Chip tone="success" icon={CircleCheck}>
-              policy/1 · {l.info.outputName === 'logits' ? 'logits' : 'action'}
-            </Chip>
+            <Chip>{l.info.outputName === 'logits' ? 'logits output' : 'action output'}</Chip>
             <Chip>Opset {l.info.opset}</Chip>
             <Chip>{l.info.nodeCount} nodes</Chip>
             <Chip>{fmtBytes(l.bytes)}</Chip>
@@ -72,7 +73,6 @@ function PolicySection() {
           </div>
           <Details summary="Checks and operators">
             <ul className="space-y-1.5 text-sm">
-              <li>Matches the policy/1 contract.</li>
               <li>No loops, scans, conditionals or external data.</li>
               <li>The file is read and run inside this page. It is not sent anywhere.</li>
             </ul>
@@ -116,9 +116,11 @@ function RunSection() {
 export function ByoModel() {
   return (
     <div>
-      <ReferencePolicy />
+      <TryAModel />
       <PolicySection />
-      <RunSection />
+      <div id="lab-run">
+        <RunSection />
+      </div>
     </div>
   )
 }

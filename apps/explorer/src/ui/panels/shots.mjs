@@ -163,6 +163,32 @@ export const SCENARIOS = {
     await page.waitForTimeout(1500)
     await shot('7b-3d-ghost')
   },
+  catalog: async (page, vp, _theme, shot) => {
+    await openMode(page, vp, 'Test your AI', 'Test AI', true)
+    await page.getByRole('radio', { name: /Bring your model/ }).click()
+    await page.getByRole('heading', { name: 'Try a model' }).waitFor({ timeout: 30000 })
+    const top = async (n) => {
+      await scrollPanel(page, 0)
+      await shot(n, 'catalog')
+    }
+    await page.waitForTimeout(600)
+    await top('1-try-a-model')
+    await scrollPanel(page, vp === 'mobile' ? 420 : 380)
+    await shot('1b-second-card', 'catalog')
+    const ex = page.getByRole('listitem').filter({ hasText: 'Example student model' })
+    await ex.getByRole('button', { name: 'Load model' }).click()
+    await page.getByText('Matches the policy/1 contract').waitFor({ timeout: 120000 })
+    await page.waitForTimeout(600)
+    await ex.scrollIntoViewIfNeeded()
+    await shot('2-model-loaded', 'catalog')
+    await ex.getByRole('button', { name: 'See its benchmark' }).click()
+    await page.getByText(/Verified by re-simulation/).first().waitFor({ timeout: 300000 })
+    await page.waitForTimeout(600)
+    await shot('3-benchmark-verified', 'catalog')
+    await page.getByRole('button', { name: 'Open scorecard' }).click()
+    await page.waitForTimeout(1200)
+    await shot('4-scorecard', 'catalog')
+  },
   'lab-byo': async (page, vp) => {
     await openMode(page, vp, 'Test your AI', 'Test AI')
     await page.getByRole('radio', { name: /Bring your model/ }).click()
@@ -203,7 +229,7 @@ for (const [name, drive] of Object.entries(SCENARIOS)) {
         await page.waitForFunction(() => window.__marsx?.ready === true, null, { timeout: 120000 }).catch(() => errors.push('[harness] scene not ready in 120 s'))
         await page.waitForTimeout(600)
         await page.getByRole('button', { name: /^(skip|got it)$/i }).first().click({ timeout: 800 }).catch(() => {})
-        await drive(page, vpName, theme, (n) => { fs.mkdirSync(path.join(out, 'train'), { recursive: true }); return page.screenshot({ path: path.join(out, 'train', n + '__' + vpName + '__' + theme + '.png') }) })
+        await drive(page, vpName, theme, (n, dir = 'train') => { fs.mkdirSync(path.join(out, dir), { recursive: true }); return page.screenshot({ path: path.join(out, dir, n + '__' + vpName + '__' + theme + '.png') }) })
         await page.waitForTimeout(600)
         await page.screenshot({ path: path.join(out, `${name}__${vpName}__${theme}.png`) })
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)

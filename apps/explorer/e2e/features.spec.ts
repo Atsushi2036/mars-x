@@ -27,20 +27,20 @@ test.describe('guided tour (?tour=1)', () => {
 })
 
 test.describe('AI Lab', () => {
-  test('reference policy is published (no "not published" notice) and loads', async ({ page, baseURL }, info) => {
+  test('reference policy is published and loads with one click from the catalog', async ({ page, baseURL }, info) => {
     test.setTimeout(600_000)
     const issues = watch(page, baseURL!)
     await open(page)
     await modeButton(page, info, 'AI Lab').click()
-    await page.getByRole('tab', { name: 'Bring your model' }).or(page.getByRole('button', { name: 'Bring your model' })).first().click()
-    await expect(page.getByText('Reference policy', { exact: true }).first()).toBeAttached()
-    await expect(page.getByText(/not published with this build/i)).toHaveCount(0)
-    const load = page.getByRole('button', { name: 'Load the reference policy' })
+    await page.getByRole('tab', { name: 'Bring your model' }).or(page.getByRole('radio', { name: /Bring your model/ })).or(page.getByRole('button', { name: 'Bring your model' })).first().click()
+    await expect(page.getByRole('heading', { name: 'Try a model' })).toBeVisible()
+    await expect(page.getByText(/model catalog is not published/i)).toHaveCount(0)
+    const load = page.getByRole('listitem').filter({ hasText: 'PPO reference' }).getByRole('button', { name: 'Load model' })
     await load.evaluate((el) => el.scrollIntoView({ block: 'center' }))
     await expect(load).toBeEnabled({ timeout: 30_000 })
     await load.click()
     await expect(page.getByRole('button', { name: 'Remove the policy' })).toBeVisible({ timeout: 180_000 })
-    // zod 4 probes `Function('')` once at startup; the blocked probe is reported as script-src eval and is harmless
+    // zod 4 probes Function() once at startup; the blocked probe is reported as script-src eval and is harmless
     expect((await cspViolations(page)).filter((v) => !v.startsWith('script-src eval')), 'CSP violations while loading ONNX').toEqual([])
     expectClean(issues)
   })
@@ -49,14 +49,14 @@ test.describe('AI Lab', () => {
     test.setTimeout(900_000)
     await open(page)
     await modeButton(page, info, 'AI Lab').click()
-    await page.getByRole('tab', { name: 'Bring your model' }).or(page.getByRole('button', { name: 'Bring your model' })).first().click()
+    await page.getByRole('radio', { name: /Bring your model/ }).click()
     await page.locator('input[type="file"][accept*="json"]').setInputFiles(EXAMPLE_RUN, { timeout: 30_000 })
     const openBtn = page.getByRole('button', { name: 'Open scorecard' })
     await openBtn.evaluate((el) => el.scrollIntoView({ block: 'center' }))
     await openBtn.click()
     const dlg = page.getByRole('dialog')
     await expect(dlg.getByText(/Verified by re-simulation: 798 of 800/)).toBeVisible({ timeout: 600_000 })
-    await expect(dlg.getByText('Does not pass').first()).toBeVisible()
+    await expect(dlg.getByText('Does not pass').locator('visible=true').first()).toBeVisible()
   })
 })
 
