@@ -63,12 +63,12 @@ export function ModeRail() {
                   data-lit={m.id === lit}
                   onClick={() => choose(m.id)}
                   className={cn(
-                    'flex h-16 w-[72px] flex-col items-center justify-center gap-1 rounded-xl text-rail-foreground outline-none transition-[background-color,color,transform] duration-150 hover:bg-rail-accent/60 hover:text-white focus-visible:ring-2 focus-visible:ring-sidebar-ring active:scale-[0.97]',
+                    'flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-xl text-rail-foreground outline-none transition-[background-color,color,transform] duration-150 hover:bg-rail-accent/60 hover:text-white focus-visible:ring-2 focus-visible:ring-sidebar-ring active:scale-[0.97]',
                     active && 'bg-rail-accent text-white',
                   )}
                 >
                   <m.icon className="size-6" strokeWidth={1.75} aria-hidden="true" />
-                  <span className="max-w-full truncate px-1 text-[12.5px] font-medium leading-4">{m.label}</span>
+                  <span className="px-0.5 text-center text-[12.5px] font-medium leading-[14px]">{m.label}</span>
                 </button>
               </div>
             )

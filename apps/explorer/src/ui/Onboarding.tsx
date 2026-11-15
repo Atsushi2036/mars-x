@@ -1,5 +1,4 @@
-import { Hand, Keyboard, MousePointerClick, type LucideIcon } from 'lucide-react' // TODO(C): move to @/ui/icons
-import { Sparkles, X } from '@/ui/icons'
+import { Hand, Keyboard, MousePointerClick, Sparkles, X, type LucideIcon } from '@/ui/icons'
 import { useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { startGuidedMission } from '@/features/guided/api'

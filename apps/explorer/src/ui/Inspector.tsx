@@ -125,7 +125,7 @@ export function Inspector() {
       </aside>
     )
   }
-  const height = { peek: 'h-28', half: 'h-[52dvh]', full: 'h-[min(88dvh,calc(100dvh-156px))]' }[snap]
+  const height = { peek: 'h-40', half: 'h-[52dvh]', full: 'h-[min(88dvh,calc(100dvh-156px))]' }[snap]
   return (
     <aside
       aria-label="Inspector"
@@ -135,7 +135,7 @@ export function Inspector() {
     >
       <SheetHandle />
       <Header compact={snap === 'peek'} />
-      <div className={`min-h-0 flex-1 overscroll-contain ${snap === 'peek' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+      <div className={`min-h-0 flex-1 overscroll-contain ${snap === 'peek' ? 'overflow-hidden [mask-image:linear-gradient(to_bottom,black_70%,transparent)]' : 'overflow-y-auto'}`}>
         <PanelBody />
       </div>
     </aside>
