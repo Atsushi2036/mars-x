@@ -33,12 +33,14 @@ export function ControlHints() {
   const nonce = useNav((s) => s.hintNonce)
   const notice = useNav((s) => s.notice)
   const watching = usePlayback((s) => s.source !== null)
+  // the first-visit card already explains these controls: hold the hint back (and do not use up one of its three showings)
+  const onboarding = useApp((s) => s.onboardingOpen)
   const sheetUp = useApp((s) => s.inspectorOpen && s.sheetSnap !== 'peek')
   const [shown, setShown] = useState(false)
   const seen = useRef(0)
 
   useEffect(() => {
-    if (!ready) return
+    if (!ready || onboarding) return
     const forced = nonce !== seen.current
     seen.current = nonce
     const counts = readCounts()
@@ -47,10 +49,10 @@ export function ControlHints() {
     setShown(true)
     const t = setTimeout(() => setShown(false), HINT_MS)
     return () => clearTimeout(t)
-  }, [mode, nonce, ready])
+  }, [mode, nonce, ready, onboarding])
 
   // phones: with the sheet raised there is no room for a hint
-  if (watching || (sheetUp && !window.matchMedia('(min-width: 768px)').matches)) return null
+  if (onboarding || watching || (sheetUp && !window.matchMedia('(min-width: 768px)').matches)) return null
   const text = notice ?? (shown ? hintFor(mode, isTouch()) : null)
   if (!text) return null
   return (

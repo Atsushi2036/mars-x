@@ -74,7 +74,7 @@ export function Onboarding() {
       // only a real mouse hover pauses the auto-close: on touch there is no pointerleave, so it would never close
       onPointerEnter={(e) => (hover.current = e.pointerType === 'mouse')}
       onPointerLeave={() => (hover.current = false)}
-      className="glass pointer-events-auto absolute bottom-[calc(var(--cover-bottom)+12px)] left-3 right-3 z-30 mx-auto max-w-80 rounded-2xl p-4 text-card-foreground motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 md:left-1/2 md:right-auto md:mx-0 md:-translate-x-1/2"
+      className="glass pointer-events-auto absolute bottom-[calc(var(--cover-bottom)+5.5rem)] left-3 z-30 w-[19rem] rounded-2xl p-4 text-card-foreground motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 md:bottom-[calc(var(--cover-bottom)+6.5rem)] md:left-1/2 md:w-80 md:-translate-x-1/2"
     >
       <Button variant="ghost" size="icon" aria-label="Dismiss tips" className="absolute right-1.5 top-1.5 size-9 [&_svg]:size-5" onClick={close}>
         <X />
