@@ -239,6 +239,29 @@
   }
 }
 
+/* visible, slightly thicker scrollbar for the inspector (design tokens, not the OS default) */
+.scroll-visible::-webkit-scrollbar {
+  width: 10px;
+}
+.scroll-visible::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-visible::-webkit-scrollbar-thumb {
+  background: var(--input);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.scroll-visible::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+  background-clip: content-box;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .scroll-visible {
+    scrollbar-color: var(--input) transparent;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

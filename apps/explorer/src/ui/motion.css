@@ -30,6 +30,16 @@
     to { opacity: 1; transform: none; }
   }
 }
+@media (prefers-reduced-motion: no-preference) {
+  /* "more below" pill: a short pulse the first time a long panel opens */
+  .pill-pulse {
+    animation: pill-pulse 1.1s var(--ease-out) 2;
+  }
+  @keyframes pill-pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 55%, transparent); }
+    100% { box-shadow: 0 0 0 12px transparent; }
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .flyin-title {
     background: rgb(11 14 20 / 0.55);

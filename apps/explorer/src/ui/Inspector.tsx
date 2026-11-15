@@ -1,7 +1,7 @@
-import { X } from '@/ui/icons'
+import { ChevronDown, X } from '@/ui/icons'
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { ScrollPanel } from './ScrollPanel'
 import { useApp, type Mode } from '@/store/app'
 import { useMission } from '@/store/mission'
 import { MODES } from './modes'
@@ -69,7 +69,7 @@ function SheetHandle() {
       type="button"
       aria-label={snap === 'peek' ? 'Expand panel' : 'Collapse panel'}
       aria-expanded={snap !== 'peek'}
-      className="mx-auto flex h-7 w-28 shrink-0 touch-none items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={`mx-auto flex w-40 shrink-0 touch-none flex-col items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-ring ${snap === 'peek' ? 'h-10 gap-0.5' : 'h-7'}`}
       onPointerDown={(e) => {
         y0.current = e.clientY
         e.currentTarget.setPointerCapture(e.pointerId)
@@ -86,6 +86,12 @@ function SheetHandle() {
       }}
     >
       <span className="h-1.5 w-10 rounded-full bg-border" aria-hidden="true" />
+      {snap === 'peek' && (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          <ChevronDown className="size-3.5 rotate-180" aria-hidden="true" />
+          Swipe up for more
+        </span>
+      )}
     </button>
   )
 }
@@ -109,6 +115,7 @@ function useIsDesktop(): boolean {
  * is always the visible one (two copies of the panels would also duplicate every control id).
  */
 export function Inspector() {
+  const mode = useApp((s) => s.mode)
   const open = useApp((s) => s.inspectorOpen)
   const snap = useApp((s) => s.sheetSnap)
   const desktop = useIsDesktop()
@@ -127,9 +134,9 @@ export function Inspector() {
         className="glass pointer-events-auto absolute right-3 top-[calc(var(--cover-top)+12px)] bottom-[calc(var(--cover-bottom)+12px)] z-20 flex max-h-[52rem] w-96 flex-col overflow-hidden rounded-2xl text-card-foreground"
       >
         <Header />
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollPanel id={mode} className="flex-1">
           <PanelBody />
-        </ScrollArea>
+        </ScrollPanel>
       </aside>
     )
   }
@@ -143,9 +150,15 @@ export function Inspector() {
     >
       <SheetHandle />
       <Header compact={snap === 'peek'} />
-      <div className={`min-h-0 flex-1 overscroll-contain ${snap === 'peek' ? 'overflow-hidden [mask-image:linear-gradient(to_bottom,black_70%,transparent)]' : 'overflow-y-auto'}`}>
-        <PanelBody />
-      </div>
+      {snap === 'peek' ? (
+        <div className="min-h-0 flex-1 overflow-hidden overscroll-contain [mask-image:linear-gradient(to_bottom,black_70%,transparent)]">
+          <PanelBody />
+        </div>
+      ) : (
+        <ScrollPanel id={mode} className="flex-1">
+          <PanelBody />
+        </ScrollPanel>
+      )}
     </aside>
   )
 }
