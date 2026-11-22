@@ -26,6 +26,6 @@
     "all": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build"
   },
   "devDependencies": {
-    "wrangler": "4.158.0"
+    "wrangler": "4.162.0"
   }
 }
